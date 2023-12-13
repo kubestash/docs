@@ -1,18 +1,24 @@
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: sample-mariadb-restore
+  name: sample-restore
   namespace: demo
 spec:
-  runtimeSettings:
-    pod:
-      serviceAccountName: bucket-user
-  repository:
-    name: s3-repo
   target:
-    ref:
-      apiVersion: appcatalog.appscode.com/v1alpha1
-      kind: AppBinding
-      name: sample-mariadb
-  rules:
-    - snapshots: [latest]
+    apiGroup: apps
+    kind: DaemonSet
+    name: ks-demo
+    namespace: demo
+  dataSource:
+    repository: s3-demo-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encry-secret
+      namespace: demo
+  addon:
+    name: workload-addon
+    tasks:
+      - name: logical-backup-restore
+    jobTemplate:
+      spec:
+        serviceAccountName: bucket-user

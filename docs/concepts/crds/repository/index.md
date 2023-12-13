@@ -5,170 +5,106 @@ menu:
     identifier: repository-overview
     name: Repository
     parent: crds
-    weight: 5
+    weight: 10
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: concepts
 ---
 
-> New to Stash? Please start [here](/docs/concepts/README.md).
+> New to KubeStash? Please start [here](/docs/concepts/README.md).
 
 # Repository
 
 ## What is Repository
 
-A `Repository` is a Kubernetes `CustomResourceDefinition`(CRD) which represents [backend](/docs/guides/backends/overview/index.md) information in a Kubernetes native way.
+A `Repository` is a Kubernetes `CustomResourceDefinition`(CRD) which represents the information about the targeted application that has been backed up and the `BackupStorage`
+where the backed up data is being stored in a Kubernetes native way.
 
-You have to create a `Repository` object for each backup target. Since v1beta1 api, a `Repository` object has 1-1 mapping with a target. Thus, only one target can be backed up into one `Repository`.
+KubeStash operator creates `Repository` objects according to the repositories information provided in a `BackupConfiguration`. It specifies the application reference, the
+`BackupStorage` reference and the encryption secret reference.
+
+KubeStash operator syncs `Repository` objects in the cluster if the storage contains the information of the respective `Repository`. When a `BackupStorage` is created, KubeStash
+will automatically sync the `Repositories` and `Snapshots` associated with it.
+
+A `Repository` object has 1-1 mapping with a backup target. A backup target can be a workload, database or a PV/PVC.
 
 ## Repository CRD Specification
+Like any official Kubernetes resource, a `Repository` object has `TypeMeta`, `ObjectMeta`, `Spec` and `Status` sections.
 
-Like any official Kubernetes resource, a `Repostiory` object has `TypeMeta`, `ObjectMeta`, `Spec` and `Status` sections.
-
-A sample `Repository` object that uses Google Cloud Storage(GCS) bucket as backend is shown below:
-
+A sample `Repository` object that uses Google Cloud Storage(GCS) bucket as storage is shown below:
 ```yaml
-apiVersion: stash.appscode.com/v1alpha1
+apiVersion: storage.kubestash.com/v1alpha1
 kind: Repository
 metadata:
   name: gcs-demo-repo
   namespace: demo
 spec:
-  backend:
-    gcs:
-      bucket: stash-demo-backup
-      prefix: demo
-    storageSecretName: gcs-secret
-  usagePolicy:
-    allowedNamespaces:
-      from: Same
-  wipeOut: false
+  appRef:
+    apiGroup: apps
+    kind: StatefulSet
+    name: sample-sts
+    namespace: demo
+  deletionPolicy: Delete
+  encryptionSecret:
+    name: encry-secret
+    namespace: demo
+  path: /demo/data
+  storageRef:
+    name: gcs-storage
+    namespace: demo
 status:
-  firstBackupTime: "2019-04-15T06:08:16Z"
+  componentPaths:
+  - repository/v1/demo-session/pod-0
+  - repository/v1/demo-session/pod-1
+  - repository/v1/demo-session/pod-2
+  conditions:
+  - lastTransitionTime: "2023-12-07T06:37:40Z"
+    message: Successfully initialized repository
+    reason: RepositoryInitializationSucceeded
+    status: "True"
+    type: RepositoryInitialized
   integrity: true
-  lastBackupTime: "2019-04-15T06:14:15Z"
-  totalSize: 2.567 KiB
-  snapshotCount: 5
-  snapshotsRemovedOnLastCleanup: 1
+  lastBackupTime: "2023-12-07T06:38:00Z"
+  phase: Ready
+  recentSnapshots:
+  - name: gcs-demo-repo-sample-backup-sts-demo-session-1701940920
+    phase: Succeeded
+    session: demo-session
+    size: 12.222 MiB
+    snapshotTime: "2023-12-07T06:38:10Z"
+  size: 12.222 MiB
+  snapshotCount: 1
 ```
-
 Here, we are going to describe the various sections of the `Repository` crd.
 
-### Repository `Spec`
+## Repository `Spec`
+`Repository` CRD has the following fields in the `.spec` section:
+- **spec.appRef** `spec.AppRef` refers to the application that is being backed up in this `Repository`.
+- **spec.storageRef** `spec.storageRef` refers to the `BackupStorage` CR which contain the storage information where the backed up data will be stored. The `BackupStorage` could be in a different namespace. However, the `Repository` namespace must be allowed to use the `BackupStorage`.
+- **spec.path** `spec.path` represents the directory inside the `BackupStorage` where this Repository is storing its data. This path is relative to the path of `BackupStorage`. This path must be **unique** for each `Repository` referring same `BackupStorage`.
+- **spec.deletionPolicy** `spec.deletionPolicy` specifies what to do when a `Repository` CR is deleted. The valid values for this field are:
+  - **Delete** This will delete the respective `Snapshot` CRs from the cluster but keep the backed up data in the storage. This is the default behavior.
+  - **WipeOut** This will delete the respective `Snapshot` CRs as well as the backed up data from the storage.
+- **spec.encryptionSecret** refers to the `Secret` containing the encryption key which will be used to encode/decode the backed up data. You can refer to a `Secret` of a different namespace.
+- **spec.paused** `spec.paused` specifies whether the Repository is paused or not. If the Repository is paused, KubeStash will not process any further event for the Repository.
 
-`Repository` CRD has the following fields in the `.spec` section.
+## Repository `Status`
+`Repository` crd shows the following statistics in `.status` section:
+- **status.phase** `status.phase` represents the current state of the `Repository`.
+- **status.lastBackupTime** `status.lastBackupTime` specifies the timestamp when the last successful backup has been taken.
+- **status.integrity** `status.integrity` specifies whether the backed up data of this `Repository` has been corrupted or not.
+- **status.snapshotCount** `status.snapshotCount` specifies the number of current `Snapshots` stored in this `Repository`.
+- **status.size** `status.size` specifies the amount of backed up data stored in the `Repository`.
+- **status.recentSnapshots** `status.recentSnapshots` holds a list of recent `Snapshot` (maximum 5) information that has been taken in this `Repository`.
+- **status.conditions** `status.conditions` represents list of conditions regarding this `Repository`. The following condition is set by the KubeStash operator on a `Repository`.
 
-- **spec.backend**
-`spec.backend` specifies the storage location where the backed up snapshots will be stored. To learn how to configure `Repository` crd for  various backends, please visit [here](/docs/guides/backends/overview/index.md).
+| Condition Type          | Usage                                     |
+|-------------------------|-------------------------------------------|
+| `RepositoryInitialized` | indicates the `Repository` is initialized |
 
-- **backend prefix/subPath**
-`prefix` of any backend denotes the directory inside the backend where the backed up snapshots will be stored. In case of **Local** backend, `subPath` is used for this purpose.
-
-- **spec.wipeOut**
-As the name implies, `spec.wipeOut` field indicates whether Stash operator should delete backed up files from the backend when `Repository` crd is deleted. The default value of this field is `false` which tells Stash to not delete backed up data when a user deletes a `Repository` crd.
-
-- **spec.usagePolicy**
-This lets you control which namespaces are allowed to use the Repository and which are not. If you refer to a Repository from a restricted namespace, Stash will reject creating the respective BackupConfiguration/RestoreSession from validating webhook. You can use the `usagePolicy` to allow only the same namespace, a subset of namespaces, or all the namespaces to refer to the Repository. If you don't specify any `usagePolicy`, Stash will allow referencing the Repository only from the namespace where the Repository has been created.
-
-
-Here is an example of `spec.usagePolicy` that limits referencing the Repository only from the same namespace,
-```yaml
-spec: 
-  usagePolicy:
-    allowedNamespaces:
-      from: Same
-```
-
-Here is an example of `spec.usagePolicy` that allows referencing it from all namespaces,
-```yaml
-spec: 
-  usagePolicy:
-    allowedNamespaces:
-      from: All
-```
-
-Here is an example of `spec.usagePolicy` that allows referencing it from only `prod` and `staging` namespace,
-```yaml
-spec:
-  usagePolicy:
-    allowedNamespaces:
-      from: Selector
-      selector:
-        matchExpressions:
-        - key: "kubernetes.io/metadata.name"
-          operator: In
-          values: ["prod","staging"]
-```
-
-### Repository `Status`
-
-Stash operator updates `.status` of a Repository crd every time a backup operation is completed. `Repository` crd shows the following statistics in status section:
-
-- **status.firstBackupTime**
-`status.firstBackupTime` indicates the timestamp when the first backup was taken.
-
-- **status.lastBackupTime**
-`status.lastBackupTime` indicates the timestamp when the latest backup was taken.
-
-- **status.integrity**
-Stash checks the integrity of backed up files after each backup. `status.integrity` shows the result of the integrity check.
-
-- **status.totalSize**
-`status.totalSize` shows the total size of a repository after last backup.
-
-- **status.snapshotCount**
-`status.SnapshotCount` shows the number of snapshots stored in the Repository.
-
-- **status.snapshotsRemovedOnLastCleanup**
-`status.snapshotsRemovedOnLastCleanup` shows the number of old snapshots that has been cleaned up according to retention policy on last backup session.
-
-
-## Deleting Repository
-
-Stash allows users to delete **only `Repository` crd** or **`Repository` crd along with respective backed up data**. Here, we are going to show how to perform these operations.
-
-**Delete only `Repository` keeping backed up data :**
-
- You can delete only `Repository` crd by,
-
-```bash
-$ kubectl delete repository <repository-name>
-
-# Example
-$ kubectl delete repository gcs-demo-repo
-repository "gcs-demo-repo" deleted
-```
-
-This will delete only `Repository` crd. It won't delete any backed up data from the backend. You can recreate the `Repository` object later to reuse existing data as long as your restic password in unchanged.
-
->If you delete `Repository` crd while respective stash sidecar still exists on the workload, it will fail to take further backup.
-
-**Delete `Repository` along with backed up data :**
-
-In order to prevent the users from accidentally deleting backed up data, Stash uses a special `wipeOut` flag in `spec` section of `Repository` crd. By default, this flag is set to `wipeOut: false`. If you want to delete respective backed up data from backend while deleting `Repository` crd, you must set this flag to `wipeOut: true`.
-
-> Currently, Stash does not support wiping out backed up data for local backend. If you want to cleanup backed up data from local backend, you must do it manually.
-
-Here, is an example of deleting backed up data from GCS backend,
-
-- First, set `wipeOut: true` by patching `Repository` crd.
-
-  ```bash
-  $ kubectl patch repository gcs-demo-repo --type="merge" --patch='{"spec": {"wipeOut": true}}'
-  repository "gcs-demo-repo" patched
-  ```
-
-- Finally, delete `Repository` object. It will delete backed up data from the backend.
-
-  ```bash
-  $ kubectl delete repository gcs-demo-repo
-  repository "gcs-demo-repo" deleted
-  ```
-
-You can browse your backend storage bucket to verify that the backed up data has been wiped out.
+- **status.componentPaths** `status.componentPaths` represents list of component paths in this `Repository`.
 
 ## Next Steps
-
-- Learn how to create `Repository` crd for different backends from [here](/docs/guides/backends/overview/index.md).
-- Learn how Stash backup workloads data from [here](/docs/guides/workloads/overview/index.md).
-- Learn how Stash backup databases from [here](/docs/guides/addons/overview/index.md).
+- Learn how to create `BackupStorage` for different storages from [here](/docs/guides/backends/overview/index.md).
+- Learn how KubeStash backup workloads data from [here](/docs/guides/workloads/overview/index.md).
+- Learn how KubeStash backup databases from [here](/docs/guides/addons/overview/index.md).

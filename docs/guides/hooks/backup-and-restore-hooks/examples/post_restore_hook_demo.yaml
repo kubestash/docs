@@ -1,25 +1,29 @@
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: post-restore-hook-demo
+  name: sample-restore
   namespace: demo
 spec:
-  task:
-    name: mysql-restore-8.0.14
-  repository:
-    name: gcs-repo
+  target:
+    apiGroup: kubedb.com
+    kind: MySQL
+    name: sample-mysql
+    namespace: demo
+  dataSource:
+    repository: demo-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encry-secret
+      namespace: demo
+  addon:
+    name: mysql-addon
+    tasks:
+      - name: logical-backup-restore
   hooks:
     postRestore:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "RENAME TABLE companyRecord.employee TO companyRecord.salaryRecord;"
-      containerName: mysql
-  target:
-    ref:
-      apiVersion: appcatalog.appscode.com/v1alpha1
-      kind: AppBinding
-      name: sample-mysql
-  rules:
-    - snapshots: [latest]
+      - name: pre-hook
+        hookTemplate:
+          name: migration-hook
+          namespace: demo
+        maxRetry: 3
+        timeout: 30s

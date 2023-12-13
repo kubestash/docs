@@ -5,23 +5,23 @@ menu:
     identifier: function-overview
     name: Function
     parent: crds
-    weight: 30
+    weight: 35
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: concepts
 ---
 
-> New to Stash? Please start [here](/docs/concepts/README.md).
+> New to KubeStash? Please start [here](/docs/concepts/README.md).
 
 # Function
 
 ## What is Function
 
-A complete backup or restore process may consist of several steps. For example, in order to backup a PostgreSQL database we first need to dump the database and upload the dumped file to a backend. Then we need to update the respective`Repository` and `BackupSession` status and send Prometheus metrics. In Stash, we call such individual steps a `Function`.
+A complete process of a task such as, backup or restore, is called a `Function` in KubeStash.
 
-A `Function` is a Kubernetes `CustomResourceDefinition`(CRD) which basically specifies a template for a container that performs only a specific action. For example, `postgres-backup-*` function only dumps and uploads the dumped file into the backend where `update-status` function updates the status of respective `BackupSession` and `Repository` and sends Prometheus metrics to pushgateway based on the output of `postgres-backup-*` function.
+A `Function` is a Kubernetes `CustomResourceDefinition`(CRD) which basically specifies a template for a container that performs only a specific action or task. For example, `postgres-backup` function only take backup of PostgreSQL Database.
 
-When you install Stash, some `Function`s will be pre-installed for supported targets like databases, etc. However, you can create your own function to customize or extend the backup/restore process.
+When you install KubeStash, some `Function`s will be pre-installed for supported targets like workloads, pvc etc. However, you can create your own function to customize or extend the backup/restore process.
 
 ## Function CRD Specification
 
@@ -30,84 +30,35 @@ Like any official Kubernetes resource, a `Function` has `TypeMeta`, `ObjectMeta`
 A sample `Function` object to backup a PostgreSQL is shown below,
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: addons.kubestash.com/v1alpha1
 kind: Function
 metadata:
-  name: postgres-backup-11.2
+  annotations:
+    meta.helm.sh/release-name: kubedb
+    meta.helm.sh/release-namespace: kubedb
+  creationTimestamp: "2023-12-12T12:55:59Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/instance: kubedb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kubedb-kubestash-catalog
+    app.kubernetes.io/version: v2023.12.11
+    helm.sh/chart: kubedb-kubestash-catalog-v2023.12.11
+  name: postgres-backup
+  resourceVersion: "277644"
+  uid: f64449f8-1111-4a4d-8c6e-96c5b877aef6
 spec:
-  image: stashed/postgres-stash:11.2
   args:
-  - backup-pg
-  # setup information
-  - --provider=${REPOSITORY_PROVIDER:=}
-  - --bucket=${REPOSITORY_BUCKET:=}
-  - --endpoint=${REPOSITORY_ENDPOINT:=}
-  - --region=${REPOSITORY_REGION:=}
-  - --path=${REPOSITORY_PREFIX:=}
-  - --secret-dir=/etc/repository/secret
-  - --scratch-dir=/tmp
-  - --enable-cache=${ENABLE_CACHE:=true}
-  - --max-connections=${MAX_CONNECTIONS:=0} # 0 indicates use default connection limit
-  - --hostname=${HOSTNAME:=}
-  - --backup-cmd=${backupCMD:=} # can specify dump command with either pg_dump or pg_dumpall
-  - --pg-args=${args:=} # optional arguments pass to pgdump command
-  - --wait-timeout=${waitTimeout:=}
-  # target information
-  - --namespace=${NAMESPACE:=default}
-  - --appbinding=${TARGET_NAME:=}
-  - --backupsession=${BACKUP_SESSION:=}
-  # cleanup information
-  - --retention-keep-last=${RETENTION_KEEP_LAST:=0}
-  - --retention-prune=${RETENTION_PRUNE:=false}
-  # output & metric information
-  - --output-dir=${outputDir:=}
-  volumeMounts:
-  - name: ${secretVolume}
-    mountPath: /etc/repository/secret
-  runtimeSettings:
-    resources:
-      requests:
-        memory: 256M
-      limits:
-        memory: 256M
-    securityContext:
-      runAsUser: 5000
-      runAsGroup: 5000
-```
-
-A sample `Function` that updates `BackupSession` and `Repository`  status and sends metrics to Prometheus pushgateway is shown below,
-
-```yaml
-apiVersion: stash.appscode.com/v1beta1
-kind: Function
-metadata:
-  name: update-status
-spec:
-  image: appscode/stash:0.10.0
-  args:
-  - update-status
-  - --provider=${REPOSITORY_PROVIDER:=}
-  - --bucket=${REPOSITORY_BUCKET:=}
-  - --endpoint=${REPOSITORY_ENDPOINT:=}
-  - --path=${REPOSITORY_PREFIX:=}
-  - --secret-dir=/etc/repository/secret
-  - --scratch-dir=/tmp
-  - --enable-cache=${ENABLE_CACHE:=true}
-  - --max-connections=${MAX_CONNECTIONS:=0}
-  - --namespace=${NAMESPACE:=default}
-  - --backupsession=${BACKUP_SESSION:=}
-  - --repository=${REPOSITORY_NAME:=}
-  - --invoker-kind=${INVOKER_KIND:=}
-  - --invoker-name=${INVOKER_NAME:=}
-  - --target-kind=${TARGET_KIND:=}
-  - --target-name=${TARGET_NAME:=}
-  - --output-dir=${outputDir:=}
-  - --metrics-enabled=true
-  - --metrics-pushgateway-url=http://stash.kube-system.svc:56789
-  - --prom-job-name=${PROMETHEUS_JOB_NAME:=}
-  volumeMounts:
-  - mountPath: /etc/repository/secret
-    name: ${secretVolume}
+    - backup
+    - --namespace=${namespace:=default}
+    - --backupsession=${backupSession:=}
+    - --enable-cache=${enableCache:=}
+    - --scratch-dir=${scratchDir:=}
+    - --wait-timeout=${waitTimeout:=300}
+    - --pg-args=${args:=}
+    - --backup-cmd=${backupCmd:=}
+    - --user=${user:=}
+  image: ghcr.io/kubedb/postgres-restic-plugin:v0.5.0
 ```
 
 Here, we are going to describe the various sections of a `Function` crd.
@@ -126,67 +77,28 @@ A `Function` object has the following fields in the `spec` section:
 
 #### spec.args
 
-`spec.args` specifies a list of arguments that will be passed to the entrypoint. You can templatize this section using `envsubst` style variables. Stash will resolve all the variables before creating the respective container. A variable should follow the following patterns:
+`spec.args` specifies a list of arguments that will be passed to the entrypoint. You can templatize this section using `envsubst` style variables. KubeStash will resolve all the variables before creating the respective container. A variable should follow the following patterns:
 
-- ${VARIABLE_NAME:=default-value}
-- ${VARIABLE_NAME:=}
+- ${variableName:=default-value}
+- ${variableName:=}
 
-In the first case, if Stash can't resolve the variable, the default value will be used in place of this variable. In the second case, if Stash can't resolve the variable, an empty string will be used to replace the variable.
+In the first case, if KubeStash can't resolve the variable, the default value will be used in place of this variable. In the second case, if KubeStash can't resolve the variable, an empty string will be used to replace the variable.
 
-##### Stash Provided Variables
+##### KubeStash Provided Variables
 
-Stash operator provides the following built-in variables based on `BackupConfiguration`, `BackupSession`, `RestoreSession`, `Repository`, `Task`, `Function`, `BackupBlueprint` etc.
+KubeStash operator provides the following built-in variables based on `BackupSession`, `RestoreSession`, `Function` etc.
 
-| Environment Variable         | Usage                                                                                                                                                                            |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NAMESPACE`                  | Namespace of backup or restore job/workload                                                                                                                                      |
-| `BACKUP_SESSION`             | Name of the respective BackupSession object                                                                                                                                      |
-| `RESTORE_SESSION`            | Name of the respective RestoreSession object                                                                                                                                     |
-| `REPOSITORY_NAME`            | Name of the Repository object that holds respective backend information                                                                                                          |
-| `REPOSITORY_PROVIDER`        | Type of storage provider. i.e. gcs, s3, aws, local etc.                                                                                                                          |
-| `REPOSITORY_SECRET_NAME`     | Name of the secret that holds the credentials to access the backend                                                                                                              |
-| `REPOSITORY_BUCKET`          | Name of the bucket where backed up data will be stored                                                                                                                           |
-| `REPOSITORY_PREFIX`          | A prefix of the directory inside bucket where backed up data will be stored                                                                                                      |
-| `REPOSITORY_ENDPOINT`        | URL of S3 compatible Minio/Rook server                                                                                                                                           |
-| `REPOSITORY_URL`             | URL of the REST server for REST backend                                                                                                                                          |
-| `HOSTNAME`                   | An identifier for the backed up data. If multiple pods backup in same Repository (i.e. StatefulSet or DaemonSet) this host name is to used identify data of the individual host. |
-| `SOURCE_HOSTNAME`            | An identifier of the host whose backed up data will be restored                                                                                                                  |
-| `TARGET_NAME`                | Name of the target of backup or restore                                                                                                                                          |
-| `TARGET_API_VERSION`         | API version of the target of backup or restore                                                                                                                                   |
-| `TARGET_KIND`                | Kind of the target of backup or restore                                                                                                                                          |
-| `TARGET_NAMESPACE`           | Namespace of the target object for backup or restore                                                                                                                             |
-| `TARGET_MOUNT_PATH`          | Directory where target PVC will be mounted in stand-alone PVC backup or restore                                                                                                  |
-| `TARGET_PATHS`               | Array of file paths that are subject to backup                                                                                                                                   |
-| `RESTORE_PATHS`              | Array of file paths that are subject to restore                                                                                                                                  |
-| `RESTORE_SNAPSHOTS`          | Name of the snapshot that will be restored                                                                                                                                       |
-| `TARGET_APP_VERSION`         | Version of the application pointed by an AppBinding                                                                                                                              |
-| `TARGET_APP_GROUP`           | The application group where the app pointed by an AppBinding belongs                                                                                                             |
-| `TARGET_APP_RESOURCE`        | The resource kind under an application group that the app pointed by an AppBinding works with                                                                                    |
-| `TARGET_APP_TYPE`            | The total types of the application. It's simply `TARGET_APP_GROUP/TARGET_APP_RESOURCE`                                                                                           |
-| `TARGET_APP_REPLICAS`        | Number of replicas of an application targeted for backup or restore                                                                                                              |
-| `RETENTION_KEEP_LAST`        | Number of latest snapshots to keep                                                                                                                                               |
-| `RETENTION_KEEP_HOURLY`      | Number of hourly snapshots to keep                                                                                                                                               |
-| `RETENTION_KEEP_DAILY`       | Number of daily snapshots to keep                                                                                                                                                |
-| `RETENTION_KEEP_WEEKLY`      | Number of weekly snapshots to keep                                                                                                                                               |
-| `RETENTION_KEEP_MONTHLY`     | Number of monthly snapshots to keep                                                                                                                                              |
-| `RETENTION_KEEP_YEARLY`      | Number of yearly snapshots to keep                                                                                                                                               |
-| `RETENTION_KEEP_TAGS`        | Keep only those snapshots that have these tags                                                                                                                                   |
-| `RETENTION_PRUNE`            | Specify whether to remove data of old snapshot completely from the backend                                                                                                       |
-| `RETENTION_DRY_RUN`          | Specify whether to run cleanup in test mode                                                                                                                                      |
-| `ENABLE_CACHE`               | Specify whether to use cache while backup or restore                                                                                                                             |
-| `MAX_CONNECTIONS`            | Specifies number of parallel connections to upload/download data to/from backend                                                                                                 |
-| `NICE_ADJUSTMENT`            | Adjustment value to configure `nice` to throttle the load on cpu.                                                                                                                |
-| `IONICE_CLASS`               | Name of the `ionice` class                                                                                                                                                       |
-| `IONICE_CLASS_DATA`          | Value of the `ionice` class data                                                                                                                                                 |
-| `ENABLE_STATUS_SUBRESOURCE`  | Specifies whether crd has subresource enabled                                                                                                                                    |
-| `PROMETHEUS_PUSHGATEWAY_URL` | URL of the Prometheus pushgateway that collects the backup/restore metrics                                                                                                       |
-| `INTERIM_DATA_DIR`           | Directory to store backed up or restored data temporarily before uploading to the backend or injecting into the target                                                           |
+| Environment Variable | Usage                                                |
+|----------------------|------------------------------------------------------|
+| `namespace`          | Namespace of backup or restore job/workload          |
+| `backupSession`      | Name of the respective BackupSession object          |
+| `restoreSession`     | Name of the respective RestoreSession object         |
+| `enableCache`        | Specify whether to use cache while backup or restore |
+| `snapshot`           | Name of the respective Snapshot object               |
 
-If you want to use a variable that is not present this table, you have to provide its value in `spec.task.params` section of `BackupConfiguration` crd.
+#### spec.workingDir
 
-#### spec.workDir
-
-`spec.workDir` specifies the container's working directory. If this field is not specified, the container's runtime default will be used.
+`spec.workingDir` specifies the container's working directory. If this field is not specified, the container's runtime default will be used.
 
 #### spec.ports
 
@@ -202,10 +114,10 @@ If you want to use a variable that is not present this table, you have to provid
 
 #### spec.runtimeSettings
 
-`spec.runtimeSettings.container` allows to configure runtime environment of a backup job at container level. You can configure the following container level parameters:
+`spec.runtimeSettings` allows to configure runtime environment of a backup job at container level. You can configure the following container level parameters:
 
 | Field             | Usage                                                                                                                                                                                                                      |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `resources`       | Compute resources required by sidecar container or backup job. To know how to manage resources for containers, please visit [here](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/). |
 | `livenessProbe`   | Periodic probe of backup sidecar/job container's liveness. Container will be restarted if the probe fails.                                                                                                                 |
 | `readinessProbe`  | Periodic probe of backup sidecar/job container's readiness. Container will be removed from service endpoints if the probe fails.                                                                                           |
@@ -216,12 +128,7 @@ If you want to use a variable that is not present this table, you have to provid
 | `env`             | A list of the environment variables to set in the container that will be created for this function.                                                                                                                        |
 | `envFrom`         | This allows to set environment variables to the container that will be created for this function from a Secret or ConfigMap.                                                                                               |
 
-#### spec.podSecurityPolicyName
-
-If you are using a [PSP enabled cluster](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) and the function needs any specific permission then you can specify the PSP name using `spec.podSecurityPolicyName` field. Stash will add this PSP in the respective RBAC roles that will be created for this function.
-
->Note that Stash operator can't give permission to use a PSP to a backup job if the operator itself does not have permission to use it. So, if you want to specify PSP name in this section, make sure to add that in `stash-operator` ClusterRole too.
 
 ## Next Steps
 
-- Learn how to use `Function` to create a `Task` from [here](/docs/concepts/crds/task/index.md).
+- Learn how KubeStash backup stand-alone PVC using `Function-Addon` model from [here](/docs/guides/volumes/overview/index.md).

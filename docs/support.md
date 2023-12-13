@@ -1,9 +1,9 @@
 ---
-title: Support | Stash
+title: Support | KubeStash
 description: Support
 menu:
   docs_{{ .version }}:
-    identifier: support-stash
+    identifier: support-kubestash
     name: Support
     parent: welcome
     weight: 1020
@@ -18,4 +18,4 @@ aliases:
 
 To speak with us, please leave a message on [our website](https://appscode.com/contact/). To receive product announcements, follow us on [Twitter](https://twitter.com/KubeStash).
 
-If you have found a bug with Stash or want to request for new features, please [file an issue](https://github.com/kubestash/project/issues/new).
+If you have found a bug with KubeStash or want to request for new features, please [file an issue](https://github.com/kubestash/project/issues/new).

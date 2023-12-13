@@ -1,19 +1,77 @@
-apiVersion: repositories.stash.appscode.com/v1alpha1
+apiVersion: storage.kubestash.com/v1alpha1
 kind: Snapshot
 metadata:
-  creationTimestamp: "2020-07-25T17:41:31Z"
   labels:
-    hostname: app
-    repository: minio-repo
-  name: minio-repo-b54ee4a0
+    kubestash.com/app-ref-kind: StatefulSet
+    kubestash.com/app-ref-name: sample-sts
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: gcs-demo-repo
+  name: gcs-demo-repo-sample-backup-sts-demo-session-1702543201
   namespace: demo
-  uid: b54ee4a0e9c9084696dc976f125c4fd0e6b1a31abfd82cfc857b3bc9e559fa2f
+spec:
+  appRef:
+    apiGroup: apps
+    kind: StatefulSet
+    name: sample-sts
+    namespace: demo
+  backupSession: sample-backup-sts-demo-session-1702543201
+  deletionPolicy: Delete
+  repository: gcs-demo-repo
+  session: demo-session
+  snapshotID: 01HHKQQ59XN4979HMDFNCANA9V
+  type: FullBackup
+  version: v1
 status:
-  gid: 0
-  hostname: app
-  paths:
-  - /var/lib/html
-  repository: minio-repo
-  tree: 11527d99281bf3725d58cd637d1f3c19ab9d397d6cff1887a1cd1f9c8c5ebb80
-  uid: 0
-  username: ""
+  components:
+    pod-0:
+      driver: Restic
+      duration: 10.595356615s
+      integrity: true
+      path: repository/v1/demo-session/pod-0
+      phase: Succeeded
+      resticStats:
+        - hostPath: /source/data
+          id: cb64ffb35297f15cd93cfedc280b7e10267aaef283626fa564a32f69468a6bc2
+          size: 10.240 MiB
+          uploaded: 10.242 MiB
+      size: 10.242 MiB
+    pod-1:
+      driver: Restic
+      duration: 8.789930136s
+      integrity: true
+      path: repository/v1/demo-session/pod-1
+      phase: Succeeded
+      resticStats:
+        - hostPath: /source/data
+          id: 489d5a7614daa663df0c69a53a36d353936b6c8be61b8472694eeabcedbde16f
+          size: 1.978 MiB
+          uploaded: 1.979 MiB
+      size: 1.979 MiB
+    pod-2:
+      driver: Restic
+      duration: 6.261958475s
+      integrity: true
+      path: repository/v1/demo-session/pod-2
+      phase: Succeeded
+      resticStats:
+        - hostPath: /source/data
+          id: 17a7bc582a1f39fa54beb96f37f6f806f86d39ca575777391fcf69ddfc1bbab7
+          size: 13 B
+          uploaded: 1.056 KiB
+      size: 809 B
+  conditions:
+    - lastTransitionTime: "2023-12-14T08:40:01Z"
+      message: Recent snapshot list updated successfully
+      reason: SuccessfullyUpdatedRecentSnapshotList
+      status: "True"
+      type: RecentSnapshotListUpdated
+    - lastTransitionTime: "2023-12-18T08:50:57Z"
+      message: Metadata uploaded to backend successfully
+      reason: SuccessfullyUploadedSnapshotMetadata
+      status: "True"
+      type: SnapshotMetadataUploaded
+  integrity: true
+  phase: Succeeded
+  size: 12.222 MiB
+  snapshotTime: "2023-12-14T08:40:10Z"
+  totalComponents: 3

@@ -1,5 +1,5 @@
 ---
-title: Backup and Restore Hooks | Stash
+title: Backup and Restore Hooks | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: hooks

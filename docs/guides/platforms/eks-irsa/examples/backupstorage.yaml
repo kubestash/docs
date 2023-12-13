@@ -1,0 +1,21 @@
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
+metadata:
+  name: s3-storage
+  namespace: demo
+spec:
+  storage:
+    provider: s3
+    s3:
+      endpoint: 's3.amazonaws.com'
+      bucket: kubestash
+      prefix: demo
+      region: us-east-1
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut
+  runtimeSettings:
+    pod:
+      serviceAccountName: bucket-user

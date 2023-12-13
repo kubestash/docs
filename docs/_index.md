@@ -1,6 +1,6 @@
 ---
-title: Docs | Stash
-description: Stash Docs
+title: Docs | KubeStash
+description: KubeStash Docs
 menu:
   docs_{{ .version }}:
     identifier: welcome

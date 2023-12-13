@@ -5,142 +5,219 @@ menu:
     identifier: snapshot-overview
     name: Snapshot
     parent: crds
-    weight: 50
+    weight: 55
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: concepts
 ---
-> New to Stash? Please start [here](/docs/concepts/README.md).
+> New to KubeStash? Please start [here](/docs/concepts/README.md).
 
 # Snapshot
 
 ## What is Snapshot
 
-A `Snapshot` is a representation of backup snapshot in a Kubernetes native way. Stash uses an [Aggregated API Server](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/api-machinery/aggregated-api-servers.md) to provide `get` and `list` capabilities for snapshots from the backend.
+A `Snapshot` is a Kubernetes `CustomResourceDefinition`(CRD) which represents the state of a backup run to a particular `Repository`. Multiple components of the same target may be backed up in the same `Snapshot`. This is a namespaced CRD. It should be in the same namespace as the respective `Repository`. 
 
-This enables you to view some useful information such as `creationTimestamp`, `snapshot id`, `backed up path` etc of a snapshot. This also provides the capability to restore a specific snapshot.
+KubeStash operator is responsible for creating `Snapshot` CR. `Snapshot` is not supposed to be created/edited by the end user.
 
-## Snapshot structure
+## Snapshot CRD Specification
 
-Like other official Kuberentes resources, a `Snapshot` has `TypeMeta`, `ObjectMeta` and `Status` sections. However, unlike other Kubernetes resources, it does not have a `Spec` section.
+Like any official Kubernetes resource, a `Snapshot` has `TypeMeta`, `ObjectMeta`, `Spec` and `Status` sections.
 
 A sample `Snapshot` object is shown below,
 
 ```yaml
-apiVersion: repositories.stash.appscode.com/v1alpha1
+apiVersion: storage.kubestash.com/v1alpha1
 kind: Snapshot
 metadata:
-  creationTimestamp: "2020-07-25T17:41:31Z"
   labels:
-    hostname: app
-    repository: minio-repo
-  name: minio-repo-b54ee4a0
+    kubestash.com/app-ref-kind: StatefulSet
+    kubestash.com/app-ref-name: sample-sts
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: gcs-demo-repo
+  name: gcs-demo-repo-sample-backup-sts-demo-session-1702543201
   namespace: demo
-  uid: b54ee4a0e9c9084696dc976f125c4fd0e6b1a31abfd82cfc857b3bc9e559fa2f
+spec:
+  appRef:
+    apiGroup: apps
+    kind: StatefulSet
+    name: sample-sts
+    namespace: demo
+  backupSession: sample-backup-sts-demo-session-1702543201
+  deletionPolicy: Delete
+  repository: gcs-demo-repo
+  session: demo-session
+  snapshotID: 01HHKQQ59XN4979HMDFNCANA9V
+  type: FullBackup
+  version: v1
 status:
-  gid: 0
-  hostname: app
-  paths:
-  - /var/lib/html
-  repository: minio-repo
-  tree: 11527d99281bf3725d58cd637d1f3c19ab9d397d6cff1887a1cd1f9c8c5ebb80
-  uid: 0
-  username: ""
+  components:
+    pod-0:
+      driver: Restic
+      duration: 10.595356615s
+      integrity: true
+      path: repository/v1/demo-session/pod-0
+      phase: Succeeded
+      resticStats:
+        - hostPath: /source/data
+          id: cb64ffb35297f15cd93cfedc280b7e10267aaef283626fa564a32f69468a6bc2
+          size: 10.240 MiB
+          uploaded: 10.242 MiB
+      size: 10.242 MiB
+    pod-1:
+      driver: Restic
+      duration: 8.789930136s
+      integrity: true
+      path: repository/v1/demo-session/pod-1
+      phase: Succeeded
+      resticStats:
+        - hostPath: /source/data
+          id: 489d5a7614daa663df0c69a53a36d353936b6c8be61b8472694eeabcedbde16f
+          size: 1.978 MiB
+          uploaded: 1.979 MiB
+      size: 1.979 MiB
+    pod-2:
+      driver: Restic
+      duration: 6.261958475s
+      integrity: true
+      path: repository/v1/demo-session/pod-2
+      phase: Succeeded
+      resticStats:
+        - hostPath: /source/data
+          id: 17a7bc582a1f39fa54beb96f37f6f806f86d39ca575777391fcf69ddfc1bbab7
+          size: 13 B
+          uploaded: 1.056 KiB
+      size: 809 B
+  conditions:
+    - lastTransitionTime: "2023-12-14T08:40:01Z"
+      message: Recent snapshot list updated successfully
+      reason: SuccessfullyUpdatedRecentSnapshotList
+      status: "True"
+      type: RecentSnapshotListUpdated
+    - lastTransitionTime: "2023-12-18T08:50:57Z"
+      message: Metadata uploaded to backend successfully
+      reason: SuccessfullyUploadedSnapshotMetadata
+      status: "True"
+      type: SnapshotMetadataUploaded
+  integrity: true
+  phase: Succeeded
+  size: 12.222 MiB
+  snapshotTime: "2023-12-14T08:40:10Z"
+  totalComponents: 3
 ```
 
 Here, we are going to describe the various sections of a `Snapshot` object.
 
 ### Snapshot `Metadata`
 
-- **metadata.name**
+**metadata.name**
 
-  `metadata.name` specifies the name of the `Snapshot` object. It follows the following pattern, `<Repository crd name>-<first 8 digits of snapshot id>`.
+`metadata.name` specifies the name of the `Snapshot` object. It follows the following pattern, `<Repository name>-<BackupSession name>`.
 
-- **metadata.uid**
+**metadata.labels**
 
-  `metadata.uid` specifies the complete id of the respective restic snapshot in the backend.
+A `Snapshot` object holds `repository` and target application `kind`, `name` and `namespace` as a label in `metadata.labels` section. This helps a user to query the Snapshots of a particular repository and/or a particular target application.
 
-- **metadata.creationTimestamp**
 
-  `metadata.creationTimestamp` represents the time when the snapshot was created.
+### Snapshot `Spec`
 
-- **metadata.labels**
+**spec.snapshotID**
 
-  A `Snapshot` object holds `repository` and `hostname` as a label in `metadata.labels` section. This helps a user to query the snapshots of a particular repository and/or a particular host.
+`spec.snapshotID` represents a **Universally Unique Lexicographically Sortable Identifier**(ULID) for the Snapshot. For more details about ULID, please see [here](https://github.com/oklog/ulid)
+
+**spec.type** 
+
+`spec.type` specifies whether this snapshot represents a `FullBackup` or `IncrementalBackup`.
+
+**spec.repository** 
+
+`spec.repository` specifies the name of the `Repository` where this `Snapshot` is being stored.
+
+**spec.session**
+
+`spec.session` specifies the name of the session which is responsible for this `Snapshot`.
+
+**spec.backupSession** 
+
+`spec.backupSession` represents the name of the respective `BackupSession` which is responsible for this `Snapshot`.
+
+**spec.version**
+
+`spec.version` denotes the respective data organization structure inside the `Repository`.
+
+**spec.appRef**
+
+`spec.appRef` specifies the reference of the application that has been backed up in this `Snapshot`.
+
+**spec.deletionPolicy**
+
+`spec.deletionPolicy` specifies what to do when you delete a `Snapshot` CR. The valid values are:
+- **Delete** This will delete just the Snapshot CR from the cluster but keep the backed up data in the remote backend. This is the default behavior.
+- **WipeOut** This will delete the Snapshot CR as well as the backed up data from the backend.
+
+**spec.paused**
+
+`spec.paused` specifies whether the `Snapshot` is paused or not. If the `Snapshot` is paused, KubeStash will not process any further event for the `Snapshot`.
 
 ### Snapshot `Status`
 
 `Snapshot` object has the following fields in `.status` section:
 
-- **status.gid**
-`status.gid` indicates the group identifier of the user who took this backup.
+**status.phase**
 
-- **status.hostname**
-`status.hostname` indicates the host identifier whose data has been backed up in this snapshot. In order to know how this host identifier are generated, please visit [here](/docs/concepts/crds/backupsession/index.md#hosts-of-a-backup-process).
+`status.phase` represents the backup state of this `Snapshot`.
 
-- **status.paths**
-`status.paths` indicates the paths that have been backed up in this snapshot.
+**status.snapshotTime**
 
-- **status.repository**
-`status.repository` indicates the name of the Repository crd where this Snapshot came from.
+`status.snapshotTime` represents the timestamp when this `Snapshot` was taken.
 
-- **status.tree**
-`status.tree` indicates `tree` of the restic snapshot. For more details, please visit [here](https://restic.readthedocs.io/en/stable/100_references.html#trees-and-data).
+**status.lastUpdateTime**
 
-- **status.uid**
-`status.uid` indicates `uid` of the user who took this backup. For `root` user it is 0.
+`status.lastUpdateTime` specifies the timestamp when this Snapshot was last updated.
 
-- **status.username**
-`status.username` indicates the name of the user who runs the backup process that took the backup.
+**status.size**
 
-- **status.tags**
-`status.tags` indicates the tags of the snapshot.
+`status.size` represents the size of the `Snapshot`.
 
-## Working with Snapshot
+**status.integrity**
 
-In this section, we are going to show different types of operations you can perform on the Snapshots.
+`status.integrity` represents whether the `Snapshot` data has been corrupted or not.
 
-**Listing Snapshots:**
+**status.conditions**
 
-Stash lists Snapshots directly from the backend. This operation can take more time than the default request timeout of `kubectl`. So, we are going to increase the request timeout through the `--request-timeout` flag for get/list commands.
+`status.conditions` represents list of conditions regarding this `Snapshot`. KubeStash sets the following conditions for a `Snapshot`:
 
-```bash
-# List Snapshots of all Repositories in the current namespace
-$ kubectl get snapshot --request-timeout=300s
+| Field                       | Usage                                                          |
+|-----------------------------|----------------------------------------------------------------|
+| `SnapshotMetadataUploaded`  | Indicates whether the metadata of Snapshot is uploaded or not. |
+| `RecentSnapshotListUpdated` | Indicates whether the recent Snapshot list is updated or not.  |
 
-# List Snapshots of all Repositories of all namespaces
-$ kubectl get snapshot --all-namespaces --request-timeout=300s
+**status.totalComponents**
 
-# List Snapshots of all Repositories of a particular namespace
-$ kubectl get snapshot -n demo --request-timeout=300s
+`status.totalComponents` represents the number of total components for this `Snapshot`.
 
-# List Snapshots of a particular Repository
-$ kubectl get snapshot -l repository=local-repo --request-timeout=300s
+**status.components**
 
-# List Snapshots from multiple Repositories
-$ kubectl get snapshot -l 'repository in (local-repo,gcs-repo)' --request-timeout=300s
+`status.components` represents the backup information of the individual components of this `Snapshot`. Each component consists of the following fields:
 
-# List Snapshots of a particular host
-$ kubectl get snapshot -l hostname=db --request-timeout=300s
-
-# List Snapshots of a particular Repository and particular host
-$ kubectl get snapshot -l repository=local-repo,hostname=db --request-timeout=300s
-```
-
-**Viewing information of a particular Snapshot:**
-
-```bash
-$ kubectl get snapshot [-n <namespace>] <snapshot name> -o yaml
-
-# Example:
-$ kubectl get snapshot -n demo local-repo-02b0ed42 -o yaml
-```
-
-## Preconditions for Snapshot
-
-1. Stash provides `Snapshots` listing facility with the help of an Aggregated API Server. Your cluster must support Aggregated API Server. Otherwise, you won't be able to perform `get` or `list` operation on `Snapshot`.
-
-2. If you are using [local](/docs/guides/backends/local/index.md) backend, the respective pod that took the backup must be in `Running` state. It is not necessary if you use cloud backends.
+- **path** specifies the path inside the `Repository` where the backed up data for this component has been stored. This path is relative to `Repository` path.
+- **phase** represents the backup phase of the component.
+- **size** represents the size of the restic repository for this component.
+- **duration** specifies the total time taken to complete the backup process for this component.
+- **integrity** represents the result of the restic repository integrity check for this component.
+- **error** specifies the reason in case of backup failure for the component.
+- **driver** specifies the name of the tool that has been used to upload the underlying backed up data.
+- **resticStats** specifies the **Restic** driver specific information. Each resticStat consists of the following fields:
+  - **id** represents the restic snapshot id.
+  - **uploaded** specifies the amount of data that has been uploaded in the restic snapshot.
+  - **hostPath** represents the backup path for which restic snapshot is taken.
+  - **size** represents the restic snapshot size.
+- **volumeSnapshotterStats** specifies the **VolumeSnapshotter** driver specific information. Each volumeSnapshotterStat consists of the following fields:
+  - **pvcName** represents the backup PVC name for which volumeSnapshot is created.
+  - **hostPath** represents the corresponding path of PVC for which volumeSnapshot is created.
+  - **volumeSnapshotName** represents the name of created volumeSnapshot.
+  - **volumeSnapshotTime** indicates the timestamp at which the volumeSnapshot was created.
+- **walSegments** specifies a list of wall segment for individual component. Each walSegment consists of `start` time and `end` time fields.
 
 ## Next Steps
 

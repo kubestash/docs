@@ -1,9 +1,9 @@
 ---
-title: Contributing | Stash
+title: Contributing | KubeStash
 description: Contributing
 menu:
   docs_{{ .version }}:
-    identifier: contributing-stash
+    identifier: contributing-kubestash
     name: Contributing
     parent: welcome
     weight: 1000
@@ -17,7 +17,7 @@ aliases:
 
 # Contribution Guidelines
 
-Want to contribute to Stash?
+Want to contribute to KubeStash?
 
 ## Getting Help
 
@@ -25,8 +25,8 @@ To speak with us, please leave a message on [our website](https://appscode.com/c
 
 ## Bugs/Feature request
 
-If you have found a bug with Stash or want to request for new features, please [file an issue](https://github.com/kubestash/project/issues/new).
+If you have found a bug with KubeStash or want to request for new features, please [file an issue](https://github.com/kubestash/project/issues/new).
 
 ## Spread the word
 
-If you have written blog post or tutorial on Stash, please share it with us on [Twitter](https://twitter.com/KubeStash).
+If you have written blog post or tutorial on KubeStash, please share it with us on [Twitter](https://twitter.com/KubeStash).

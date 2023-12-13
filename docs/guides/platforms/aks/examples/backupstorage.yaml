@@ -1,0 +1,22 @@
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
+metadata:
+  name: azure-storage
+  namespace: demo
+spec:
+  storage:
+    provider: azure
+    azure:
+      prefix: demo
+      container: ishtiaq
+      storageAccount: kubestash
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut
+  runtimeSettings:
+    pod:
+      podLabels:
+        azure.workload.identity/use: "true"
+      serviceAccountName: bucket-user

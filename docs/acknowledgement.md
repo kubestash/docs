@@ -1,9 +1,9 @@
 ---
-title: Acknowledgement | Stash
+title: Acknowledgement | KubeStash
 description: Acknowledgement
 menu:
   docs_{{ .version }}:
-    identifier: acknowledgement-stash
+    identifier: acknowledgement-kubestash
     name: Acknowledgement
     parent: welcome
     weight: 1010

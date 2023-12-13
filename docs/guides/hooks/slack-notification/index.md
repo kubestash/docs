@@ -1,5 +1,5 @@
 ---
-title: Sending Backup Notification to Slack | Stash
+title: Sending Backup Notification to Slack | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: hoooks-slack-notification
@@ -13,21 +13,21 @@ section_menu_id: guides
 
 # Sending Backup Notification to Slack Channel
 
-In this guide, we are going to show you how to send backup notifications to a Slack channel. Here, we are going to use [Slack Incoming Webook](https://api.slack.com/messaging/webhooks) to send the notification.
+In this guide, we are going to show you how to send backup notifications to a Slack channel. Here, we are going to use [Slack Incoming Webhook](https://api.slack.com/messaging/webhooks) to send the notification.
 
 ## Before You Begin
 
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
-- Install Stash in your cluster following the steps [here](/docs/setup/install/stash/index.md).
-- If you haven't read about how hooks work in Stash, please check it from [here](/docs/guides/hooks/overview/index.md).
+- Install KubeStash in your cluster following the steps [here](/docs/setup/install/stash/index.md).
+- If you haven't read about how hooks work in KubeStash, please check it from [here](/docs/guides/hooks/overview/index.md).
 
-You should be familiar with the following `Stash` concepts:
+You should be familiar with the following `KubeStash` concepts:
 
-- [BackupBatch](/docs/concepts/crds/backupbatch/index.md)
+- [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
 - [BackupSession](/docs/concepts/crds/backupsession/index.md)
-- [Repository](/docs/concepts/crds/repository/index.md)
+- [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
 - [Function](/docs/concepts/crds/function/index.md)
-- [Task](/docs/concepts/crds/task/index.md)
+- [HookTemplate](/docs/concepts/crds/hooktemplate/index.md)
 
 To keep everything isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
 
@@ -38,9 +38,9 @@ namespace/demo created
 
 ## Configure Slack Incoming Webhook
 
-At first, let's configure a Slack incoming webhook. We are going to send the notifications to a channel named `notification-test`. Now, follow the steps below:
+At first, let's configure a Slack incoming webhook. We are going to send the notifications to a channel named `testing`. Now, follow the steps below:
 
-- Go to https://api.slack.com/messaging/webhooks and click the `Create an app` button as highlighted in the red rectangle in the following image.
+- Go to https://api.slack.com/messaging/webhooks and click the `Create your Slack app` button as shown in the following image.
 
 <figure align="center">
   <img alt="Step 1 " src="images/step_1.png">
@@ -92,167 +92,169 @@ Our Slack incoming webhook is ready to receive notifications. In the next sectio
 
 ## Prepare Application
 
-Now, let's deploy a sample application and generate some sample data for it. Here, is the YAML of a Deployment along with its PVC that we are going to deploy:
+Now, let's deploy a sample application and generate some sample data for it. Here, is the YAML of a DaemonSet that we are going to deploy:
 
 ```yaml
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: stash-sample-data
-  namespace: demo
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   labels:
-    app: stash-demo
-  name: stash-demo
+    app: ks-demo
+  name: ks-demo
   namespace: demo
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      app: stash-demo
+      app: ks-demo
   template:
     metadata:
       labels:
-        app: stash-demo
+        app: ks-demo
       name: busybox
     spec:
       containers:
-      - args: ["sleep 3000"]
-        command: ["/bin/sh", "-c"]
-        image: busybox
-        imagePullPolicy: IfNotPresent
-        name: busybox
-        volumeMounts:
-        - mountPath: /source/data
-          name: source-data
+        - args: ["echo sample_data > /source/data/data.txt && sleep 3000"]
+          command: ["/bin/sh", "-c"]
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          name: busybox
+          volumeMounts:
+            - mountPath: /source/data
+              name: source-data
       restartPolicy: Always
       volumes:
-      - name: source-data
-        persistentVolumeClaim:
-          claimName: stash-sample-data
+        - name: source-data
+          hostPath:
+            path: /kubestash/source/data
 ```
 
-Let's deploy the above deployment.
+Let's deploy the above DaemonSet.
 
 ```bash
-❯ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/deployment.yaml
-persistentvolumeclaim/stash-sample-data created
-deployment.apps/stash-demo created
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/daemonset.yaml
+daemonset.apps/ks-demo created
 ```
 
-Once the deployment is running, lets exec into its pod and create some sample file in `/source/data` directory.
+Let's verify that the sample data has been created successfully:
 
 ```bash
-❯ kubectl exec -n demo stash-demo-669d77dfc4-nhdgg -- touch /source/data/file-1.txt
-❯ kubectl exec -n demo stash-demo-669d77dfc4-nhdgg -- touch /source/data/file-2.txt
-❯ kubectl exec -n demo stash-demo-669d77dfc4-nhdgg -- touch /source/data/file-3.txt
-```
-
-Let's verify that the files have been created successfully:
-
-```bash
-❯ kubectl exec -n demo stash-demo-669d77dfc4-nhdgg -- ls /source/data
-file-1.txt
-file-2.txt
-file-3.txt
+$ kubectl exec -n demo ks-demo-b4mxd -- ls /source/data
+data.txt
 ```
 
 Our application is ready with some sample data. In the next section, we are going to setup a backup for this application.
 
 ## Prepare Backend
 
-We are going to store our backed-up data into a GCS bucket. At first, we need to create a secret with GCS credentials then we need to create a `Repository` CR. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a BackupStorage crd to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
-**Create Storage Secret:**
+**Create Secret:**
 
 Let's create a secret called `gcs-secret` with access credentials to our desired GCS bucket,
 
 ```bash
-$ echo -n 'changeit' > RESTIC_PASSWORD
 $ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
 $ cat /path/to/downloaded-sa-key.json > GOOGLE_SERVICE_ACCOUNT_JSON_KEY
 $ kubectl create secret generic -n demo gcs-secret \
-    --from-file=./RESTIC_PASSWORD \
     --from-file=./GOOGLE_PROJECT_ID \
     --from-file=./GOOGLE_SERVICE_ACCOUNT_JSON_KEY
 secret/gcs-secret created
 ```
 
-**Create Repository:**
+**Create BackupStorage:**
 
-Now, create a `Repository` using this secret. Below is the YAML of Repository CR we are going to create,
+Now, create a `BackupStorage` using this secret. Below is the YAML of `BackupStorage` crd we are going to create,
 
 ```yaml
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: gcs-repo
+  name: gcs-storage
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: gcs
     gcs:
-      bucket: stash-testing
-      prefix: /webinar/slack-notification
-    storageSecretName: gcs-secret
+      bucket: kubestash-qa
+      prefix: demo
+      secretName: gcs-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut
 ```
 
-Let's create the `Repository` we have shown above,
+Let's create the BackupStorage we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/repository.yaml
-repository.stash.appscode.com/gcs-repo created
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/backupstorage.yaml
+backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
-Now, we are ready to backup our application into our desired backend.
+Now, we are ready to backup our sample data into this backend.
+
+**Create RetentionPolicy:**
+
+Now, let's create a `RetentionPolicy` to specify how the old Snapshots should be cleaned up.
+
+Below is the YAML of the `RetentionPolicy` object that we are going to create,
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: RetentionPolicy
+metadata:
+  name: demo-retention
+  namespace: demo
+spec:
+  default: true
+  failedSnapshots:
+    last: 2
+  maxRetentionPeriod: 2mo
+  successfulSnapshots:
+    last: 5
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+```
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
+
+Let’s create the above `RetentionPolicy`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/retentionpolicy.yaml
+retentionpolicy.storage.kubestash.com/demo-retention created
+```
 
 ## Backup
 
 In this section, we are going to setup a backup for the application we deployed earlier. We are going to configure a `postBackup` hook to send a notification to our Slack incoming webhook when a backup session completes.
 
-Here, is the YAML of the BackupConfiguration that we are going to create:
+**Create HookTemplate**
+
+Below is the YAML of the `HookTemplate` CR to notify all backup notification in slack ,
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
-kind: BackupConfiguration
+apiVersion: core.kubestash.com/v1alpha1
+kind: HookTemplate
 metadata:
-  name: deployment-backup
+  name: slack-hook
   namespace: demo
 spec:
-  repository:
-    name: gcs-repo
-  schedule: "*/5 * * * *"
-  target:
-    ref:
-      apiVersion: apps/v1
-      kind: Deployment
-      name: stash-demo
-    volumeMounts:
-    - name: source-data
-      mountPath: /source/data
-    paths:
-    - /source/data
-  hooks:
-    postBackup:
-      executionPolicy: Always
-      httpPost:
-        host: hooks.slack.com
-        path: /services/XX/XXX/XXXX
-        port: 443
-        scheme: HTTPS
-        httpHeaders:
-          - name: Content-Type
-            value: application/json
-        body: |
-          {{- $msg := dict  "type" "mrkdwn" "text" (printf "Backup completed for %s/%s Status: %s." .Namespace .Target.Name .Status.Phase) -}}
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  action:
+    httpPost:
+      host: hooks.slack.com
+      path: /services/XX/XX/XX # provide webhook URL starting from "/services/****"
+      port: 443
+      scheme: HTTPS
+      httpHeaders:
+        - name: Content-Type
+          value: application/json
+      body: |
+        {{$msg := dict "type" "mrkdwn" "text" "ooo"}}{{if eq .Status.Phase "Succeeded"}}{{- $msg = dict  "type" "mrkdwn" "text" (printf "Backup completed for %s/%s Status: %s." .Namespace .Target.Name .Status.Phase) -}}{{else}}{{- $msg = dict  "type" "mrkdwn" "text" (printf "Backup failed for %s/%s Status: %s." .Namespace .Target.Name .Status.Error) -}}{{end}}
           {
             "blocks": [
                 {
@@ -261,10 +263,83 @@ spec:
                 }
               ]
           }
-  retentionPolicy:
-    name: 'keep-last-5'
-    keepLast: 5
-    prune: true
+  executor:
+    type: Operator
+```
+
+Let’s create the above `HookTemplate`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/hooktemplate.yaml
+hooktemplate.core.kubestash.com/slack-hook created
+```
+
+Now, we need to create a secret with a Restic password for backup data encryption.
+
+**Create Secret:**
+
+Let's create a secret called `encry-secret` with the Restic password,
+
+```bash
+$ echo -n 'changeit' > RESTIC_PASSWORD
+$ kubectl create secret generic -n demo encry-secret \
+    --from-file=./RESTIC_PASSWORD \
+secret "encry-secret" created
+```
+
+Here, is the YAML of the BackupConfiguration that we are going to create:
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: sample-backup
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: DaemonSet
+    name: ks-demo
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        namespace: demo
+        name: gcs-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 3
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      hooks:
+        postBackup:
+          - name: slack-notification
+            hookTemplate:
+              name: slack-hook
+              namespace: demo
+            maxRetry: 3
+            timeout: 30s
+      repositories:
+        - name: daemon-repo
+          backend: gcs-backend
+          directory: /demo/daemon
+          encryptionSecret:
+            name: encry-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            params:
+              paths: /source/data
+      retryConfig:
+        maxRetry: 2
+        delay: 1m
 ```
 
 Notice the `hooks` section. We have setup a `postBackup` hook which sends an HTTP POST request. In the `path` field of the `httpPost` section, we have specified the Slack incoming webhook path that we copied in the last step of configuring Slack incoming webhook.
@@ -274,8 +349,8 @@ Also, notice the `body` field of the `httpPost` section. We have used Go templat
 Let's create the BackupConfiguration we have shown above,
 
 ```bash
-❯ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/all_backup_notification.yaml
-backupconfiguration.stash.appscode.com/deployment-backup created
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/all_backup_notification.yaml
+backupconfiguration.core.kubestash.com/sample-backup created
 ```
 
 **Wait for BackupSession:**
@@ -283,12 +358,9 @@ backupconfiguration.stash.appscode.com/deployment-backup created
 Now, let's wait for a BackupSession. Run the following command to watch for BackupSession.
 
 ```bash
-❯ kubectl get backupsession --all-namespaces -w
-NAMESPACE   NAME                           INVOKER-TYPE          INVOKER-NAME        PHASE   DURATION   AGE
-demo        deployment-backup-1650277200   BackupConfiguration   deployment-backup                      0s
-demo        deployment-backup-1650277200   BackupConfiguration   deployment-backup   Pending              0s
-demo        deployment-backup-1650277200   BackupConfiguration   deployment-backup   Running              0s
-demo        deployment-backup-1650277200   BackupConfiguration   deployment-backup   Succeeded   31s      30s
+$ kubectl get backupsession --all-namespaces -w
+NAMESPACE   NAME                                       INVOKER-TYPE          INVOKER-NAME    PHASE       DURATION   AGE
+demo        sample-backup-frequent-backup-1708411503   BackupConfiguration   sample-backup   Succeeded              10m
 ```
 
 We can see from the above output that the backup session has succeeded.
@@ -303,41 +375,31 @@ Now, if we go to the Slack channel we have configured for notification. We shoul
 
 ### Sending Only Backup Failure Notification
 
-We can also use the `executionPolicy` to send notification only for the failed backups. Check the following BackupConfiguration:
+**Create HookTemplate**
+
+Below is the YAML of the `HookTemplate` CR to notify only failed backup notification in slack ,
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
-kind: BackupConfiguration
+apiVersion: core.kubestash.com/v1alpha1
+kind: HookTemplate
 metadata:
-  name: deployment-backup
+  name: slack-hook
   namespace: demo
 spec:
-  repository:
-    name: gcs-repo
-  schedule: "*/5 * * * *"
-  target:
-    ref:
-      apiVersion: apps/v1
-      kind: Deployment
-      name: stash-demo
-    volumeMounts:
-    - name: source-data
-      mountPath: /source/data
-    paths:
-    - /path/does/not/exist
-  hooks:
-    postBackup:
-      executionPolicy: OnFailure
-      httpPost:
-        host: hooks.slack.com
-        path: /services/XX/XXX/XXXX
-        port: 443
-        scheme: HTTPS
-        httpHeaders:
-          - name: Content-Type
-            value: application/json
-        body: |
-          {{- $msg := dict  "type" "mrkdwn" "text" (printf ":x: Backup failed for %s/%s Reason: %s." .Namespace .Target.Name .Status.Error) -}}
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  action:
+    httpPost:
+      host: hooks.slack.com
+      path: /services/XX/XX/XX # provide webhook URL starting from "/services/****"
+      port: 443
+      scheme: HTTPS
+      httpHeaders:
+        - name: Content-Type
+          value: application/json
+      body: |
+        {{- $msg := dict  "type" "mrkdwn" "text" (printf "Backup failed for %s/%s Status: %s." .Namespace .Target.Name .Status.Error) -}}
           {
             "blocks": [
                 {
@@ -346,21 +408,82 @@ spec:
                 }
               ]
           }
-  retentionPolicy:
-    name: 'keep-last-5'
-    keepLast: 5
-    prune: true
+  executor:
+    type: Operator
+```
+
+Let’s create the above `HookTemplate`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/hooktemplate_failed.yaml
+hooktemplate.core.kubestash.com/slack-hook configured
+```
+
+We can also use the `executionPolicy` to send notification only for the failed backups. Check the following BackupConfiguration:
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: sample-backup
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: DaemonSet
+    name: ks-demo
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        namespace: demo
+        name: gcs-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 3
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      hooks:
+        postBackup:
+          - name: slack-notification
+            hookTemplate:
+              name: slack-hook
+              namespace: demo
+            maxRetry: 3
+            timeout: 30s
+            executionPolicy: OnFailure
+      repositories:
+        - name: daemon-repo
+          backend: gcs-backend
+          directory: /demo/daemon
+          encryptionSecret:
+            name: encry-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            params:
+              paths: /wrong/data
+      retryConfig:
+        maxRetry: 2
+        delay: 1m
 ```
 
 Here, we have provided an invalid path in the `paths` field of the `target` section. This will force the backup to fail.
 
-Notice that, this time we have specified the `executionPolicy` field to `OnFailure`. This will tell Stash to send the notification only if the backup fail. In the message body, we have included information about target and reason of failure.
+Notice that, this time we have specified the `executionPolicy` field to `OnFailure`. This will tell KubeStash to send the notification only if the backup fail. In the message body, we have included information about target and reason of failure.
 
 Let's apply the above BackupConfiguration:
 
 ```bash
-❯ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/failed_backup_notification.yaml
-backupconfiguration.stash.appscode.com/deployment-backup configured
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/slack-notification/examples/failed_backup_notification.yaml
+backupconfiguration.core.kubestash.com/sample-backup configured
 ```
 
 **Wait for BackupSession:**
@@ -368,12 +491,9 @@ backupconfiguration.stash.appscode.com/deployment-backup configured
 Again, let's wait for a scheduled backup. Run the following command to watch for a BackupSession:
 
 ```bash
-❯ kubectl get backupsession --all-namespaces -w
-NAMESPACE   NAME                           INVOKER-TYPE          INVOKER-NAME        PHASE   DURATION   AGE
-demo        deployment-backup-1650277554   BackupConfiguration   deployment-backup                      0s
-demo        deployment-backup-1650277554   BackupConfiguration   deployment-backup   Pending              0s
-demo        deployment-backup-1650277554   BackupConfiguration   deployment-backup   Running              5s
-demo        deployment-backup-1650277554   BackupConfiguration   deployment-backup   Failed    6s         5s
+$ kubectl get backupsession --all-namespaces -w
+NAMESPACE   NAME                                       INVOKER-TYPE          INVOKER-NAME    PHASE   DURATION   AGE
+demo        sample-backup-frequent-backup-1708413480   BackupConfiguration   sample-backup   Failed             8s
 ```
 
 As we can see that the backup has failed this time. Let's verify the failure notification.
@@ -391,14 +511,10 @@ If we go to the Slack channel, we should see a new notification has been sent. T
 To clean up the test resources we have created throughout this tutorial, run the following commands:
 
 ```bash
-# Delete BackupConfiguration
-kubectl delete backupconfiguration -n demo deployment-backup
-# Delete Repository
-kubectl delete repository -n demo gcs-repo
-# Delete storage Secret
+kubectl delete backupconfiguration -n demo sample-backup
+kubectl delete backupstorage -n demo gcs-storage
 kubectl delete secret -n demo gcs-secret
-
-# Delete Deployment and it's PVC
-kubectl delete deployment -n demo stash-demo
-kubectl delete pvc -n demo stash-sample-data
+kubectl delete secret -n demo encry-secret
+kubectl delete daemonset -n demo ks-demo
+kubectl delete hooktemplate -n demo slack-hook
 ```

@@ -1,5 +1,5 @@
 ---
-title: Backup & Restore Hooks | Stash
+title: Backup & Restore Hooks | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: backup-and-restore-hooks
@@ -13,28 +13,27 @@ section_menu_id: guides
 
 # Backup & Restore Hooks
 
-Stash hooks let you perform some actions before and after the backup or restore process. This is particularly helpful when you want to prepare your application before backup or restore.
+KubeStash hooks let you perform some actions before and after the backup or restore process. This is particularly helpful when you want to prepare your application before backup or restore.
 
-Here, we are going to demonstrate how you can perform different actions before and after backup and restore a MySQL database. Some of the examples might not reflect the real-world use cases but it serves the sole purpose of demonstrating what is possible.
+Here, we are going to demonstrate how you can perform different actions before and after backup and restore a MySQL database. Some of the examples might not reflect the real-world use cases, but it serves the sole purpose of demonstrating what is possible.
 
-> Note that, this is an advanced concept. If you haven't tried the normal backup restore processes yet, we will recommend to try them first.
+> Note that, this is an advanced concept. If you haven't tried the normal backup and restore processes yet, we will recommend to try them first.
 
 ## Before You Begin
 
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
-- Install Stash in your cluster following the steps [here](/docs/setup/install/stash/index.md).
+- Install KubeStash in your cluster following the steps [here](/docs/setup/install/kubestash/index.md).
 - Install [KubeDB](https://kubedb.com) in your cluster following the steps [here](https://kubedb.com/docs/latest/setup/). This step is optional. You can deploy your database using any method you want. We are using KubeDB because KubeDB simplifies many of the difficult or tedious management tasks of running production-grade databases on private and public clouds.
-- If you are not familiar with how Stash backup and restore MySQL databases, please check the following guide [here](/docs/addons/mysql/overview/index.md).
-- Also, if you haven't read about how hooks work in Stash, please check it from [here](/docs/guides/hooks/overview/index.md).
+- If you are not familiar with how KubeStash backup and restore MySQL databases, please check the following guide [here](/docs/addons/mysql/overview/index.md).
+- Also, if you haven't read about how hooks work in KubeStash, please check it from [here](/docs/guides/hooks/overview/index.md).
 
-You should be familiar with the following `Stash` concepts:
+You should be familiar with the following `KubeStash` concepts:
 
 - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
 - [BackupSession](/docs/concepts/crds/backupsession/index.md)
-- [Repository](/docs/concepts/crds/repository/index.md)
+- [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
 - [Function](/docs/concepts/crds/function/index.md)
-- [Task](/docs/concepts/crds/task/index.md)
-- [AppBinding](/docs/concepts/crds/appbinding/index.md)
+- [HookTemplate](/docs/concepts/crds/hooktemplate/index.md)
 
 To keep everything isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
 
@@ -45,7 +44,7 @@ namespace/demo created
 
 ## Prepare Database
 
-At first, let's deploy a MySQL database. Here, we are going to deploy MySQL `8.0.14` using KubeDB. We are going to insert some sample data into the database so that we can verify that the backup and restore process is working properly.
+At first, let's deploy a MySQL database. Here, we are going to deploy MySQL `8.0.32` using KubeDB. We are going to insert some sample data into the database so that we can verify that the backup and restore process is working properly.
 
 **Deploy Database:**
 
@@ -58,7 +57,7 @@ metadata:
   name: sample-mysql
   namespace: demo
 spec:
-  version: 8.0.27
+  version: 8.0.35
   replicas: 1
   storageType: Durable
   storage:
@@ -84,8 +83,8 @@ Wait for the database to go into `Running` state,
 ```bash
 $ kubectl get mysql -n demo -w
 NAME           VERSION   STATUS    AGE
-sample-mysql   8.0.14    Creating  5s
-sample-mysql   8.0.14    Running   2m7s
+sample-mysql   8.0.35    Creating  5s
+sample-mysql   8.0.35    Running   2m7s
 ```
 
 **Verify Database Secret:**
@@ -94,54 +93,8 @@ Verify that KubeDB has created a Secret for the database.
 
 ```bash
 $ kubectl get secret -n demo -l=app.kubernetes.io/instance=sample-mysql
-NAME                TYPE     DATA   AGE
-sample-mysql-auth   Opaque   2      5m7s
-```
-
-**Verify AppBinding:**
-
-KubeDB creates an `AppBinding`  CR that holds the necessary information to connect with the database. Verify that the `AppBinding` has been created for the above database:
-
-```bash
-$ kubectl get appbindings -n demo -l=app.kubernetes.io/instance=sample-mysql
-NAME           TYPE               VERSION   AGE
-sample-mysql   kubedb.com/mysql   8.0.14    66s
-```
-
-If you check the YAML of the `AppBinding`, you will see the connection information and respective Secret reference to access the database is presents in `spec` section.
-
-```bash
-$ kubectl get appbindings sample-mysql -n demo -o yaml
-```
-
-```yaml
-apiVersion: appcatalog.appscode.com/v1alpha1
-kind: AppBinding
-metadata:
-  creationTimestamp: "2020-01-16T10:28:00Z"
-  generation: 1
-  labels:
-    app.kubernetes.io/component: database
-    app.kubernetes.io/instance: sample-mysql
-    app.kubernetes.io/managed-by: kubedb.com
-    app.kubernetes.io/name: mysql
-    app.kubernetes.io/version: 8.0.14
-    kubedb.com/kind: MySQL
-    app.kubernetes.io/instance: sample-mysql
-  name: sample-mysql
-  namespace: demo
-spec:
-  clientConfig:
-    service:
-      name: sample-mysql
-      path: /
-      port: 3306
-      scheme: mysql
-    url: tcp(sample-mysql:3306)/
-  secret:
-    name: sample-mysql-auth
-  type: kubedb.com/mysql
-  version: 8.0.14
+NAME                TYPE                       DATA   AGE
+sample-mysql-auth   kubernetes.io/basic-auth   2      75s
 ```
 
 **Insert Sample Data:**
@@ -181,10 +134,10 @@ $ kubectl exec -it -n demo sample-mysql-0 -- mysql --user=$MYSQL_USER --password
 
 mysql: [Warning] Using a password on the command line interface can be insecure.
 Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 131
-Server version: 8.0.14 MySQL Community Server - GPL
+Your MySQL connection id is 115
+Server version: 8.0.35 MySQL Community Server - GPL
 
-Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+Copyright (c) 2000, 2023, Oracle and/or its affiliates.
 
 Oracle is a registered trademark of Oracle Corporation and/or its
 affiliates. Other names may be trademarks of their respective
@@ -203,11 +156,12 @@ mysql> SHOW DATABASES;
 +--------------------+
 | companyRecord      |
 | information_schema |
+| kubedb_system      |
 | mysql              |
 | performance_schema |
 | sys                |
 +--------------------+
-5 rows in set (0.00 sec)
+6 rows in set (0.00 sec)
 
 # create a table called "employee" in "companyRecord" database
 mysql> CREATE TABLE companyRecord.employee (id INT, name VARCHAR(50), salary INT, PRIMARY KEY(id));
@@ -232,138 +186,287 @@ Bye
 
 ### Prepare Backend
 
-We are going to store our backed up data into a GCS bucket. At first, we need to create a secret with GCS credentials then we need to create a `Repository` CR. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a BackupStorage crd to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
-**Create Storage Secret:**
+**Create Secret:**
 
 Let's create a secret called `gcs-secret` with access credentials to our desired GCS bucket,
 
 ```bash
-$ echo -n 'changeit' > RESTIC_PASSWORD
 $ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
 $ cat /path/to/downloaded-sa-key.json > GOOGLE_SERVICE_ACCOUNT_JSON_KEY
 $ kubectl create secret generic -n demo gcs-secret \
-    --from-file=./RESTIC_PASSWORD \
     --from-file=./GOOGLE_PROJECT_ID \
     --from-file=./GOOGLE_SERVICE_ACCOUNT_JSON_KEY
 secret/gcs-secret created
 ```
 
-**Create Repository:**
+**Create BackupStorage:**
 
-Now, create a `Repository` using this secret. Below is the YAML of Repository CR we are going to create,
+Now, create a `BackupStorage` using this secret. Below is the YAML of `BackupStorage` crd we are going to create,
 
 ```yaml
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: gcs-repo
+  name: gcs-storage
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: gcs
     gcs:
-      bucket: appscode-qa
-      prefix: /demo/mysql/hook-example
-    storageSecretName: gcs-secret
+      bucket: kubestash-qa
+      prefix: demo
+      secretName: gcs-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut
 ```
 
-Let's create the `Repository` we have shown above,
+Let's create the BackupStorage we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/repository.yaml
-repository.stash.appscode.com/gcs-repo created
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/backupstorage.yaml
+backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
-Now, we are ready to backup our database into our desired backend.
+Now, we are ready to backup our sample data into this backend.
+
+**Create RetentionPolicy:**
+
+Now, let's create a `RetentionPolicy` to specify how the old Snapshots should be cleaned up.
+
+Below is the YAML of the `RetentionPolicy` object that we are going to create,
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: RetentionPolicy
+metadata:
+  name: demo-retention
+  namespace: demo
+spec:
+  default: true
+  failedSnapshots:
+    last: 2
+  maxRetentionPeriod: 2mo
+  successfulSnapshots:
+    last: 5
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+```
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
+
+Let’s create the above `RetentionPolicy`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/retentionpolicy.yaml
+retentionpolicy.storage.kubestash.com/demo-retention created
+```
 
 ## Backup
 
-In this section, we are going to demonstrate `preBackup` hook and `postBackup` hook. We are going to make MySQL database read-only in  `preBackup` hook so that no write operation happens in the database during backup. Then, we are going to make the database writable in `postBackup` hook so that the application can write again into the database.
+In this section, we are going to demonstrate `preBackup` hook and `postBackup` hook. We are going to make MySQL database read-only in  `preBackup` hook so that no writes operation happens in the database during backup. Then, we are going to make the database writable in `postBackup` hook so that the application can write again into the database.
 
 ### PreBackup Hook
 
 At first, we are going to set `super_read_only` flag `ON` in `preBackup` hook which will make the database read-only. However, we won't set this flag `OFF` in `postBackup` so that we can verify that the hook has been executed.
+
+**Create HookTemplate**
+
+Below is the YAML of the `HookTemplate` CR to make the database read-only,
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: HookTemplate
+metadata:
+  name: readonly-hook
+  namespace: demo
+spec:
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  action:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL super_read_only = ON;"
+    containerName: mysql # KubeDB uses "mysql" name for MySQL database container. If you haven't used KubeDB, change this according to your setup.
+  executor:
+    type: Pod
+    pod:
+      selector: app.kubernetes.io/instance=sample-mysql, app.kubernetes.io/managed-by=kubedb.com, app.kubernetes.io/name=mysqls.kubedb.com
+      strategy: ExecuteOnAll
+```
+
+Let’s create the above `HookTemplate`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/hooktemplate.yaml
+hooktemplate.core.kubestash.com/readonly-hook created
+```
+
+Now, we need to create a secret with a Restic password for backup data encryption.
+
+**Create Secret:**
+
+Let's create a secret called `encry-secret` with the Restic password,
+
+```bash
+$ echo -n 'changeit' > RESTIC_PASSWORD
+$ kubectl create secret generic -n demo encry-secret \
+    --from-file=./RESTIC_PASSWORD \
+secret "encry-secret" created
+```
 
 **Create BackupConfiguration:**
 
 Below is the YAML of the `BackupConfiguration` CR with `preBackup` hook configured to make the database read-only before backup,
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: backup-hook-demo
+  name: sample-backup
   namespace: demo
 spec:
-  schedule: "*/5 * * * *"
-  task:
-    name: mysql-backup-8.0.14
-  repository:
-    name: gcs-repo
-  hooks:
-    preBackup:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL super_read_only = ON;"
-      containerName: mysql # KubeDB uses "mysql" name for MySQL database container. If you haven't used KubeDB, change this according to your setup.
   target:
-    ref:
-      apiVersion: appcatalog.appscode.com/v1alpha1
-      kind: AppBinding
-      name: sample-mysql
-  retentionPolicy:
-    name: keep-last-5
-    keepLast: 5
-    prune: true
+    apiGroup: kubedb.com
+    kind: MySQL
+    name: sample-mysql
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 5
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      hooks:
+        preBackup:
+          - name: pre-hook
+            hookTemplate:
+              name: readonly-hook
+              namespace: demo
+            maxRetry: 3
+            timeout: 30s
+      repositories:
+        - name: demo-repo
+          backend: gcs-backend
+          directory: /demo/hook
+          encryptionSecret:
+            name: encry-secret # some addon may not support encryption
+            namespace: demo
+      addon:
+        name: mysql-addon
+        tasks:
+          - name: logical-backup
 ```
 
 Let's create the above `BackupConfiguration`,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/pre_backup_hook_demo.yaml
-backupconfiguration.stash.appscode.com/backup-hook-demo created
+backupconfiguration.core.kubestash.com/sample-backup created
 ```
 
 **Verify CronJob:**
 
-If everything goes well, Stash will create a CronJob with the schedule specified in `spec.schedule` field of the `BackupConfiguration` CR.
+It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` crd.
+
+Verify that the `CronJob` has been created using the following command,
 
 ```bash
 $ kubectl get cronjob -n demo
-NAME                            SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
-stash-backup-backup-hook-demo   */5 * * * *   False     0        <none>          74s
+NAME                                    SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+trigger-sample-backup-frequent-backup   */5 * * * *   False     0        107m            108m
 ```
 
 **Wait for BackupSession:**
 
-The `stash-backup-backup-hook-demo` CronJob will trigger a backup on each scheduled slot by creating a `BackupSession` CR.
-
-Wait for a schedule to appear. Run the following command to watch `BackupSession` CR,
+Wait for the next schedule for backup. Run the following command to watch `BackupSession` crd,
 
 ```bash
 $ kubectl get backupsession -n demo -w
 
-NAME                          INVOKER-TYPE          INVOKER-NAME       PHASE       AGE
-backup-hook-demo-1579179002   BackupConfiguration   backup-hook-demo   Running     10s
-backup-hook-demo-1579179002   BackupConfiguration   backup-hook-demo   Running     52s
-backup-hook-demo-1579179002   BackupConfiguration   backup-hook-demo   Succeeded   86s
+NAME                                       INVOKER-TYPE          INVOKER-NAME    PHASE       DURATION   AGE
+sample-backup-frequent-backup-1708327500   BackupConfiguration   sample-backup   Succeeded              109m
 ```
 
 Here, the phase `Succeeded` means that the backup process has been completed successfully.
 
 **Verify Backup:**
 
-Once a backup is completed, Stash will update the respective `Repository` CR to reflect the backup completion. Check that the repository `gcs-repo` has been updated by the following command,
+Once a backup is complete, KubeStash will update the respective `Repository` crd to reflect the backup. Check that the repository `demo-repo` has been updated by the following command,
 
 ```bash
-$ kubectl get repository -n demo gcs-repo
-NAME       INTEGRITY   SIZE   SNAPSHOT-COUNT   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repo   true               1                75s                      55m
+$ kubectl get repository -n demo demo-repo
+
+NAME        INTEGRITY   SNAPSHOT-COUNT   SIZE          PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+demo-repo   true        1                664.373 KiB   Ready   141m                     147m
 ```
 
-Here, `SNAPSHOT-COUNT` 1 indicates that one snapshot has been taken for the targeted database.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+
+```bash
+$ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-demo-repo
+
+NAME                                                 REPOSITORY   SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
+demo-repo-sample-backup-frequent-backup-1708327500   demo-repo    frequent-backup   2024-02-19T07:25:01Z   Delete            Succeeded   168m
+```
+
+> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+
+If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the MySQL database.
+
+```bash
+$ kubectl get snapshots -n demo demo-repo-sample-backup-frequent-backup-1708327500 -oyaml
+```
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: Snapshot
+metadata:
+  labels:
+    kubestash.com/app-ref-kind: MySQL
+    kubestash.com/app-ref-name: sample-mysql
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: demo-repo
+  name: demo-repo-sample-backup-frequent-backup-1708327500
+  namespace: demo
+spec:
+  ...
+status:
+  components:
+    dump:
+      driver: Restic
+      duration: 2.133976452s
+      integrity: true
+      path: repository/v1/frequent-backup/dump
+      phase: Succeeded
+      resticStats:
+      - hostPath: dumpfile.sql
+        id: 0c7b8887c09bfe3d31d6af3a8e461f7773b52cd350a50deb3e8bbf94b52de01b
+        size: 3.736 MiB
+        uploaded: 3.736 MiB
+      size: 664.374 KiB
+  ...
+```
+
+Now, if we navigate to `demo/hook/repository/v1/frequent-backup/` directory of our gcs bucket, we are going to see that the component of the MySQL database has been stored there.
+
+> KubeStash keeps all backup data encrypted. So, the files in the bucket will not contain any meaningful data until they are decrypted.
 
 **Verify PreBackup Hook Executed:**
 
@@ -372,7 +475,8 @@ If the `preBackup` hook executes successfully, the database will be marked as re
 Let's verify that the database is read-only by trying to execute a write operation,
 
 ```bash
-$ kubectl exec -it -n demo sample-mysql-0 -- mysql --user=$MYSQL_USER --password=$MYSQL_PASSWORD -e "CREATE DATABASE read-OnlyTest;"
+$ kubectl exec -it -n demo sample-mysql-0 -- mysql --user=$MYSQL_USER --password=$MYSQL_PASSWORD -e "CREATE DATABASE readOnlyTest;"
+
 mysql: [Warning] Using a password on the command line interface can be insecure.
 ERROR 1290 (HY000) at line 1: The MySQL server is running with the --super-read-only option so it cannot execute this statement
 command terminated with exit code 1
@@ -382,6 +486,7 @@ Here, the error message clearly states the database is now read-only. Let's try 
 
 ```bash
 $ kubectl exec -it -n demo sample-mysql-0 -- mysql --user=$MYSQL_USER --password=$MYSQL_PASSWORD -e "SELECT * FROM companyRecord.employee;"
+
 mysql: [Warning] Using a password on the command line interface can be insecure.
 +----+----------+--------+
 | id | name     | salary |
@@ -396,53 +501,105 @@ So, we can see that the database can serve read-only queries without any problem
 
 Now, let's update the `BackupConfiguration` CR and add a `postBackup` hook that set `super_read_only` flag to `OFF`. So, the database should be writable again from the next backup.
 
+**Create HookTemplate**
+
+Below is the YAML of the `HookTemplate` CR to make the database writable,
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: HookTemplate
+metadata:
+  name: readonly-off-hook
+  namespace: demo
+spec:
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  action:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL super_read_only = OFF;"
+    containerName: mysql # KubeDB uses "mysql" name for MySQL database container. If you haven't used KubeDB, change this according to your setup.
+  executor:
+    type: Pod
+    pod:
+      selector: app.kubernetes.io/instance=sample-mysql, app.kubernetes.io/managed-by=kubedb.com, app.kubernetes.io/name=mysqls.kubedb.com
+      strategy: ExecuteOnAll
+```
+
+Let’s create the above `HookTemplate`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/hooktemplate-post.yaml
+hooktemplate.core.kubestash.com/readonly-off-hook created
+```
+
 **Update BackupConfiguration:**
 
 Below is the YAML for the updated `BackupConfiguration` CR with `postBackup` hook.
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: backup-hook-demo
+  name: sample-backup
   namespace: demo
 spec:
-  schedule: "*/5 * * * *"
-  task:
-    name: mysql-backup-8.0.14
-  repository:
-    name: gcs-repo
-  hooks:
-    preBackup:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL super_read_only = ON;"
-      containerName: mysql # KubeDB uses "mysql" name for MySQL database container. If you haven't used KubeDB, change this according to your setup.
-    postBackup:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL super_read_only = OFF;"
-      containerName: mysql
   target:
-    ref:
-      apiVersion: appcatalog.appscode.com/v1alpha1
-      kind: AppBinding
-      name: sample-mysql
-  retentionPolicy:
-    name: keep-last-5
-    keepLast: 5
-    prune: true
+    apiGroup: kubedb.com
+    kind: MySQL
+    name: sample-mysql
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 5
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      hooks:
+        preBackup:
+          - name: pre-hook
+            hookTemplate:
+              name: readonly-hook
+              namespace: demo
+            maxRetry: 3
+            timeout: 30s
+        postBackup:
+          - name: post-hook
+            hookTemplate:
+              name: readonly-off-hook
+              namespace: demo
+            maxRetry: 3
+            timeout: 30s
+      repositories:
+        - name: demo-repo
+          backend: gcs-backend
+          directory: /demo/hook
+          encryptionSecret:
+            name: encry-secret # some addon may not support encryption
+            namespace: demo
+      addon:
+        name: mysql-addon
+        tasks:
+          - name: logical-backup
 ```
 
 Let's apply the update,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/post_backup_hook_demo.yaml
-backupconfiguration.stash.appscode.com/backup-hook-demo configured
+backupconfiguration.core.kubestash.com/sample-backup configured
 ```
 
 **Wait for Next BackupSession:**
@@ -452,11 +609,8 @@ Now, wait for the next backup slot,
 ```bash
 $ kubectl get backupsession -n demo -w
 
-NAME                          INVOKER-TYPE          INVOKER-NAME       PHASE       AGE
-backup-hook-demo-1579179002   BackupConfiguration   backup-hook-demo   Succeeded   7m8s
-backup-hook-demo-1579179905   BackupConfiguration   backup-hook-demo   Running     12s
-backup-hook-demo-1579179905   BackupConfiguration   backup-hook-demo   Running     8s
-backup-hook-demo-1579179905   BackupConfiguration   backup-hook-demo   Succeeded   63s
+NAME                                       INVOKER-TYPE          INVOKER-NAME    PHASE       DURATION   AGE
+sample-backup-frequent-backup-1708340400   BackupConfiguration   sample-backup   Succeeded              109m
 ```
 
 **Verify PostBackup Hook Executed:**
@@ -471,7 +625,7 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 Verify the test database has been created successfully,
 
 ```bash
-$ kubectl exec -it -n demo sample-mysql-0 -- mysql --user=$MYSQL_USER --password=CWg2hru8b0Yu7dzS -e "SHOW DATABASES;"
+$ kubectl exec -it -n demo sample-mysql-0 -- mysql --user=$MYSQL_USER --password=$MYSQL_PASSWORD -e "SHOW DATABASES;"
 
 mysql: [Warning] Using a password on the command line interface can be insecure.
 +--------------------+
@@ -479,6 +633,7 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 +--------------------+
 | companyRecord      |
 | information_schema |
+| kubedb_system      |
 | mysql              |
 | performance_schema |
 | postBackupHookTest |
@@ -492,22 +647,7 @@ So, we can see the database is writable again after the backup.
 
 In this section, we are going to demonstrate `preRestore` and `postRestore` hooks. Here, we are going to delete corrupted data in `preRestore` hook and apply some migration on the database in `postRestore` hook.
 
-**Pause Backup:**
-
-At first, let stop the backup so that no new backup happens during the restore process. Let's set `spec.paused` section of `BackupConfiguration` to `true` which will stop taking further scheduled backup.
-
-```bash
-$ kubectl patch backupconfiguration -n demo backup-hook-demo --type="merge" --patch='{"spec": {"paused": true}}'
-backupconfiguration.stash.appscode.com/backup-hook-demo patched
-```
-
-It should suspend the respective CronJob which is responsible for triggering backup at a scheduled slot. Let's verify that the CronJob has been suspended.
-
-```bash
-$ kubectl get cronjob -n demo
-NAME                            SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
-stash-backup-backup-hook-demo   */5 * * * *   True      0        5m13s           29m
-```
+We have used same name for `RestoreSession`. Make sure you have deleted the old `RestoreSession` before applying new one. You can use the command `kubectl delete restoresession sample-restore -n demo`.
 
 **Simulate Disaster Scenario:**
 
@@ -527,6 +667,7 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 | Database           |
 +--------------------+
 | information_schema |
+| kubedb_system      |
 | mysql              |
 | performance_schema |
 | postBackupHookTest |
@@ -538,45 +679,84 @@ So, we can see from the above output that the database `companyRecord` has been 
 
 ### PreRestore Hook
 
-Here, we are going to configure `preRestore` hook to delete the corrupted database. Stash will remove the corrupted database first, then it will restore the database from the backup.
+Here, we are going to configure `preRestore` hook to delete the corrupted database. KubeStash will remove the corrupted database first, then it will restore the database from the backup.
+
+**Create HookTemplate**
+
+Below is the YAML of the `HookTemplate` CR to make the database writable,
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: HookTemplate
+metadata:
+  name: drop-db-hook
+  namespace: demo
+spec:
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  action:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "DROP DATABASE companyRecord;"
+    containerName: mysql # KubeDB uses "mysql" name for MySQL database container. If you haven't used KubeDB, change this according to your setup.
+  executor:
+    type: Pod
+    pod:
+      selector: app.kubernetes.io/instance=sample-mysql, app.kubernetes.io/managed-by=kubedb.com, app.kubernetes.io/name=mysqls.kubedb.com
+      strategy: ExecuteOnAll
+```
+
+Let’s create the above `HookTemplate`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/hooktemplate-post.yaml
+hooktemplate.core.kubestash.com/drop-db-hook created
+```
 
 **Create RestoreSession:**
 
 Below is the YAML for `RestoreSession` with `preRestore` hook configured to drop the `companyRecord` database before restoring from backup.
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: pre-restore-hook-demo
+  name: sample-restore
   namespace: demo
 spec:
-  task:
-    name: mysql-restore-8.0.14
-  repository:
-    name: gcs-repo
-  hooks:
-    preRestore:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "DROP DATABASE companyRecord;"
-      containerName: mysql
   target:
-    ref:
-      apiVersion: appcatalog.appscode.com/v1alpha1
-      kind: AppBinding
-      name: sample-mysql
-    rules:
-      - snapshots: [latest]
+    apiGroup: kubedb.com
+    kind: MySQL
+    name: sample-mysql
+    namespace: demo
+  dataSource:
+    repository: demo-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encry-secret
+      namespace: demo
+  addon:
+    name: mysql-addon
+    tasks:
+      - name: logical-backup-restore
+  hooks:
+    postRestore:
+      - name: pre-hook
+        hookTemplate:
+          name: drop-db-hook
+          namespace: demo
+        maxRetry: 3
+        timeout: 30s
 ```
 
 Let's create the above `RestoreSession`,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/pre_restore_hook_demo.yaml
-restoresession.stash.appscode.com/pre-restore-hook-demo created
+restoresession.core.kubestash.com/sample-restore created
 ```
 
 **Wait for Restore to Complete:**
@@ -585,10 +765,9 @@ Now, wait for the restore process to complete,
 
 ```bash
 $ kubectl get restoresession -n demo -w
-NAME                    REPOSITORY   PHASE     AGE
-pre-restore-hook-demo   gcs-repo     Running   10s
-pre-restore-hook-demo   gcs-repo     Running   42s
-pre-restore-hook-demo   gcs-repo     Succeeded   42s
+
+NAME             REPOSITORY   FAILURE-POLICY   PHASE     DURATION   AGE
+sample-restore   demo-repo                     Succeeded            74m
 ```
 
 Here, `RestoreSession` phase `Succeeded` means the restore process has been completed successfully.
@@ -631,6 +810,7 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 | Database           |
 +--------------------+
 | information_schema |
+| kubedb_system      |
 | mysql              |
 | performance_schema |
 | postBackupHookTest |
@@ -638,43 +818,82 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 +--------------------+
 ```
 
+**Create HookTemplate**
+
+Below is the YAML of the `HookTemplate` CR to perform some migration on the database,
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: HookTemplate
+metadata:
+  name: migration-hook
+  namespace: demo
+spec:
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  action:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "RENAME TABLE companyRecord.employee TO companyRecord.salaryRecord;"
+    containerName: mysql # KubeDB uses "mysql" name for MySQL database container. If you haven't used KubeDB, change this according to your setup.
+  executor:
+    type: Pod
+    pod:
+      selector: app.kubernetes.io/instance=sample-mysql, app.kubernetes.io/managed-by=kubedb.com, app.kubernetes.io/name=mysqls.kubedb.com
+      strategy: ExecuteOnAll
+```
+
+Let’s create the above `HookTemplate`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/hooktemplate-post-rs.yaml
+hooktemplate.core.kubestash.com/migration-hook created
+```
+
 **Create RestoreSession:**
 
 Below is the YAML of the `RestoreSession` with `postRestore` hook configured to rename the `employee` table into `salaryRecord`.
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: post-restore-hook-demo
+  name: sample-restore
   namespace: demo
 spec:
-  task:
-    name: mysql-restore-8.0.14
-  repository:
-    name: gcs-repo
+  target:
+    apiGroup: kubedb.com
+    kind: MySQL
+    name: sample-mysql
+    namespace: demo
+  dataSource:
+    repository: demo-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encry-secret
+      namespace: demo
+  addon:
+    name: mysql-addon
+    tasks:
+      - name: logical-backup-restore
   hooks:
     postRestore:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "RENAME TABLE companyRecord.employee TO companyRecord.salaryRecord;"
-      containerName: mysql
-  target:
-    ref:
-      apiVersion: appcatalog.appscode.com/v1alpha1
-      kind: AppBinding
-      name: sample-mysql
-    rules:
-      - snapshots: [latest]
+      - name: pre-hook
+        hookTemplate:
+          name: migration-hook
+          namespace: demo
+        maxRetry: 3
+        timeout: 30s
 ```
 
 Let's create the above `RestoreSession`,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/hooks/backup-and-restore-hooks/examples/post_restore_hook_demo.yaml
-restoresession.stash.appscode.com/post-restore-hook-demo created
+restoresession.core.kubestash.com/sample-restore created
 ```
 
 **Wait for Restore process to Complete:**
@@ -682,11 +901,10 @@ restoresession.stash.appscode.com/post-restore-hook-demo created
 Now, wait for the restore process to complete,
 
 ```bash
-$ kubectl get restoresession -n demo post-restore-hook-demo -w
-NAME                     REPOSITORY   PHASE     AGE
-post-restore-hook-demo   gcs-repo     Running   12s
-post-restore-hook-demo   gcs-repo     Running   29s
-post-restore-hook-demo   gcs-repo     Succeeded   29s
+$ kubectl get restoresession -n demo sample-restore -w
+
+NAME             REPOSITORY   FAILURE-POLICY   PHASE     DURATION   AGE
+sample-restore   demo-repo                     Succeeded            74m
 ```
 
 **Verify Restored Data:**
@@ -722,9 +940,12 @@ So, we can see that the `postRestore` hook successfully performed migration on t
 To cleanup the Kubernetes resources created by this tutorial, run:
 
 ```bash
-kubectl delete -n demo restoresession pre-restore-hook-demo post-restore-hook-demo
-kubectl delete -n demo backupconfiguration backup-hook-demo
-kubectl delete -n demo repository gcs-repo
+kubectl delete -n demo restoresession sample-restore
+kubectl delete -n demo backupconfiguration sample-backup
+kubectl delete -n demo backupstorage gcs-storage
 kubectl delete -n demo secret gcs-secret
+kubectl delete -n demo secret encry-secret
 kubectl delete -n demo mysql sample-mysql
+kubectl delete -n demo hooktemplate readonly-hook readonly-off-hook migration-hook drop-db-hook
+kubectl delete -n demo retentionpolicy demo-retention
 ```

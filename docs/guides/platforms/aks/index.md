@@ -1,6 +1,6 @@
 ---
-title: AKS | Stash
-description: Using Stash in Azure Kubernetes Service
+title: AKS | KubeStash
+description: Using KubeStash in Azure AD Workload Identity
 menu:
   docs_{{ .version }}:
     identifier: platforms-aks
@@ -12,21 +12,21 @@ menu_name: docs_{{ .version }}
 section_menu_id: guides
 ---
 
-# Using Stash with Azure Kubernetes Service (AKS)
+# Using KubeStash with Azure AD Workload Identity
 
-This guide will show you how to use Stash to backup and restore volumes of a Kubernetes workload running in [Azure Kubernetes Service (AKS)](https://azure.microsoft.com/en-us/services/kubernetes-service/). Here, we are going to backup a volume of a Deployment into [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/). Then, we are going to show how to restore this backed up data into a volume of another Deployment.
+This guide will show you how to use KubeStash to backup and restore volumes of a Kubernetes workload running in [Azure Kubernetes Service (AKS)](https://azure.microsoft.com/en-us/services/kubernetes-service/) with Azure AD Workload Identity. Here, we are going to backup a volume of a Deployment into [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/). Then, we are going to show how to restore this backed up data.
 
 ## Before You Begin
 
-- At first, you need to have an AKS cluster. If you don't already have a cluster, create one from [here](https://azure.microsoft.com/en-us/services/kubernetes-service/).
+- At first, you need to have an AKS cluster with [Azure AD Workload Identity](https://azure.github.io/azure-workload-identity/docs/introduction.html) enabled. If you don't already have a cluster, create one from [here](https://azure.microsoft.com/en-us/services/kubernetes-service/).
 
-- Install `Stash` in your cluster following the steps [here](/docs/setup/README.md).
+- Install `KubeStash` in your cluster following the steps [here](/docs/setup/README.md). You need to provide some labels and annotations during installation, see [here](#prepare-kubestash-operator).
 
-- You should be familiar with the following `Stash` concepts:
+- You should be familiar with the following `KubeStash` concepts:
   - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
   - [BackupSession](/docs/concepts/crds/backupsession/index.md)
   - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
-  - [Repository](/docs/concepts/crds/repository/index.md)
+  - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
 - You will need access to [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/) to store the backup snapshots.
 
 To keep everything isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
@@ -36,25 +36,60 @@ $ kubectl create ns demo
 namespace/demo created
 ```
 
-**Choosing StorageClass:**
+## Create User-assigned Managed Identity
 
-Stash works with any `StorageClass`. Check available `StorageClass` in your cluster using the following command:
+You need to create an AAD application or user-assigned managed identity and grant permissions to access the Azure Blob Storage. To create a user-assigned managed identity run the following command:
 
 ```bash
-$ kubectl get storageclass -n demo
-NAME                 PROVISIONER                AGE
-standard             kubernetes.io/azure-disk   3m
+$ export RESOURCE_GROUP=<resource-group-name>
+$ export USER_ASSIGNED_IDENTITY_NAME=<user-assigned-identity-name>
+$ az identity create --name $USER_ASSIGNED_IDENTITY_NAME --resource-group $RESOURCE_GROUP
 ```
 
-Here, we have `standard` StorageClass in our cluster.
+We need to assign `Storage Blob Data Contributor` role to user-assigned managed identity by running the following commands,
 
-> **Note:** YAML files used in this tutorial are stored in  [docs/guides/platforms/aks/examples](/docs/guides/platforms/aks/examples) directory of [kubestash/docs](https://github.com/kubestash/docs) repository.
+```bash
+$ export STORAGE_NAME=<your-blob-storage-name>
+$ export STORAGE_ID=(az storage account show --name $STORAGE_NAME --resource-group $RESOURCE_GROUP --query id -o tsv)
+$ export USER_ASSIGNED_IDENTITY_CLIENT_ID=(az identity show --name $USER_ASSIGNED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --query 'clientId' -otsv)
+$ az role assignment create \
+   --assignee $USER_ASSIGNED_IDENTITY_CLIENT_ID \
+   --role 'Storage Blob Data Contributor' \
+   --scope $STORAGE_ID
+```
 
-## Backup the Volume of a Deployment
+## Prepare KubeStash Operator
 
-Here, we are going to deploy a Deployment with a PVC. This Deployment will automatically generate some sample data into the PVC. Then, we are going to backup this sample data using Stash.
+During KubeStash installation in Azure AD Workload Identity cluster, you need to provide some labels and annotations described [here](https://azure.github.io/azure-workload-identity/docs/topics/service-account-labels-and-annotations.html). Here, we have installed KubeStash providing the required pod label `azure.workload.identity/use: "true"` and service account annotation `azure.workload.identity/client-id: <user-assigned-managed-identity-client-ID>` by running the following commands:
 
-### Prepare Workload
+```bash
+$ export USER_ASSIGNED_IDENTITY_CLIENT_ID=(az identity show --name $USER_ASSIGNED_IDENTITY_NAME --resource-group $RESOURCE_GROUP --query 'clientId' -otsv)
+$  helm install kubestash oci://ghcr.io/appscode-charts/kubestash \
+      --version <kubestash-version> \
+      --namespace <kubestash-namespace> --create-namespace \
+      --set-file global.license=/path/to/the/license.txt \
+      --set-string kubestash-operator.podLabels."azure\\.workload\\.identity/use"="true" \
+      --set-string kubestash-operator.serviceAccount.annotations."azure\\.workload\\.identity/client-id"=$USER_ASSIGNED_IDENTITY_CLIENT_ID \
+      --wait --burst-limit=10000 --debug
+```
+
+Now, we are going to create identity federated credential for our KubeStash operator's service account,
+
+```bash
+$ export SERVICE_ACCOUNT_ISSUER=(az aks show -n $CLUSTER_NAME -g $RESOURCE_GROUP --query "oidcIssuerProfile.issuerUrl" -otsv)
+$ az identity federated-credential create \
+     --name "operator-cred" \
+     --identity-name $USER_ASSIGNED_IDENTITY_NAME \
+     --resource-group $RESOURCE_GROUP \
+     --issuer $SERVICE_ACCOUNT_ISSUER \
+     --subject system:serviceaccount:kubestash:kubestash-kubestash-operator
+```
+
+## Prepare Deployment
+
+Here, we are going to deploy a Deployment with a PVC. This Deployment will automatically generate some sample data into the PVC. Then, we are going to backup this sample data using KubeStash.
+
+### Create Deployment
 
 At first, let's deploy the workload whose volumes we are going to backup. Here, we are going create a PVC and deploy a Deployment with this PVC.
 
@@ -63,15 +98,14 @@ At first, let's deploy the workload whose volumes we are going to backup. Here, 
 Below is the YAML of the sample PVC that we are going to create,
 
 ```yaml
-kind: PersistentVolumeClaim
 apiVersion: v1
+kind: PersistentVolumeClaim
 metadata:
-  name: stash-sample-data
+  name: kubestash-pvc
   namespace: demo
 spec:
   accessModes:
-  - ReadWriteOnce
-  storageClassName: standard
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
@@ -81,12 +115,12 @@ Let's create the PVC we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/pvc.yaml
-persistentvolumeclaim/stash-sample-data created
+persistentvolumeclaim/kubestash-pvc created
 ```
 
 **Deploy Deployment:**
 
-Now, we are going to deploy a Deployment that uses the above PVC. This Deployment will automatically generate sample data (`data.txt` file) in `/source/data` directory where we have mounted the PVC.
+Now, we are going to deploy a Deployment that uses the above PVC. This Deployment will automatically generate sample data (`text.txt` file) in `/source/data` directory where we have mounted the PVC.
 
 Below is the YAML of the Deployment that we are going to create,
 
@@ -95,582 +129,441 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: stash-demo
-  name: stash-demo
+    app: kubestash-demo
+  name: kubestash-demo
   namespace: demo
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: stash-demo
+      app: kubestash-demo
   template:
     metadata:
       labels:
-        app: stash-demo
+        app: kubestash-demo
       name: busybox
     spec:
       containers:
-      - args: ["echo sample_data > /source/data/data.txt && sleep 3000"]
-        command: ["/bin/sh", "-c"]
-        image: busybox
-        imagePullPolicy: IfNotPresent
-        name: busybox
-        volumeMounts:
-        - mountPath: /source/data
-          name: source-data
+        - image: busybox
+          command: ["/bin/sh", "-c","echo dummy_data > /source/data/text.txt && sleep 3000"]
+          imagePullPolicy: IfNotPresent
+          name: busybox
+          volumeMounts:
+            - mountPath: /source/data
+              name: source-data
       restartPolicy: Always
       volumes:
-      - name: source-data
-        persistentVolumeClaim:
-          claimName: stash-sample-data
+        - name: source-data
+          persistentVolumeClaim:
+            claimName: kubestash-pvc
 ```
 
 Let's create the Deployment we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/deployment.yaml
-deployment.apps/stash-demo created
+deployment.apps/kubestash-demo created
 ```
 
-Now, wait for the pods of the Deployment to go into the `Running` state.
+Now, wait for the pod of the Deployment to go into the `Running` state.
 
 ```bash
 $ kubectl get pod -n demo
-NAME                          READY   STATUS    RESTARTS   AGE
-stash-demo-8685fb5478-4psw8   1/1     Running   0          4m47s
-stash-demo-8685fb5478-89flr   1/1     Running   0          4m47s
-stash-demo-8685fb5478-fjggh   1/1     Running   0          4m47s
+NAME                              READY   STATUS    RESTARTS   AGE
+kubestash-demo-77f9c4cb8c-4l26t   1/1     Running   0          3m25s
 ```
 
 To verify that the sample data has been created in `/source/data` directory, use the following command:
 
 ```bash
-$ kubectl exec -n demo stash-demo-8685fb5478-4psw8 -- cat /source/data/data.txt
-sample_data
+$ kubectl exec -it -n demo kubestash-demo-77f9c4cb8c-4l26t -- cat /source/data/text.txt
+dummy_data
+```
+
+From the above, we can see the sample data is set successfully.
+
+## Prepare Backup
+
+In this section, we are going to prepare the necessary resources before backup.
+
+### Prepare ServiceAccount
+
+We are going create a Kubernetes service account and attach annotation `azure.workload.identity/client-id: <user-assigned-managed-identity-client-ID>` to the service account.
+
+Let's create a `ServiceAccount` in the `demo` namespace,
+
+```bash
+$ kubectl create serviceaccount -n demo bucket-user
+serviceaccount/bucket-user created
+```
+
+Now, lets attach the annotation,
+
+```bash
+$ kubectl annotate sa -n demo bucket-user azure.workload.identity/client-id=$USER_ASSIGNED_IDENTITY_CLIENT_ID
+```
+
+Now, we are going to create identity federated credential for our newly created service account,
+
+```bash
+$ az identity federated-credential create \
+     --name "demo-cred" \
+     --identity-name $USER_ASSIGNED_IDENTITY_NAME \
+     --resource-group $RESOURCE_GROUP \
+     --issuer $SERVICE_ACCOUNT_ISSUER \
+     --subject system:serviceaccount:demo:bucket-user
 ```
 
 ### Prepare Backend
 
-We are going to store our backed up data into an [Azure Blob Container](https://azure.microsoft.com/en-us/services/storage/blobs/). At first, we need to create a secret with the access credentials to our Azure blob storage account. Then, we have to create a `Repository` crd that will hold the information about our backend storage. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+Now we are going to store our backed up data into an [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/). As we are using workload identity enabled cluster, we don't need the storage secret to access the azure blob storage.
 
-**Create Secret:**
+**Create BackupStorage:**
 
-Let's create a secret called `azure-secret` with access credentials to our desired [Azure Blob Container](https://azure.microsoft.com/en-us/services/storage/blobs/),
-
-```bash
-$ echo -n 'changeit' >RESTIC_PASSWORD
-$ echo -n '<your-azure-storage-account-name>' > AZURE_ACCOUNT_NAME
-$ echo -n '<your-azure-storage-account-key>' > AZURE_ACCOUNT_KEY
-$ kubectl create secret generic -n demo azure-secret \
-    --from-file=./RESTIC_PASSWORD \
-    --from-file=./AZURE_ACCOUNT_NAME \
-    --from-file=./AZURE_ACCOUNT_KEY
-secret/azure-secret created
-```
-
-Verify that the secret has been created successfully,
-
-```bash
-$ kubectl get secret -n demo azure-secret -o yaml
-```
+Now, let's create a `BackupStorage` with the information of our desired azure blob storage. Below is the YAML of `BackupStorage` crd we are going to create,
 
 ```yaml
-apiVersion: v1
-data:
-  AZURE_ACCOUNT_KEY: dXNlIHlvdXIgb3duIGNyZWRlbnRpYWxz # <base64 encoded AZURE_ACCOUNT_KEY>
-  AZURE_ACCOUNT_NAME: dXNlIHlvdXIgb3duIGNyZWRlbnRpYWxz # <base64 encoded AZURE_ACCOUNT_NAME>
-  RESTIC_PASSWORD: Y2hhbmdlaXQ=
-kind: Secret
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  creationTimestamp: "2019-07-18T04:22:58Z"
-  name: azure-secret
-  namespace: demo
-  resourceVersion: "68336"
-  selfLink: /api/v1/namespaces/demo/secrets/azure-secret
-  uid: b8c0685d-a913-11e9-9330-ea541341590e
-type: Opaque
-```
-
-**Create Repository:**
-
-Now, let's create a `Repository` with the information of our desired blob container. Below is the YAML of `Repository` crd we are going to create,
-
-```yaml
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
-metadata:
-  name: azure-repo
+  name: azure-storage
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: azure
     azure:
-      container: stashqa
-      prefix: /source/data
-    storageSecretName: azure-secret
+      prefix: demo
+      container: ishtiaq
+      storageAccount: kubestash
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true 
+  deletionPolicy: WipeOut 
+  runtimeSettings:
+    pod:
+      podLabels: 
+        azure.workload.identity/use: "true"
+      serviceAccountName: bucket-user
 ```
 
-Let's create the Repository we have shown above,
+Notice the `spec.runtimeSettings`, here we have to provide the label `azure.workload.identity/use: "true"` in `podLabes` and have to provide the `serviceAccountName`. These values will be set in the cleaner job created by the KubeStash operator. To learn more about `spec.runtimeSettings`, visit [here](/docs/concepts/crds/backupstorage#runtimeSettings).
+
+Let's create the `BackupStorage` we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/repository.yaml
-repository.stash.appscode.com/azure-repo created
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/backupstorage.yaml
+backupstorage.storage.kubestash.com/azure-storage created
 ```
 
 Now, we are ready to backup our sample data into this backend.
 
-### Backup
+**Create RetentionPolicy:**
 
-We have to create a `BackupConfiguration` crd targeting the `stash-demo` Deployment that we have deployed earlier. Stash will inject a sidecar container into the target. It will also create a `CronJob` to take a periodic backup of `/source/data` directory of the target.
+Now, let's create a `RetentionPolicy` to specify how the old Snapshots should be cleaned up.
+
+Below is the YAML of the `RetentionPolicy` object that we are going to create,
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: RetentionPolicy
+metadata:
+  name: demo-retention
+  namespace: demo
+spec:
+  default: true
+  failedSnapshots:
+    last: 2
+  maxRetentionPeriod: 2mo
+  successfulSnapshots:
+    last: 5
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+```
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
+
+Let’s create the above `RetentionPolicy`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/retentionpolicy.yaml
+retentionpolicy.storage.kubestash.com/demo-retention created
+```
+
+## Backup
+
+To schedule a backup, we have to create a `BackupConfiguration` object targeting the respective Deployment. Then KubeStash will create a CronJob for each session to periodically backup the Deployment.
+
+At first, we need to create a secret with a Restic password for backup data encryption.
+
+**Create Secret:**
+
+Let's create a secret called `encry-secret` with the Restic password,
+
+```bash
+$ echo -n 'changeit' > RESTIC_PASSWORD
+$ kubectl create secret generic -n demo encry-secret \
+    --from-file=./RESTIC_PASSWORD \
+secret "encry-secret" created
+```
 
 **Create BackupConfiguration:**
 
-Below is the YAML of the `BackupConfiguration` crd that we are going to create,
+Below is the `YAML` for BackupConfiguration object we are going to use to backup the `kubestash-demo` Deployment we have deployed earlier,
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: deployment-backup
+  name: sample-backup-dep
   namespace: demo
 spec:
-  repository:
-    name: azure-repo
-  schedule: "*/5 * * * *"
   target:
-    ref:
-      apiVersion: apps/v1
-      kind: Deployment
-      name: stash-demo
-    volumeMounts:
-    - name: source-data
-      mountPath: /source/data
-    paths:
-    - /source/data
-  retentionPolicy:
-    name: 'keep-last-5'
-    keepLast: 5
-    prune: true
+    apiGroup: apps
+    kind: Deployment
+    name: kubestash-demo
+    namespace: demo
+  backends:
+    - name: azure-backend
+      storageRef:
+        name: azure-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: demo-session
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: azure-demo-repo
+          backend: azure-backend
+          directory: /dep
+          encryptionSecret:
+            name: encry-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            targetVolumes:
+              volumeMounts:
+                - name: source-data
+                  mountPath: /source/data
+            params:
+              paths: /source/data
+              exclude: /source/data/lost+found
+        jobTemplate:
+          metadata:
+            labels:
+              azure.workload.identity/use: "true"
+          spec:
+            serviceAccountName: bucket-user
+      retryConfig:
+        maxRetry: 2
+        delay: 1m
 ```
 
-Here,
-
-- `spec.repository` refers to the `Repository` object `azure-repo` that holds backend [Azure Blob Container](https://azure.microsoft.com/en-us/services/storage/blobs/) information.
-- `spec.target.ref` refers to the `stash-demo` Deployment for backup target.
-- `spec.target.volumeMounts` specifies a list of volumes and their mountPath that contain the target paths.
-- `spec.target.paths` specifies list of file paths to backup.
+Here, `spec.sessions[*].addon.jobTemplate.spec.serviceAccountName` refers to the name of the `ServiceAccount` to use in the backup job and `spec.sessions[*].addon.jobTemplate.metadata.labels` refers to the labels to use in the backup job.
 
 Let's create the `BackupConfiguration` crd we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/backupconfiguration.yaml
-backupconfiguration.stash.appscode.com/deployment-backup created
+backupconfiguration.core.kubestash.com/sample-backup-dep configured
 ```
 
-**Verify Sidecar:**
+**Verify Backup Setup Successful:**
 
-If everything goes well, Stash will inject a sidecar container into the `stash-demo` Deployment to take backup of `/source/data` directory. Let’s check that the sidecar has been injected successfully,
+If everything goes well, the phase of the `BackupConfiguration` should be `Ready`. The `Ready` phase indicates that the backup setup is successful. Let’s verify the Phase of the `BackupConfiguration`,
 
 ```bash
-$ kubectl get pod -n demo
-NAME                          READY   STATUS        RESTARTS   AGE
-stash-demo-5bdc545845-45smg   2/2     Running       0          45s
-stash-demo-5bdc545845-dw4dn   2/2     Running       0          54s
-stash-demo-5bdc545845-ncrhw   2/2     Running       0          61s
-```
-
-Look at the pod. It now has 2 containers. If you view the resource definition of this pod, you will see that there is a container named `stash` which is running `run-backup` command.
-
-```yaml
-$ kubectl get pod -n demo stash-demo-5bdc545845-45smg -o yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    app: stash-demo
-    pod-template-hash: 5bdc545845
-  name: stash-demo-5bdc545845-45smg
-  namespace: demo
-...
-spec:
-  containers:
-  - args:
-    - echo sample_data > /source/data/data.txt && sleep 3000
-    command:
-    - /bin/sh
-    - -c
-    image: busybox
-    imagePullPolicy: IfNotPresent
-    name: busybox
-    resources: {}
-    terminationMessagePath: /dev/termination-log
-    terminationMessagePolicy: File
-    volumeMounts:
-    - mountPath: /source/data
-      name: source-data
-    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-      name: default-token-h6sqd
-      readOnly: true
-  - args:
-    - run-backup
-    - --backup-configuration=deployment-backup
-    - --secret-dir=/etc/stash/repository/secret
-    - --enable-cache=true
-    - --max-connections=0
-    - --metrics-enabled=true
-    - --pushgateway-url=http://stash-operator.kube-system.svc:56789
-    - --enable-status-subresource=true
-    - --use-kubeapiserver-fqdn-for-aks=true
-    - --logtostderr=true
-    - --alsologtostderr=false
-    - --v=3
-    - --stderrthreshold=0
-    env:
-    - name: NODE_NAME
-      valueFrom:
-        fieldRef:
-          apiVersion: v1
-          fieldPath: spec.nodeName
-    - name: POD_NAME
-      valueFrom:
-        fieldRef:
-          apiVersion: v1
-          fieldPath: metadata.name
-    image: suaas21/stash:volumeTemp_linux_amd64
-    imagePullPolicy: IfNotPresent
-    name: stash
-    resources: {}
-    terminationMessagePath: /dev/termination-log
-    terminationMessagePolicy: File
-    volumeMounts:
-    - mountPath: /etc/stash
-      name: stash-podinfo
-    - mountPath: /etc/stash/repository/secret
-      name: stash-secret-volume
-    - mountPath: /tmp
-      name: tmp-dir
-    - mountPath: /source/data
-      name: source-data
-    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-      name: default-token-h6sqd
-      readOnly: true
-  dnsPolicy: ClusterFirst
-  nodeName: aks-agentpool-72468344-0
-  priority: 0
-  restartPolicy: Always
-  schedulerName: default-scheduler
-  securityContext: {}
-  serviceAccount: default
-  serviceAccountName: default
-  terminationGracePeriodSeconds: 30
-  ...
-...
-```
-
-**Verify CronJob:**
-
-It will also create a `CronJob` with the schedule specified in `spec.schedule` field of `BackupConfiguration` crd.
-
-Verify that the `CronJob` has been created using the following command,
-
-```bash
-$ kubectl get cronjob -n demo
-NAME                SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
-deployment-backup   */1 * * * *   False     0        35s             64s
+$ kubectl get backupconfiguration -n demo
+NAME                PHASE   PAUSED   AGE
+sample-backup-dep   Ready            3m
 ```
 
 **Wait for BackupSession:**
 
-The `deployment-backup` CronJob will trigger a backup on each schedule by creating a `BackupSession` crd. The sidecar container will watch for the `BackupSession` crd. When it finds one, it will take backup immediately.
-
-Wait for the next schedule for backup. Run the following command to watch `BackupSession` crd,
+Now, wait for a schedule to appear. Run the following command to watch for a `BackupSession` object,
 
 ```bash
-$ watch -n 2 kubectl get backupsession -n demo
-Every 1.0s: kubectl get backupsession -n demo     suaas-appscode: Mon Jun 24 10:23:08 2019
+$ watch kubectl get backupsession -n demo
+Every 2.0s: kubectl get backupsession -n demo                           AppsCode-PC-03: Wed Jan 10 16:52:25 2024
 
-NAME                           INVOKER-TYPE          INVOKER-NAME        PHASE       AGE
-deployment-backup-1561350125   BackupConfiguration   deployment-backup   Succeeded   63s
+NAME                                        INVOKER-TYPE          INVOKER-NAME        PHASE       DURATION   AGE
+sample-backup-dep-demo-session-1705907281   BackupConfiguration   sample-backup-dep   Succeeded              6m
 ```
 
-We can see from the above output that the backup session has succeeded. Now, we are going to verify whether the backed up data has been stored in the backend.
+Here, the phase `Succeeded` means that the backup process has been completed successfully.
 
 **Verify Backup:**
 
-Once a backup is complete, Stash will update the respective `Repository` crd to reflect the backup. Check that the repository `azure-repo` has been updated by the following command,
+Now, we are going to verify whether the backed up data is present in the backend or not. Once a backup is completed, KubeStash will update the respective `Repository` object to reflect the backup completion. Check that the repository `azure-demo-repo` has been updated by the following command,
 
 ```bash
-$ kubectl get repository -n demo
-NAME         INTEGRITY   SIZE   SNAPSHOT-COUNT   LAST-SUCCESSFUL-BACKUP   AGE
-azure-repo   true        8 B    1                2s                       1m10s
+$ kubectl get repository -n demo azure-demo-repo
+NAME              INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+azure-demo-repo   true        1                801 B   Ready   8m                       9m
 ```
 
-Now, if we navigate to the Azure blob container, we are going to see backed up data has been stored in `<storage account name>/source/data` directory as specified by `spec.backend.azure.prefix` field of `Repository` crd.
-
-<figure align="center">
-  <img alt="Backup data in Azure Blob Storage Container" src="/docs/guides/platforms/aks/images/aks.png">
-  <figcaption align="center">Fig: Backup data in Azure Blob Storage Container</figcaption>
-</figure>
-
-> **Note:** Stash keeps all the backed up data encrypted. So, data in the backend will not make any sense until they are decrypted.
-
-## Restore the Backed up Data
-
-This section will show you how to restore the backed up data from [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/) we have taken in the earlier section.
-
-**Stop Taking Backup of the Old Deployment:**
-
-At first, let's stop taking any further backup of the old Deployment so that no backup is taken during the restore process. We are going to pause the `BackupConfiguration` that we created to backup the `stash-demo` Deployment. Then, Stash will stop taking any further backup for this Deployment. You can learn more how to pause a scheduled backup [here](/docs/guides/use-cases/pause-backup/index.md)
-
-Let's pause the `deployment-backup` BackupConfiguration,
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
 
 ```bash
-$ kubectl patch backupconfiguration -n demo deployment-backup --type="merge" --patch='{"spec": {"paused": true}}'
-backupconfiguration.stash.appscode.com/deployment-backup patched
+$ kubectl get snapshots -n demo -l=kubestash.com/repo-name=azure-demo-repo
+NAME                                                        REPOSITORY        SESSION        SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
+azure-demo-repo-sample-backup-dep-demo-session-1705907281   azure-demo-repo   demo-session   2024-01-22T07:08:07Z   Delete            Succeeded   29m
 ```
 
-Now, wait for a moment. Stash will pause the BackupConfiguration. Verify that the BackupConfiguration  has been paused,
+> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+
+If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the Deployment.
 
 ```bash
-$ kubectl get backupconfiguration -n demo
-NAME                TASK   SCHEDULE      PAUSED   AGE
-deployment-backup          */1 * * * *   true     26m
+$ kubectl get snapshots -n demo azure-demo-repo-sample-backup-dep-demo-session-1705907281 -oyaml
 ```
-
-Notice the `PAUSED` column. Value `true` for this field means that the BackupConfiguration has been paused.
-
-**Deploy Deployment:**
-
-We are going to create a new Deployment named `stash-recovered` with a new PVC and restore the backed up data inside it.
-
-Below are the YAMLs of the Deployment and PVC that we are going to create,
 
 ```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: restore-pvc
-  namespace: demo
-spec:
-  accessModes:
-  - ReadWriteOnce
-  storageClassName: standard
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: storage.kubestash.com/v1alpha1
+kind: Snapshot
 metadata:
   labels:
-    app: stash-recovered
-  name: stash-recovered
+    kubestash.com/app-ref-kind: Deployment
+    kubestash.com/app-ref-name: kubestash-demo
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: azure-demo-repo
+  name: azure-demo-repo-sample-backup-dep-demo-session-1705907281
   namespace: demo
 spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: stash-recovered
-  template:
-    metadata:
-      labels:
-        app: stash-recovered
-      name: busybox
-    spec:
-      containers:
-      - args:
-        - sleep
-        - "3600"
-        image: busybox
-        imagePullPolicy: IfNotPresent
-        name: busybox
-        volumeMounts:
-        - mountPath: /restore/data
-          name: restore-data
-      restartPolicy: Always
-      volumes:
-      - name: restore-data
-        persistentVolumeClaim:
-          claimName: restore-pvc
+  ...
+status:
+  components:
+    dump:
+      driver: Restic
+      duration: 1.474354769s
+      integrity: true
+      path: repository/v1/demo-session/dump
+      phase: Succeeded
+      resticStats:
+        - hostPath: /source/data
+          id: c5a88e95e476161b3594ffb2630513a4d3a59007419f618e2aae62995e118eca
+          size: 11 B
+          uploaded: 1.041 KiB
+      size: 801 B
+  ...
 ```
+> For Deployment, KubeStash takes backup from only one pod of the Deployment. So, only one component has been taken backup.
 
-Let's create the Deployment and PVC we have shown above.
+Now, if we navigate to `dep/repository/v1/demo-session/` directory of our [Azure Blob Container](https://azure.microsoft.com/en-us/services/storage/blobs/), we are going to see that the component of the Deployment has been stored there.
+
+> KubeStash keeps all backup data encrypted. So, the files in the bucket will not contain any meaningful data until they are decrypted.
+
+## Restore
+
+In this section, we are going to show you how to restore in the same Deployment which may be necessary when you have accidentally deleted any data.
+
+**Simulate Disaster:**
+
+Now, let's simulate an accidental deletion scenario. Here, we are going to exec into the Deployment pod `kubestash-demo-77f9c4cb8c-fc5qh` and delete the `text.txt` file from `/source/data`.
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/recovered_deployment.yaml
-persistentvolumeclaim/restore-pvc created
-deployment.apps/stash-recovered created
+$ kubectl exec -it -n demo kubestash-demo-77f9c4cb8c-fc5qh -- sh
+/ # 
+/ # rm /source/data/text.txt
+/ # cat /source/data/text.txt
+cat: can't open '/source/data/text.txt': No such file or directory
+/ # exit
 ```
 
 **Create RestoreSession:**
 
-Now, we need to create a `RestoreSession` crd targeting the `stash-recovered` Deployment.
+To restore the Deployment, you have to create a `RestoreSession` object pointing to the Deployment.
 
-Below is the YAML of the `RestoreSesion` crd that we are going to create,
+Here, is the YAML of the `RestoreSession` object that we are going to use for restoring our `kubestash-demo` Deployment.
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: deployment-restore
+  name: sample-restore
   namespace: demo
 spec:
-  repository:
-    name: azure-repo
-  target: # target indicates where the recovered data will be stored
-    ref:
-      apiVersion: apps/v1
-      kind: Deployment
-      name: stash-recovered
-    volumeMounts:
-    - name: restore-data
-      mountPath: /source/data
-    rules:
-    - paths:
-      - /source/data/
+  target:
+    apiGroup: apps
+    kind: Deployment
+    name: kubestash-demo
+    namespace: demo
+  dataSource:
+    repository: azure-demo-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encry-secret
+      namespace: demo
+  addon:
+    name: workload-addon
+    tasks:
+      - name: logical-backup-restore
+    jobTemplate:
+      metadata:
+        labels:
+          azure.workload.identity/use: "true"
+      spec:
+        serviceAccountName: bucket-user
 ```
 
 Here,
 
-- `spec.repository.name` specifies the `Repository` crd that holds the backend information where our backed up data has been stored.
+- `spec.addon.jobTemplate.spec.serviceAccountName` refers to the name of the `ServiceAccount` to use in the restore job(s).
+- `spec.addon.jobTemplate.metadata.labels` refers to the labels to use in the restore job(s).
+- `spec.dataSource.snapshot` specifies to restore from latest `Snapshot`.
 
-- `spec.target.ref` refers to the target workload where the recovered data will be stored.
-- `spec.target.volumeMounts` specifies a list of volumes and their mountPath where the data will be restored.
-  - `mountPath` must be same `mountPath` as the original volume because Stash stores absolute path of the backed up files. If you use different `mountPath` for the restored volume the backed up files will not be restored into your desired volume.
-
-Let's create the `RestoreSession` crd we have shown above,
+Let's create the `RestoreSession` object we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/restoresession.yaml
-restoresession.stash.appscode.com/deployment-restore created
+restoresession.core.kubestash.com/sample-restore created
 ```
 
-Once, you have created the `RestoreSession` crd, Stash will inject `init-container` into `stash-recovered` Deployment. The Deployment will restart and the `init-container` will restore the desired data on start-up.
-
-**Verify Init-Container:**
-
-Wait until the `init-container` has been injected into the `stash-recovered` Deployment. Let’s describe the Deployment to verify that the `init-container` has been injected successfully.
-
-```yaml
-$ kubectl describe deployment -n demo stash-recovered
-Name:                   stash-recovered
-Namespace:              demo
-CreationTimestamp:      Thu, 18 Jul 2019 11:59:41 +0600
-Labels:                 app=stash-recovered
-Selector:               app=stash-recovered
-Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
-Pod Template:
-  Labels:       app=stash-recovered
-  Annotations:  stash.appscode.com/last-applied-restoresession-hash: 15483804576325149444
-  Init Containers:
-   stash-init:
-    Image:      suaas21/stash:volumeTemp_linux_amd64
-    Port:       <none>
-    Host Port:  <none>
-    Args:
-      restore
-      --restore-session=deployment-restore
-      --secret-dir=/etc/stash/repository/secret
-      --enable-cache=true
-      --max-connections=0
-      --metrics-enabled=true
-      --pushgateway-url=http://stash-operator.kube-system.svc:56789
-      --enable-status-subresource=true
-      --use-kubeapiserver-fqdn-for-aks=true
-      --logtostderr=true
-      --alsologtostderr=false
-      --v=3
-      --stderrthreshold=0
-    Environment:
-      NODE_NAME:   (v1:spec.nodeName)
-      POD_NAME:    (v1:metadata.name)
-    Mounts:
-      /etc/stash/repository/secret from stash-secret-volume (rw)
-      /source/data from restore-data (rw)
-      /tmp from tmp-dir (rw)
-  Containers:
-   busybox:
-    Image:      busybox
-    Port:       <none>
-    Host Port:  <none>
-    Args:
-      sleep
-      3600
-    Environment:  <none>
-    Mounts:
-      /restore/data from restore-data (rw)
-  Volumes:
-   restore-data:
-    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
-    ClaimName:  restore-pvc
-    ReadOnly:   false
-   tmp-dir:
-    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
-    Medium:
-    SizeLimit:  <unset>
-   stash-podinfo:
-    Type:  DownwardAPI (a volume populated by information about the pod)
-    Items:
-      metadata.labels -> labels
-   stash-secret-volume:
-    Type:        Secret (a volume populated by a Secret)
-    SecretName:  azure-secret
-    Optional:    false
-  ...
-```
-
-Notice the `Init-Containers` section. We can see that the init-container `stash-init` has been injected which is running `restore` command.
-
-**Wait for RestoreSession to Succeeded:**
-
-Now, wait for the restore process to complete. You can watch the `RestoreSession` phase using the following command,
+Once, you have created the `RestoreSession` object, KubeStash will create restore Job(s). Run the following command to watch the phase of the `RestoreSession` object,
 
 ```bash
-$ watch -n 2 kubectl get restoresession -n demo
-Every 3.0s: kubectl get restore -n demo        suaas-appscode: Thu Jul 18 12:02:10 2019
+$ watch kubectl get restoresession -n demo
+Every 2.0s: kubectl get restores... AppsCode-PC-03: Wed Jan 10 17:13:18 2024
 
-NAME                 REPOSITORY-NAME   PHASE       AGE
-deployment-restore   azure-repo        Succeeded   1m
+NAME             REPOSITORY        FAILURE-POLICY   PHASE       DURATION   AGE
+sample-restore   azure-demo-repo                    Succeeded   3s         53s
 ```
 
-So, we can see from the output of the above command that the restore process has succeeded.
-
-> **Note:** If you want to restore the backed up data inside the same Deployment whose volumes were backed up, you have to remove the corrupted data from the Deployment. Then, you have to create a RestoreSession targeting the Deployment.
+The `Succeeded` phase means that the restore process has been completed successfully.
 
 **Verify Restored Data:**
 
-In this section, we are going to verify that the desired data has been restored successfully. At first, check if the `stash-recovered` pod of the Deployment has gone into `Running` state by the following command,
+Now, lets exec into the Deployment pod and verify whether actual data was restored or not,
 
 ```bash
-$ kubectl get pod -n demo
-NAME                               READY   STATUS        RESTARTS   AGE
-stash-recovered-6669c8bcfd-7pz9m   1/1     Running       0          76s
-stash-recovered-6669c8bcfd-dfppw   1/1     Running       0          85s
-stash-recovered-6669c8bcfd-qkllx   1/1     Running       0          51s
+$ kubectl exec -it -n demo kubestash-demo-77f9c4cb8c-fc5qh -- cat /source/data/text.txt
+dummy_data
 ```
 
-Verify that the sample data has been restored in `/restore/data` directory of the `stash-recovered` pod of the Deployment using the following command,
-
-```bash
-$ kubectl exec -n demo stash-recovered-6669c8bcfd-7pz9m -- cat /restore/data/data.txt
-sample_data
-```
+Hence, we can see from the above output that the deleted data has been restored successfully from the backup.
 
 ## Cleaning Up
 
 To clean up the Kubernetes resources created by this tutorial, run:
 
 ```bash
-kubectl delete -n demo deployment stash-demo
-kubectl delete -n demo deployment stash-recovered
-kubectl delete -n demo backupconfiguration deployment-backup
-kubectl delete -n demo restoresession deployment-restore
-kubectl delete -n demo repository azure-repo
-kubectl delete -n demo secret azure-secret
+kubectl delete -n demo deployment kubestash-demo
+kubectl delete -n demo backupconfiguration sample-backup-dep
+kubectl delete -n demo restoresession sample-restore
+kubectl delete -n demo backupstorage azure-storage
+kubectl delete -n demo secret encry-secret
 kubectl delete -n demo pvc --all
 ```
 
 ## Next Steps
 
-1. See a step by step guide to backup/restore volumes of a StatefulSet [here](/docs/guides/workloads/statefulset/index.md).
-2. See a step by step guide to backup/restore volumes of a DaemonSet [here](/docs/guides/workloads/daemonset/index.md).
-3. See a step by step guide to Backup/restore Stand-alone PVC [here](/docs/guides/volumes/pvc/index.md)
+1. See a step-by-step guide to backup/restore volumes of a StatefulSet [here](/docs/guides/workloads/statefulset/index.md).
+2. See a step-by-step guide to backup/restore volumes of a DaemonSet [here](/docs/guides/workloads/daemonset/index.md).
+3. See a step-by-step guide to Backup/restore Stand-alone PVC [here](/docs/guides/volumes/pvc/index.md)

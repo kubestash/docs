@@ -1,5 +1,5 @@
 ---
-title: Auto Backup PVC | Stash
+title: Auto Backup PVC | KubeStash
 description: An step by step guide on how to configure automatic backup for PVCs.
 menu:
   docs_{{ .version }}:
@@ -19,15 +19,15 @@ This tutorial will show you how to configure automatic backup for PersistentVolu
 ## Before You Begin
 
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
-- Install `Stash` in your cluster following the steps [here](/docs/setup/README.md).
+- Install `KubeStash` in your cluster following the steps [here](/docs/setup/README.md).
 - You will need to have a PVC with `ReadWriteMany` access permission. Here, we are going to use an NFS server to provision a PVC with `ReadWriteMany` access. If you don't have an NFS server running, deploy one by following the guide [here](https://github.com/appscode/third-party-tools/blob/master/storage/nfs/README.md).
-- You should be familiar with the following `Stash` concepts:
+- You should be familiar with the following `KubeStash` concepts:
   - [BackupBlueprint](/docs/concepts/crds/backupblueprint/index.md)
   - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
   - [BackupSession](/docs/concepts/crds/backupsession/index.md)
-  - [Repository](/docs/concepts/crds/repository/index.md)
+  - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
   - [Function](/docs/concepts/crds/function/index.md)
-  - [Task](/docs/concepts/crds/task/index.md)
+  - [Addon](/docs/concepts/crds/addon/index.md)
 
 To keep everything isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
 
@@ -40,111 +40,208 @@ namespace/demo created
 
 **Verify necessary Function and Task:**
 
-Stash uses a `Function-Task` model to automatically backup PVC. When you install Stash, it creates the necessary `Function` and `Task`.
+KubeStash uses a `Addon-Function` model to automatically backup PVC. When you install KubeStash, it creates the necessary `Addon` and `Function`.
 
-Let's verify that Stash has created the necessary `Function` to backup/restore PVC by the following command,
+Let's verify that KubeStash has created the necessary `Function` to backup/restore PVC by the following command,
+
+```bash
+$ kubectl get addon
+NAME             AGE
+kubedump-addon   16h
+pvc-addon        16h
+workload-addon   16h
+```
+
+Also, verify that the necessary `Function` has been created,
 
 ```bash
 $ kubectl get function
-NAME            AGE
-pvc-backup      6h55m
-pvc-restore     6h55m
-update-status   6h55m
-```
-
-Also, verify that the necessary `Task` has been created,
-
-```bash
-$ kubectl get task
-NAME          AGE
-pvc-backup    6h55m
-pvc-restore   6h55m
+NAME                     AGE
+kubedump-backup          16h
+pvc-backup               16h
+pvc-restore              16h
+volumesnapshot-backup    16h
+volumesnapshot-restore   16h
+workload-backup          16h
+workload-restore         16h
 ```
 
 ## Prepare Backup Blueprint
 
-We are going to use [GCS Backend](/docs/guides/backends/gcs/index.md) to store the backed up data. You can use any supported backend you prefer. You just have to configure Storage Secret and `spec.backend` section of `BackupBlueprint` to match your backend. To learn which backends are supported by Stash and how to configure them, please visit [here](/docs/guides/backends/overview/index.md).
-
-> For GCS backend, if the bucket does not exist, Stash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
+We are going to use [GCS Backend](/docs/guides/backends/gcs/index.md) to store the backed up data. You can use any supported backend you prefer. You just have to configure `BackupStorage` and storage secret to match your backend. To learn which backends are supported by KubeStash and how to configure them, please visit [here](/docs/guides/backends/overview/index.md).
 
 **Create Storage Secret:**
 
 At first, let's create a Storage Secret for the GCS backend,
 
 ```bash
-$ echo -n 'changeit' > RESTIC_PASSWORD
 $ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
 $ mv downloaded-sa-json.key GOOGLE_SERVICE_ACCOUNT_JSON_KEY
 $ kubectl create secret generic -n demo gcs-secret \
-    --from-file=./RESTIC_PASSWORD \
     --from-file=./GOOGLE_PROJECT_ID \
     --from-file=./GOOGLE_SERVICE_ACCOUNT_JSON_KEY
 secret/gcs-secret created
 ```
 
+**Create BackupStorage**
+
+Now, let's create a `BackupStorage` to specify the backend information where the backed up data will be stored.
+
+Below is the YAML of the `BackupStorage` object that we are going to create,
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
+metadata:
+  name: gcs-storage
+  namespace: demo
+spec:
+  storage:
+    provider: gcs
+    gcs:
+      bucket: kubestash-demo
+      prefix: demo
+      secretName: gcs-secret 
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut
+```
+Notice the `spec.usagePolicy` that allows referencing the `BackupStorage` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [BackupStorage usage policy](/docs/concepts/crds/backupstorage/index.md#backupstorage-spec). We have set `spec.deletionPolicy` to `WipeOut` which will delete the respective `Repository` and `Snapshot` CRs as well as the backed up data from the storage.
+If you want to keep the backed up data in the storage then use `Delete` instead of `WipeOut` in `spec.deletionPolicy`.
+
+Let’s create the above `BackupStorage`,
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/auto-backup/pvc/examples/backupstorage.yaml
+backupstorage.storage.kubestash.com/gcs-storage created
+```
+
+**Create RetentionPolicy**
+
+Now, let's create a `RetentionPolicy` to specify how the old Snapshots should be cleaned up.
+
+Below is the YAML of the `RetentionPolicy` object that we are going to create,
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: RetentionPolicy
+metadata:
+  name: demo-retention
+  namespace: demo
+spec:
+  default: true
+  failedSnapshots:
+    last: 2
+  maxRetentionPeriod: 2mo
+  successfulSnapshots:
+    last: 5
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+```
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
+
+Let’s create the above `RetentionPolicy`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/auto-backup/pvc/examples/retentionpolicy.yaml
+retentionpolicy.storage.kubestash.com/demo-retention created
+```
+
 **Create BackupBlueprint:**
 
-Now, we have to create a `BackupBlueprint` crd with a blueprint for `Repository` and `BackupConfiguration` object.
+Now, we have to create a `BackupBlueprint` crd with a blueprint for `BackupConfiguration` object.
 
 Below is the YAML of the `BackupBlueprint` object that we are going to create,
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupBlueprint
 metadata:
   name: pvc-backup-blueprint
+  namespace: demo
 spec:
-  # ============== Blueprint for Repository ==========================
-  backend:
-    gcs:
-      bucket: appscode-qa
-      prefix: stash-backup/${TARGET_NAMESPACE}/${TARGET_KIND}/${TARGET_NAME}
-    storageSecretName: gcs-secret
-  # ============== Blueprint for BackupConfiguration =================
-  task:
-    name: pvc-backup
-  schedule: "*/5 * * * *"
-  retentionPolicy:
-    name: 'keep-last-5'
-    keepLast: 5
-    prune: true
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  backupConfigurationTemplate:
+    deletionPolicy: OnDelete
+    backends:
+      - name: gcs-backend
+        storageRef:
+          name: gcs-storage
+          namespace: demo
+        retentionPolicy:
+          name: demo-retention
+          namespace: demo
+    sessions:
+      - name: frequent-backup
+        sessionHistoryLimit: 3
+        scheduler:
+          schedule: "*/5 * * * *"
+          jobTemplate:
+            backoffLimit: 1
+        repositories:
+          - name: ${repoName}
+            backend: gcs-backend
+            directory: ${namespace}/${targetName}
+            encryptionSecret:
+              name: encry-secret
+              namespace: demo
+        addon:
+          name: pvc-addon
+          tasks:
+            - name: logical-backup
+        retryConfig:
+          maxRetry: 2
+          delay: 1m
 ```
 
-Here,
-
-- `spec.task.name` specifies the `Task` crd name that will be used to backup the targeted PVC.
-
-Note that we have used some variables (format: `${<variable name>}`) in `backend.gcs.prefix` field. Stash will substitute these variables with values from the respective target. To know which variable you can use in this `prefix` field, please visit [here](/docs/concepts/crds/backupblueprint/index.md#repository-blueprint).
+Note that we have used some variables (format: `${<variable name>}`) in different fields. KubeStash will substitute these variables with values from the respective target's annotations. You can use arbitrary variables.
 
 Let's create the `BackupBlueprint` that we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/auto-backup/pvc/examples/backupblueprint.yaml
-backupblueprint.stash.appscode.com/pvc-backup-blueprint created
+backupblueprint.core.kubestash.com/pvc-backup-blueprint created
 ```
 
 Now, automatic backup is configured for PVC. We just have to add some annotations to the targeted PVC to enable backup.
 
-**Available Auto-Backup Annotations for PVC:**
+**Available Auto-Backup Annotations:**
 
-You have to add the auto-backup annotations to the PVC that you want to backup. The following auto-backup annotations are available for a PVC:
+You have to add the auto-backup annotations to the pvc that you want to backup. The following auto-backup annotations are available:
 
-- **BackupBlueprint Name:** You have to specify the `BackupBlueprint` name that holds the template for `Repository` and `BackupConfiguration` in the following annotation:
+- **BackupBlueprint Name:** You have to specify the `BackupBlueprint` name that holds the template for `BackupConfiguration` in the following annotation:
 
 ```yaml
-stash.appscode.com/backup-blueprint: <BackupBlueprint name>
+blueprint.kubestash.com/name: <BackupBlueprint name>
 ```
 
-You can also specify multiple BackupBlueprint name separated by comma (`,`). For example:
+- **BackupBlueprint Namespace:** You have to specify the `BackupBlueprint` namespace that holds the template for `BackupConfiguration` in the following annotation:
 
 ```yaml
-stash.appscode.com/backup-blueprint: daily-gcs-backup,weekly-s3-backup
+blueprint.kubestash.com/namespace: <BackupBlueprint namespace>
 ```
 
-- **Schedule:** You can specify a schedule to backup this target through this annotation. If you don't specify this annotation, schedule from the `BackupBlueprint` will be used.
+- **Sessions:** You can specify with which sessions you want to create the `BackupConfiguration`. If you don't specify this annotation, all sessions from the `BackupBlueprint` will be used. For multiple sessions, you can provide comma (,) seperated sessions name.
 
 ```yaml
- stash.appscode.com/schedule: <Cron Expression>
+ blueprint.kubestash.com/sessions: <Sessions name>
+```
+
+- **Variables:** You can specify arbitrary number of annotations for variables. KubeStash will resolve the  variables and create `BackupConfiguration` accordingly.
+
+```yaml
+variables.kubestash.com/<variable-name>: <Variable value>
+```
+
+Example:
+
+Assume you are using a variable, named `schedule`, in `BackupBlueprint`. By this variable we can configure different backup schedule for different target. We will add this annotation in the target.
+```yaml
+variables.kubestash.com/schedule: "*/5 * * * *"
 ```
 
 ## Prepare PVC
@@ -153,7 +250,7 @@ At first, let's prepare our desired PVC. Here, we are going to create a [Persist
 
 **Create PersistentVolume:**
 
-We have deployed an NFS server in `storage` namespace and it is accessible through a Service named `nfs-service`. Now, we are going to create a PV that uses the NFS server as storage.
+We have deployed an NFS server in `storage` namespace, and it is accessible through a Service named `nfs-service`. Now, we are going to create a PV that uses the NFS server as storage.
 
 Below is the YAML of the PV that we are going to create,
 
@@ -162,19 +259,18 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: nfs-pv
-  labels:
-    app: nfs-demo
 spec:
   capacity:
     storage: 1Gi
   accessModes:
-  - ReadWriteMany
-  nfs:
-    server: "nfs-service.storage.svc.cluster.local"
-    path: "/"
+    - ReadWriteMany
+  csi:
+    driver: nfs.csi.k8s.io
+    volumeHandle: nfs-server.storage.svc.cluster.local/share##
+    volumeAttributes:
+      server: nfs-server.storage.svc.cluster.local
+      share: /
 ```
-
-Notice the `metadata.labels` section. Here, we have added `app: nfs-demo` label. We are going to use this label as selector in PVC so that the PVC binds with this PV.
 
 Let's create the PV we have shown above,
 
@@ -195,19 +291,17 @@ metadata:
   namespace: demo
 spec:
   accessModes:
-  - ReadWriteMany
-  storageClassName: ""
+    - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
-  selector:
-    matchLabels:
-      app: nfs-demo
+  volumeName: nfs-pv
+  storageClassName: ""
 ```
 
-Notice the `spec.accessModes` section. We are using `ReadWriteMany` access mode so that multiple pods can use this PVC simultaneously. Without this access mode, Stash will fail to backup the volume if any other pod mounts it during backup.
+Notice the `spec.accessModes` section. We are using `ReadWriteMany` access mode so that multiple pods can use this PVC simultaneously. Without this access mode, KubeStash will fail to backup the volume as we are going to mount this volume to the backup job.
 
-Also, notice the `spec.selector` section. We have specified `app: nfs-demo` labels as a selector so that it binds with the PV that we have created earlier.
+Also, notice the `spec.volumeName` section. We have specified `nfs-pv` pv name as the volume name.
 
 Let's create the PVC we have shown above,
 
@@ -233,24 +327,24 @@ Now, we are going to deploy two sample pods `demo-pod-1` and `demo-pod-2` that w
 Below, is the YAML of the first pod that we are going to deploy,
 
 ```yaml
-kind: Pod
 apiVersion: v1
+kind: Pod
 metadata:
   name: demo-pod-1
   namespace: demo
 spec:
   containers:
-  - name: busybox
-    image: busybox
-    command: ["/bin/sh", "-c","echo 'hello from pod 1.' > /sample/data/hello.txt && sleep 3000"]
-    volumeMounts:
-    - name: my-volume
-      mountPath: /sample/data
-      subPath: pod-1/data
+    - name: busybox
+      image: busybox
+      command: ["/bin/sh", "-c","echo 'hello from pod 1.' > /sample/data/hello.txt && sleep 3000"]
+      volumeMounts:
+        - name: my-volume
+          mountPath: /sample/data
+          subPath: pod-1/data
   volumes:
-  - name: my-volume
-    persistentVolumeClaim:
-      claimName: nfs-pvc
+    - name: my-volume
+      persistentVolumeClaim:
+        claimName: nfs-pvc
 ```
 
 Here, we have mounted `pod-1/data` directory of the `nfs-pvc` into `/sample/data` directory of this pod.
@@ -272,8 +366,8 @@ hello from pod 1.
 Below is the YAML of the second pod that we are going to deploy,
 
 ```yaml
-kind: Pod
 apiVersion: v1
+kind: Pod
 metadata:
   name: demo-pod-2
   namespace: demo
@@ -310,16 +404,14 @@ hello from pod 2.
 
 ## Backup
 
-Now, we are going to add auto backup specific annotation to the PVC. Stash watches for PVC with auto-backup annotations. Once it finds a PVC with auto-backup annotations, it will create a `Repository` and a `BackupConfiguration` crd according to respective `BackupBlueprint`. Then, rest of the backup process will proceed as normal backup of a stand-alone PVC as describe [here](/docs/guides/volumes/pvc/index.md).
+Now, we are going to add auto backup specific annotation to the PVC. KubeStash watches for PVC with auto-backup annotations. Once it finds a PVC with auto-backup annotations, it will create a `BackupConfiguration` crd according to respective `BackupBlueprint`. Then, rest of the backup process will proceed as normal backup of a stand-alone PVC as describe [here](/docs/guides/volumes/pvc/index.md).
 
 **Add Annotations:**
 
 Let's add the auto backup specific annotation to the PVC,
 
 ```bash
-$ kubectl annotate pvc nfs-pvc -n demo --overwrite           \
-    stash.appscode.com/backup-blueprint=pvc-backup-blueprint \
-    stash.appscode.com/schedule="*/15 * * * *"
+
 ```
 
 Verify that the annotations has been added successfully,
@@ -333,86 +425,47 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   annotations:
+    blueprint.kubestash.com/name: pvc-backup-blueprint
+    blueprint.kubestash.com/namespace: demo
     kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"v1","kind":"PersistentVolumeClaim","metadata":{"annotations":{},"name":"nfs-pvc","namespace":"demo"},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"1Gi"}},"selector":{"matchLabels":{"app":"nfs-demo"}},"storageClassName":""}}
+      {"apiVersion":"v1","kind":"PersistentVolumeClaim","metadata":{"annotations":{},"name":"nfs-pvc","namespace":"demo"},"spec":{"accessModes":["ReadWriteMany"],"resources":{"requests":{"storage":"1Gi"}},"storageClassName":"","volumeName":"nfs-pv"}}
     pv.kubernetes.io/bind-completed: "yes"
-    pv.kubernetes.io/bound-by-controller: "yes"
-    stash.appscode.com/backup-blueprint: pvc-backup-blueprint
-    stash.appscode.com/schedule: "*/15 * * * *"
-  creationTimestamp: "2019-08-19T09:08:44Z"
+    variables.kubestash.com/namespace: demo
+    variables.kubestash.com/repoName: pvc-repo
+    variables.kubestash.com/targetName: nfs-pvc
+  creationTimestamp: "2024-01-09T04:24:36Z"
   finalizers:
-  - kubernetes.io/pvc-protection
+    - kubernetes.io/pvc-protection
   name: nfs-pvc
   namespace: demo
-  resourceVersion: "64082"
-  selfLink: /api/v1/namespaces/demo/persistentvolumeclaims/nfs-pvc
-  uid: 7c9dca87-8577-466a-bf2d-2fa7a83f85b7
+  resourceVersion: "1313188"
+  uid: 092f3f7d-12f4-498b-9143-2050bcc50f77
 spec:
   accessModes:
-  - ReadWriteMany
+    - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
-  selector:
-    matchLabels:
-      app: nfs-demo
   storageClassName: ""
   volumeMode: Filesystem
   volumeName: nfs-pv
 status:
   accessModes:
-  - ReadWriteMany
+    - ReadWriteMany
   capacity:
     storage: 1Gi
   phase: Bound
 ```
 
-Now, Stash will create a `Repository` crd and a `BackupConfiguration` crd according to the blueprint.
-
-**Verify Repository:**
-
-Verify that the `Repository` has been created successfully by the following command,
-
-```bash
-$ kubectl get repository -n demo
-NAME                            INTEGRITY   SIZE   SNAPSHOT-COUNT   LAST-SUCCESSFUL-BACKUP   AGE
-persistentvolumeclaim-nfs-pvc
-```
-
-If we view the YAML of this `Repository`, we are going to see that the variables `${TARGET_NAMESPACE}`, `${TARGET_KIND}` and `${TARGET_NAME}` has been replaced by `demo`, `presistentvolumeclaim` and `nfs-pvc` respectively.
-
-```bash
-$ kubectl get repository -n demo persistentvolumeclaim-nfs-pvc -o yaml
-```
-
-```yaml
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
-metadata:
-  creationTimestamp: "2019-08-19T09:18:55Z"
-  finalizers:
-  - stash
-  generation: 1
-  name: persistentvolumeclaim-nfs-pvc
-  namespace: demo
-  resourceVersion: "64084"
-  selfLink: /apis/stash.appscode.com/v1beta1/namespaces/demo/repositories/persistentvolumeclaim-nfs-pvc
-  uid: a991373f-9d7a-4d02-a812-16f901497ebd
-spec:
-  backend:
-    gcs:
-      bucket: appscode-qa
-      prefix: stash-backup/demo/persistentvolumeclaim/nfs-pvc
-    storageSecretName: gcs-secret
-```
+Now, KubeStash will create a `BackupConfiguration` crd according to the blueprint.
 
 **Verify BackupConfiguration:**
-If everything goes well, Stash should create a `BackupConfiguration` for our Pvc and the phase of that `BackupConfiguration` should be `Ready`. Verify the `BackupConfiguration` crd by the following command,
+If everything goes well, KubeStash should create a `BackupConfiguration` for our PVC and the phase of that `BackupConfiguration` should be `Ready`. Verify the `BackupConfiguration` crd by the following command,
 
 ```bash
 $ kubectl get backupconfiguration -n demo
-NAME                            TASK         SCHEDULE       PAUSED   PHASE   AGE
-persistentvolumeclaim-nfs-pvc   pvc-backup   */15 * * * *            Ready   119s
+NAME                            PHASE   PAUSED   AGE
+persistentvolumeclaim-nfs-pvc   Ready            3m31s
 ```
 
 Now, let's check the YAML of the `BackupConfiguration`.
@@ -421,80 +474,110 @@ $ kubectl get backupconfiguration -n demo persistentvolumeclaim-nfs-pvc -o yaml
 ```
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  creationTimestamp: "2019-08-20T13:01:54Z"
-  finalizers:
-  - stash.appscode.com
-  generation: 1
+  labels:
+    app.kubernetes.io/managed-by: kubestash.com
+    kubestash.com/invoker-name: pvc-backup-blueprint
+    kubestash.com/invoker-namespace: demo
   name: persistentvolumeclaim-nfs-pvc
   namespace: demo
-  ownerReferences:
-  - apiVersion: v1
-    blockOwnerDeletion: false
+spec:
+  ...
+    failurePolicy: Fail
+    name: frequent-backup
+    repositories:
+    - backend: gcs-backend
+      directory: demo/nfs-pvc
+      encryptionSecret:
+        name: encry-secret
+        namespace: demo
+      name: pvc-repo
+    ...
+  target:
     kind: PersistentVolumeClaim
     name: nfs-pvc
-    uid: 7c9dca87-8577-466a-bf2d-2fa7a83f85b7
-  resourceVersion: "124087"
-  selfLink: /apis/stash.appscode.com/v1beta1/namespaces/demo/backupconfigurations/persistentvolumeclaim-nfs-pvc
-  uid: 6270ab3f-c967-431b-8e4c-c19fafa44a64
-spec:
-  repository:
-    name: persistentvolumeclaim-nfs-pvc
-  retentionPolicy:
-    keepLast: 5
-    name: keep-last-5
-    prune: true
-  runtimeSettings: {}
-  schedule: '*/15 * * * *'
-  target:
-    ref:
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      name: nfs-pvc
-  task:
-    name: pvc-backup
-  tempDir: {}
+    namespace: demo
+status:
+  ...
 ```
 
-Notice that the `spec.target.ref` is pointing to the `nfs-pvc` PVC.
+Notice that the `spec.target` is pointing to the `nfs-pvc` PVC. Also, notice that the `spec.sessions[*].repositories[*].name` and `spec.sessions[*].repositories[*].directory` fields have been populated with the information we had provided as annotation of the PVC.
 
 **Wait for BackupSession:**
 
 Now, wait for the next backup schedule. Run the following command to watch `BackupSession` crd:
 
 ```bash
-$ watch -n 1 kubectl get backupsession -n demo -l=stash.appscode.com/backup-configuration=persistentvolumeclaim-nfs-pvc
+Every 2.0s: kubectl get backupsession -n demo                                   AppsCode-PC-03: Tue Jan  9 12:26:47 2024
 
-Every 1.0s: kubectl get backupsession -n demo ... workstation: Thu Jul 18 15:18:42 2019
-
-NAME                                       INVOKER-TYPE          INVOKER-NAME                    PHASE       AGE
-persistentvolumeclaim-nfs-pvc-1563441309   BackupConfiguration   persistentvolumeclaim-nfs-pvc   Succeeded   3m33s
+NAME                                                       INVOKER-TYPE          INVOKER-NAME                    PHASE       DURATION   AGE
+persistentvolumeclaim-nfs-pvc-frequent-backup-1704779101   BackupConfiguration   persistentvolumeclaim-nfs-pvc   Succeeded              41m
 ```
-
->Note: Respective CronJob creates `BackupSession` crd with the following label `stash.appscode.com/backup-configuration=<BackupConfiguration crd name>`. We can use this label to watch only the `BackupSession` of our desired `BackupConfiguration`.
 
 **Verify Backup:**
 
-When backup session is completed, Stash will update the respective `Repository` to reflect the latest state of backed up data.
+When backup session is completed, KubeStash will update the respective `Repository` to reflect the latest state of backed up data.
 
-Run the following command to check if a snapshot has been sent to the backend,
+Run the following command to check if the snapshots are stored in the backend,
 
 ```bash
-$ kubectl get repository -n demo persistentvolumeclaim-nfs-pvc
-NAME                            INTEGRITY   SIZE   SNAPSHOT-COUNT   LAST-SUCCESSFUL-BACKUP   AGE
-persistentvolumeclaim-nfs-pvc   true        41 B   1                3m37s                    5m11s
+$ kubectl get repository -n demo pvc-repo
+NAME       INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+pvc-repo   true        1                2.286 KiB   Ready   45m                      45m
 ```
 
-> Stash creates one snapshot for each targeted file path. Since we are taking backup of two file paths, two snapshots have been created for this BackupSession.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
 
-If we navigate to `stash-backup/demo/persistentvolumeclaim/nfs-pvc` directory of our GCS bucket, we are going to see that the snapshot has been stored there.
+```bash
+$ kubectl get snapshots -n demo -l=kubestash.com/repo-name=pvc-repo
+NAME                                                              REPOSITORY   SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       VERIFICATION-STATUS   AGE
+pvc-repo-persistentvolumeclaim-n-pvc-frequent-backup-1704779101   pvc-repo     frequent-backup   2024-01-09T05:45:08Z   Delete            Succeeded                         50m
+```
 
-<figure align="center">
-  <img alt="Backup data of PVC 'nfs-pvc' in GCS backend" src="images/pvc_repo.png">
-  <figcaption align="center">Fig: Backup data of PVC "nfs-pvc" in GCS backend</figcaption>
-</figure>
+> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+
+If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the PVC.
+
+```bash
+$ kubectl get snapshots -n demo pvc-repo-persistentvolumeclaim-n-pvc-frequent-backup-1704779101 -oyaml
+```
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: Snapshot
+metadata:
+  labels:
+    kubestash.com/app-ref-kind: PersistentVolumeClaim
+    kubestash.com/app-ref-name: nfs-pvc
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: pvc-repo
+  name: pvc-repo-persistentvolumeclaim-n-pvc-frequent-backup-1704779101
+  namespace: demo
+spec:
+  ...
+status:
+  components:
+    dump:
+      driver: Restic
+      duration: 8.276711625s
+      integrity: true
+      path: repository/v1/frequent-backup/pvc
+      phase: Succeeded
+      resticStats:
+      - hostPath: /kubestash-data
+        id: 960ca348fab17a73b9acf8168a8bb564b1b60bc13bfa163d705f38ee77aefcd2
+        size: 36 B
+        uploaded: 3.633 KiB
+      size: 2.287 KiB
+  ...
+```
+> For PVC, KubeStash takes backup the targeted PVC in `/kubestash-data` file path.
+
+Now, if we navigate to `demo/nfs-pvc/repository/v1/frequent-backup/` directory of our GCS bucket, we are going to see that the components of the StatefulSet have been stored there.
+
+> KubeStash keeps all backup data encrypted. So, the files in the bucket will not contain any meaningful data until they are decrypted.
 
 ## Cleanup
 
@@ -510,4 +593,4 @@ kubectl delete -n demo pvc/nfs-pvc
 kubectl delete -n demo pv/nfs-pv
 ```
 
-If you would like to uninstall Stash operator, please follow the steps [here](/docs/setup/README.md).
+If you would like to uninstall KubeStash operator, please follow the steps [here](/docs/setup/README.md).

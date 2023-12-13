@@ -1,12 +1,11 @@
-kind: PersistentVolumeClaim
 apiVersion: v1
+kind: PersistentVolumeClaim
 metadata:
-  name: stash-sample-data
+  name: kubestash-pvc
   namespace: demo
 spec:
   accessModes:
-  - ReadWriteOnce
-  storageClassName: standard
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
