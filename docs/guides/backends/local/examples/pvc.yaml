@@ -1,12 +1,21 @@
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: local-repo-with-pvc
+  name: local-storage-with-pvc
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: local
     local:
       mountPath: /safe/data
       persistentVolumeClaim:
-        claimName: repo-pvc
-    storageSecretName: local-secret
+        claimName: storage-pvc
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: false
+  deletionPolicy: WipeOut
+  runtimeSettings:
+    pod:
+      securityContext:
+        fsGroup: 65535 # Give file system group permission
