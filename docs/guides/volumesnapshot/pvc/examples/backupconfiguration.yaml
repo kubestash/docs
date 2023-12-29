@@ -1,0 +1,37 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: pvc-volume-snapshot
+  namespace: demo
+spec:
+  target:
+    apiGroup:
+    kind: PersistentVolumeClaim
+    name:  source-pvc
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        namespace: demo
+        name: gcs-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 3
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: gcs-repository
+          backend: gcs-backend
+          directory: /pvc-volume-snapshot-repo
+          deletionPolicy: WipeOut
+      addon:
+        name: pvc-addon
+        tasks:
+          - name: volume-snapshot
+            params:
+              volumeSnapshotClassName: csi-snapshot-class

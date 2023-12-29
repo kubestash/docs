@@ -1,13 +1,19 @@
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: s3-repo
+  name: s3-storage
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: s3
     s3:
       endpoint: s3.amazonaws.com # use server URL for s3 compatible other storage service
-      bucket: stash-demo
+      bucket: kubestash-demo
       region: us-west-1
-      prefix: /backup/demo/deployment/stash-demo
-    storageSecretName: s3-secret
+      prefix: /backup/demo/deployment/kubestash-demo
+      secretName: s3-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut

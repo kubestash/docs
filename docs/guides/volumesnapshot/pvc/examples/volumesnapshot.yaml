@@ -1,0 +1,21 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  creationTimestamp: "2024-01-16T11:00:08Z"
+  finalizers:
+    - snapshot.storage.kubernetes.io/volumesnapshot-as-source-protection
+    - snapshot.storage.kubernetes.io/volumesnapshot-bound-protection
+  generation: 1
+  name: source-pvc-1705402801
+  namespace: demo
+  resourceVersion: "11593"
+  uid: b5692a5b-8834-48dc-9185-56ed9a2fa124
+spec:
+  source:
+    persistentVolumeClaimName: source-pvc
+  volumeSnapshotClassName: csi-snapshot-class
+status:
+  boundVolumeSnapshotContentName: snapcontent-b5692a5b-8834-48dc-9185-56ed9a2fa124
+  creationTime: "2024-01-16T11:00:10Z"
+  readyToUse: true
+  restoreSize: 1Gi

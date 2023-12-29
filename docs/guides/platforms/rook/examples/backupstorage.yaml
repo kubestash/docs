@@ -1,0 +1,19 @@
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
+metadata:
+  name: rook-storage
+  namespace: demo
+spec:
+  storage:
+    provider: s3
+    s3:
+      secretName: rook-secret
+      endpoint: 'http://rook-ceph-rgw-my-store-external.rook-ceph.svc'
+      bucket: rook-bucket
+      region: us-east-1
+      prefix: /demo
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut

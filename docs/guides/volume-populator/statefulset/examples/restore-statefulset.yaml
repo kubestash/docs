@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sample-restored-sts
+  namespace: demo
+  labels:
+    app: demo-busybox
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: demo-busybox
+  serviceName: busybox
+  template:
+    metadata:
+      labels:
+        app: demo-busybox
+    spec:
+      containers:
+        - name: busybox
+          image: busybox
+          command: ["/bin/sh", "-c","sleep 3000"]
+          volumeMounts:
+            - name: restored-source-data
+              mountPath: "/source/data"
+          imagePullPolicy: IfNotPresent
+  volumeClaimTemplates:
+    - metadata:
+        name: restored-source-data
+        annotations:
+          populator.kubestash.com/app-name: sample-restored-sts
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 256Mi
+        dataSourceRef:
+          apiGroup: storage.kubestash.com
+          kind: Snapshot
+          name: gcs-demo-repo-sample-backup-sts-demo-session-1707900900

@@ -1,13 +1,22 @@
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: local-repo-with-nfs
+  name: local-storage-with-nfs
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: local
     local:
       mountPath: /safe/data
       nfs:
         server: "nfs-service.storage.svc.cluster.local" # use you own NFS server address
         path: "/" # this path is relative to "/exports" path of NFS server
-    storageSecretName: local-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: false
+  deletionPolicy: WipeOut
+  runtimeSettings:
+    pod:
+      securityContext:
+        fsGroup: 65535 # Give file system group permission

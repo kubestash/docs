@@ -1,12 +1,21 @@
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: local-repo-with-hostpath
+  name: local-storage-with-hostpath
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: local
     local:
       mountPath: /safe/data
       hostPath:
-        path: /data/stash-test/repo
-    storageSecretName: local-secret
+        path: /data/kubestash-test/storage
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut
+  runtimeSettings:
+    pod:
+      securityContext:
+        runAsUser: 0 # Give run as a root permission

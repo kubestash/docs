@@ -1,0 +1,23 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: restore-pvc
+  namespace: demo
+spec:
+  dataSource:
+    repository: gcs-repository
+    snapshot: latest
+  addon:
+    name: pvc-addon
+    tasks:
+      - name: VolumeSnapshotRestore
+        targetVolumes:
+          volumeClaimTemplates:
+            - metadata:
+                name: restore-source-pvc
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                storageClassName: "csi-standard"
+                resources:
+                  requests:
+                    storage: 1Gi
