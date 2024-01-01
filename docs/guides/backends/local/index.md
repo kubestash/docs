@@ -36,7 +36,7 @@ that you must give file system group permission, achieved by specifying `spec.se
 
 Here, we are going to show some sample `BackupStorage` objects that uses different Kubernetes volume as a backend.
 
-##### HostPath volume as Backend
+### HostPath volume as Backend
 
 Below, the YAML of a sample `BackupStorage` object that uses a `hostPath` volume as a backend.
 
@@ -75,7 +75,7 @@ backupstorage.storage.kubestash.com/local-storage-with-hostpath created
 So, in order to use `hostPath` volume as a backend, you must either run initializer job as the `root` user, achieved by specifying 
 `spec.securityContext.pod.runAsUser` in the BackupStorage configuration, or adjust the permissions of the `hostPath` to allow write access for `non-root` users.
 
-##### PersistentVolumeClaim as Backend
+### PersistentVolumeClaim as Backend
 
 Below, the YAML of a sample `BackupStorage` crd that uses a `PersistentVolumeClaim` as a backend.
 
@@ -110,7 +110,7 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/local-storage-with-pvc created
 ```
 
-##### NFS volume as Backend
+### NFS volume as Backend
 
 Below, the YAML of a sample `BackupStorage` crd that uses an `NFS` volume as a backend.
 

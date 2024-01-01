@@ -24,16 +24,13 @@ To configure storage secret for this backend, following secret keys are needed:
 
 |         Key          |    Type    |                        Description                         |
 | -------------------- | ---------- | ---------------------------------------------------------- |
-| `AZURE_ACCOUNT_NAME` | `Required` | Azure Storage account name                                 |
 | `AZURE_ACCOUNT_KEY`  | `Required` | Azure Storage account key                                  |
 
 Create storage secret as below,
 
 ```bash
-$ echo -n '<your-azure-storage-account-name>' > AZURE_ACCOUNT_NAME
 $ echo -n '<your-azure-storage-account-key>' > AZURE_ACCOUNT_KEY
 $ kubectl create secret generic -n demo azure-secret \
-    --from-file=./AZURE_ACCOUNT_NAME \
     --from-file=./AZURE_ACCOUNT_KEY
 secret/azure-secret created
 ```
@@ -46,38 +43,46 @@ Following parameters are available for `azure` backend.
 
 | Parameter              |    Type    | Description                                                                                                                             |
 |------------------------| ---------- |-----------------------------------------------------------------------------------------------------------------------------------------|
+| `azure.storageAccount` | `Required` | Name of the Storage account.                                                                                                            |
 | `azure.container`      | `Required` | Name of Storage container.                                                                                                              |
-| `azure.secret`         | `Required` | Specify the name of the Secret that contains the access credential for this storage.                                                             |
+| `azure.secret`         | `Required` | Specify the name of the Secret that contains the access credential for this storage.                                                    |        |
 | `azure.prefix`         | `Optional` | Path prefix inside the container where backed up data will be stored.                                                                   |
 | `azure.maxConnections` | `Optional` | Maximum number of parallel connections to use for uploading backup data. By default, KubeStash will use maximum 5 parallel connections. |
 
 Below, the YAML of a sample `BackupStorage` crd that uses an Azure Blob container as a backend.
 
 ```yaml
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: azure-repo
+  name: azure-storage
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: azure
     azure:
-      container: stash-backup
-      prefix: /demo/deployment/my-deploy
-    storageSecretName: azure-secret
+      storageAccount: kubestash
+      container: kubestash-demo
+      prefix: /backup/demo/deployment/kubestash-demo
+      secret: azure-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut
 ```
 
-Create the `Repository` we have shown above using the following command,
+Create the `BackupStorage` we have shown above using the following command,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/backends/azure/examples/azure.yaml
-repository/azure-repo created
+backupstorage.storage.kubestash.com/azure-storaqge created
 ```
 
-Now, we are ready to use this backend to backup our desired data using Stash.
+Now, we are ready to use this backend to backup our desired data using KubeStash.
 
 ## Next Steps
 
-- Learn how to use Stash to backup workloads data from [here](/docs/guides/workloads/overview/index.md).
-- Learn how to use Stash to backup databases from [here](/docs/guides/addons/overview/index.md).
-- Learn how to use Stash to backup stand-alone PVC from [here](/docs/guides/volumes/overview/index.md).
+- Learn how to use KubeStash to backup workloads data from [here](/docs/guides/workloads/overview/index.md).
+- Learn how to use KubeStash to backup databases from [here](/docs/guides/addons/overview/index.md).
+- Learn how to use KubeStash to backup stand-alone PVC from [here](/docs/guides/volumes/overview/index.md).
