@@ -1,6 +1,6 @@
 ---
-title: Uninstallation Guide | Stash
-description: Stash Unistallation Guide
+title: Uninstallation Guide | KubeStash
+description: KubeStash Unistallation Guide
 menu:
   docs_{{ .version }}:
     identifier: uninstallation-guide
