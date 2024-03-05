@@ -42,13 +42,14 @@ secret/gcs-secret created
 
 ### Create BackupStorage
 
-Now, you have to create a `BackupStorage` crd. You have to provide the storage secret that we have created earlier in `spec.backend.storageSecretName` field.
+Now, you have to create a `BackupStorage` crd. You have to provide the storage secret that we have created earlier in `spec.storage.gcs.SecretName` field.
 
 Following parameters are available for `gcs` backend.
 
-|      Parameter       |    Type    | Description                                                                                                                                                                                                                                            |
-| -------------------- | ---------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Parameter            |    Type    | Description                                                                                                                                                                                                                                            |
+|----------------------| ---------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `gcs.bucket`         | `Required` | Name of Bucket. If the bucket does not exist yet, it will be created in the default location (US). It is not possible at the moment for KubeStash to create a new bucket in a different location, so you need to create it using Google cloud console. |
+| `gcs.secretName`     | `Required` | Specify the name of the Secret that contains the access credential for this storage.                                                                                                                                                                   |
 | `gcs.prefix`         | `Optional` | Path prefix inside the bucket where backed up data will be stored.                                                                                                                                                                                     |
 | `gcs.maxConnections` | `Optional` | Maximum number of parallel connections to use for uploading backup data. By default, KubeStash will use maximum 5 parallel connections.                                                                                                                |
 
@@ -87,5 +88,4 @@ Now, we are ready to use this backend to backup our desired data using KubeStash
 ## Next Steps
 
 - Learn how to use KubeStash to backup workloads data from [here](/docs/guides/workloads/overview/index.md).
-- Learn how to use KubeStash to backup databases from [here](/docs/guides/addons/overview/index.md).
 - Learn how to use KubeStash to backup stand-alone PVC from [here](/docs/guides/volumes/overview/index.md).

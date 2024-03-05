@@ -58,7 +58,7 @@ secret/minio-secret created
 
 ### Create BackupStorage
 
-Now, you have to create a `BackupStorage` object. You have to provide the storage secret that we have created earlier in `spec.storage.s3.secret` field.
+Now, you have to create a `BackupStorage` object. You have to provide the storage secret that we have created earlier in `spec.storage.s3.secretName` field.
 
 Following parameters are available for `S3` backend.
 
@@ -66,12 +66,12 @@ Following parameters are available for `S3` backend.
 |------------------| ---------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `s3.endpoint`    | `Required` | For S3, use `s3.amazonaws.com`. If your bucket is in a different location, S3 server (s3.amazonaws.com) will redirect KubeStash to the correct endpoint. For DigitalOCean, use `nyc3.digitaloceanspaces.com` etc. depending on your bucket region. For S3-compatible other storage services like Minio / Rook use URL of the server. |
 | `s3.bucket`      | `Required` | Name of Bucket. If the bucket does not exist yet it will be created in the default location (`us-east-1` for S3). It is not possible at the moment for KubeStash to create a new bucket in a different location, so you need to create it using a different program.                                                                 |
-| `s3.secret`      | `Required` | Specify the name of the Secret that contains the access credential for this storage.                                                                                                                                                                                                                                                 |
+| `s3.secretName`  | `Required` | Specify the name of the Secret that contains the access credential for this storage.                                                                                                                                                                                                                                                 |
 | `s3.region`      | `Optional` | Specify the region of your bucket.                                                                                                                                                                                                                                                                                                   |
 | `s3.prefix`      | `Optional` | Path prefix inside the bucket where the backed up data will be stored.                                                                                                                                                                                                                                                               |
 | `s3.insecureTLS` | `Optional` | Specify whether to skip TLS certificate verification. Setting this field to `true` disables verification, which might be necessary in cases where the server uses self-signed certificates or certificates from an untrusted CA. Use this option with caution, as it can expose the client to man-in-the-middle attacks and other security risks. Only use it when absolutely necessary. |
 
-Below, the YAML of a sample `Repository` crd that uses an `S3` bucket as a backend.
+Below, the YAML of a sample `BackupStorage` object that uses an `S3` bucket as a backend.
 
 ```yaml
 apiVersion: storage.kubestash.com/v1alpha1
@@ -121,7 +121,7 @@ spec:
   deletionPolicy: WipeOut
 ```
 
-Create the `s3-repo` Repository we have shown above using the following command,
+Create the `s3-storage` BackupStorage we have shown above using the following command,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/backends/s3/examples/minio.yaml
@@ -133,5 +133,4 @@ Now, we are ready to use this backend to backup our desired data using KubeStash
 ## Next Steps
 
 - Learn how to use KubeStash to backup workloads data from [here](/docs/guides/workloads/overview/index.md).
-- Learn how to use KubeStash to backup databases from [here](/docs/guides/addons/overview/index.md).
 - Learn how to use KubeStash to backup stand-alone PVC from [here](/docs/guides/volumes/overview/index.md).

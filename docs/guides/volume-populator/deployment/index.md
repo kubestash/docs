@@ -38,11 +38,11 @@ namespace/demo created
 
 ## Prepare Workload
 
-Here, we are going to deploy a Deployment with two PVCs and generate some sample data in it. Then, we are going to backup of these PVCs using KubeStash.
+Here, we are going to deploy a `Deployment` with two PVCs and generate some sample data in it. Then, we are going to backup of these PVCs using KubeStash.
 
 **Create PersistentVolumeClaim :**
 
-At first, let's create two sample PVCs. We are going to mount these PVCs in our targeted Deployment.
+At first, let's create two sample PVCs. We are going to mount these PVCs in our targeted `Deployment`.
 
 Below is the YAML of the sample PVCs,
 
@@ -75,16 +75,16 @@ spec:
 Let's create the PVCs we have shown above.
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volumesnapshot/deployment/examples/backup-pvcs.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volume-populator/deployment/examples/backup-pvcs.yaml
 persistentvolumeclaim/source-data created
 persistentvolumeclaim/source-config created
 ```
 
 **Deploy Deployment :**
 
-Now, we are going to deploy a Deployment that uses the above PVCs. This Deployment will automatically create `data.txt` and `config.cfg` file in `/source/data` and `/source/config` directory.
+Now, we are going to deploy a `Deployment` that uses the above PVCs. This `Deployment` will automatically create `data.txt` and `config.cfg` file in `/source/data` and `/source/config` directory.
 
-Below is the YAML of the Deployment that we are going to create,
+Below is the YAML of the `Deployment` that we are going to create,
 
 ```yaml
 apiVersion: apps/v1
@@ -126,14 +126,14 @@ spec:
           claimName: source-config
 ```
 
-Let's create the deployment we have shown above.
+Let's create the deployment that we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volume-populator/deployment/examples/backup-deployment.yaml
 deployment.apps/kubestash-deployment created
 ```
 
-Now, wait for the pod of the Deployment to go into the `Running` state.
+Now, wait for the pod of the `Deployment` to go into the `Running` state.
 
 ```bash
 $ kubectl get pods -n demo
@@ -152,9 +152,12 @@ config_data
 ```
 
 ### Prepare Backend
-We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a BackupStorage crd to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
-**Create Storage Secret:**
+Now, we are going to backup the `kubestash-deployment` Deployment in a GCS bucket using KubeStash. We have to create a `Secret` with  necessary credentials and a `BackupStorage` object to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+
+> For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
+
+**Create Secret:**
 
 Let's create a Secret named `gcs-secret` with access credentials of our desired GCS backend,
 
@@ -233,11 +236,13 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 ```
 
 ### Backup
-We have to create a `BackupConfiguration` crd targeting the `kubestash-demo` Deployment that we have deployed earlier. Then, KubeStash will create a `CronJob` for each session to take periodic backup of `source-data`, `source-config` volumes of the target deployment.
 
-At first, we need to create a secret with a `Restic` password for backup data encryption.
+We have to create a `BackupConfiguration` object targeting the `kubestash-demo` Deployment that we have deployed earlier.
+
+we also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
 **Create Secret:**
+
 Let's create a secret called `encry-secret` with the Restic password,
 
 ```bash
@@ -248,6 +253,7 @@ secret "encryption-secret" created
 ```
 
 **Create BackupConfiguration :**
+
 Below is the YAML of the `BackupConfiguration` that we are going to create,
 
 ```yaml
@@ -304,6 +310,7 @@ backupconfiguration.core.kubestash.com/sample-backup-dep created
 **Verify Backup Setup Successful**:
 
 If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful. 
+
 Let's check the `Phase` of the BackupConfiguration,
 
 ```bash
@@ -313,7 +320,7 @@ sample-backup-dep   Ready            2m50s
 ```
 **Verify CronJob:**
 
-It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` crd.
+It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
 
 Check that the `CronJob` has been created using the following command,
 
@@ -336,11 +343,9 @@ NAME                                                    INVOKER-TYPE          IN
 sample-backup-dep-frequent-backup-1705483201            BackupConfiguration   sample-backup-dep            Running              9s
 ```
 
-We can see from the above output that the backup session has succeeded. Now, we are going to verify whether the backed up data has been stored in the backend.
-
 **Verify Backup:**
 
-Once a backup is complete, KubeStash will update the respective `Repository` crd to reflect the backup. Check that the repository `gcs-repository` has been updated by the following command,
+When backup session is complete, KubeStash will update the respective `Repository` object to reflect the backup. Check that the repository `gcs-repository` has been updated by the following command,
 
 ```bash
 $ kubectl get repository -n demo gcs-demo-repo
@@ -350,6 +355,8 @@ gcs-repository    true        1                806 B   Ready   8m27s            
 
 At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
 
+Verify created `Snapshot` object by the following command,
+
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-repository
 NAME                                                          REPOSITORY      SESSION        SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
@@ -358,9 +365,9 @@ gcs-repository-sample-backup-dep-frequent-backup-1706015400   gcs-demo-repo   de
 
 ## Populate Volumes
 
-This section will guide you through the process of populating volumes of a deployment by restoring data previously backed up using KubeStash.
+This section will guide you through the process of populating volumes of a `Deployment` by restoring previously backed up data using KubeStash.
 
-Now, we need to create new Persistent Volume Claims (PVCs) with the `spec.dataSourceRef` set to reference our `snapshot` object. These PVCs will contain the restored data.
+Now, we need to create new Persistent Volume Claims (PVCs) with the `spec.dataSourceRef` set to reference our `Snapshot` object. These PVCs will contain the restored data.
 
 Below is the YAML of the restored PVCs,
 
@@ -404,7 +411,7 @@ spec:
 Here,
 - `spec.dataSourceRef` specifies that which `snapshot` we want to restore into our populate volume. we are referencing a `snapshot` object that we have backed up in the previous section.
 - `metadata.annotations.populator.kubestash.com/app-name` field is mandatory  for any volume population of a deployment through KubeStash.
-  - This field denotes the deployment that will attached those volumes via mount paths. The volume population will only be successful if the mount path of this volume matches the mount paths of the backup deployment.
+  - This field denotes the deployment that will be attached those volumes via mount paths. The volume population will only be successful if the mount path of this volume matches the mount paths of the backup deployment.
   - For example, you backed up a deployment with volumes named `source-data` and `source-config`, each with corresponding mount paths `/source/data` and `/source/config`. Now you wish to populate volumes named `restore-source-data` and `restore-source-config` attached to a deployment named `restored-kubestash-deployment`, then this deployment must have mount paths set to `/source/data` and `/source/config`, respectively.
 
 Let's create the PVCs YAMl that we have shown above.
@@ -417,9 +424,9 @@ persistentvolumeclaim/restored-source-config created
 
 **Deploy Deployment :**
 
-Now, we are going to deploy a Deployment that uses the above PVCs. This Deployment has mount paths `/source/data` and `/source/config` corresponding to volumes named `restored-source-data` and `restored-source-config` respectively.
+Now, we are going to deploy a `Deployment` that uses the above PVCs. This `Deployment` has mount paths `/source/data` and `/source/config` corresponding to volumes named `restored-source-data` and `restored-source-config` respectively.
 
-Below is the YAML of the Deployment that we are going to create,
+Below is the YAML of the `Deployment` that we are going to create,
 
 ```yaml
 apiVersion: apps/v1
@@ -469,7 +476,9 @@ deployment.apps/restored-kubestash-deployment created
 
 **Wait for Populate Volume:**
 
-Now, wait for the volume populate process to complete. You can watch the `PVCs` status using the following command,
+When you create two `PVCs` with `spec.dataSourceRef` set and refers our `Snapshot` object, KubeStash will create a restore Job. Now, wait for the volume populate process to complete. 
+
+You can watch the `PVCs` status using the following command,
 
 ```bash
 $ watch kubectl get pvc -n demo 
@@ -486,7 +495,7 @@ From the output of the above command, we can see that `PVCs` status is `Bound` t
 
 **Verify Restored Data :**
 
-We are going to exec a pod of `restored-dep` deployment to verify whether the volume population with the backed up data has been restored successfully.
+We are going to exec a pod of `restored-dep` deployment to verify whether the volume population with the backed up data has been restored successfully or not.
 
 Now, wait for the deployment pod to go into the `Running` state.
 

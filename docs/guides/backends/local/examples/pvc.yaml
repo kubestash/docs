@@ -18,4 +18,4 @@ spec:
   runtimeSettings:
     pod:
       securityContext:
-        fsGroup: 65535 # Give file system group permission
+        fsGroup: 65534 # Give file system group permission

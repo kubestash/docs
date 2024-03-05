@@ -45,40 +45,13 @@ namespace/demo created
 
 In this section, we are going to configure a backup for all the resource YAMLs of `kube-system` namespace.
 
-#### Ensure `kubedump` Addon
-
-**Verify necessary Addons and Functions:**
-
-When you install KubeStash, it automatically creates the necessary `Addon` and `Function` to backup Kubernetes Resource YAML.
-
-Let's verify that KubeStash has created the necessary `Function` to backup Kubernetes Resource YAML by the following command,
-
-```bash
-$ kubectl get functions | grep 'kubedump'
-kubedump-backup          142m
-```
-
-Also, verify that the necessary `Addon` has been created,
-
-```bash
-❯ kubectl get addons | grep 'kubedump'
-kubedump-addon   143m
-```
-
-Now, you can view all `BackupTasks` and `RestoreTasks` of the `pvc-addon` addon using the following command
-
-```bash
-❯ kubectl get addon kubedump-addon -o=jsonpath='{.spec.backupTasks[*].name}'| tr ' ' '\n'
-manifest-backup
-```
-
 #### Prepare Backend
 
 Now, we are going to store our backed-up data into a GCS bucket using KubeStash. We have to create a Secret and a `BackupStorage` object with access credentials and backend information respectively. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
-**Create Storage Secret:**
+**Create Secret:**
 
 At first, let's create a secret called `gcs-secret` with access credentials to our desired GCS bucket,
 
@@ -124,22 +97,9 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-repo created
 ```
 
-Now, we also have to create another secret with an encryption key `RESTIC_PASSWORD` for Restic. This secret will be used by Restic for both encrypting and decrypting the backup data during backup & restore.
-
-**Create Restic Repository Secret:**
-
-Let's create a Secret named `encryption-secret` with an encryption key `RESTIC_PASSWORD` for Restic.
-
-```bash
-$ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encryption-secret \
-    --from-file=./RESTIC_PASSWORD 
-secret/encryption-secret created
-```
+**Create RetentionPolicy:**
 
 Now, we have to create a `RetentionPolicy` custom resource which specifies how the old `Snapshots` should be cleaned up.
-
-**Create RetentionPolicy:**
 
 Below is the YAML of the `RetentionPolicy` object that we are going to create,
 
@@ -167,7 +127,6 @@ Let's create the `RetentionPolicy` object that we have shown above,
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/cluster/examples/retentionpolicy.yaml
 retentionpolicy.storage.kubestash.com/demo-retention created
 ```
-
 
 #### Create RBAC
 
@@ -218,7 +177,21 @@ Now, we are ready for backup. In the next section, we are going to schedule a ba
 
 ### Backup
 
-To schedule a backup, we have to create a `BackupConfiguration` object. Then KubeStash will create a CronJob to periodically backup the database.
+To schedule a backup, we have to create a `BackupConfiguration` object.
+
+we also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
+
+**Create Secret:**
+
+Let's create a secret named `encry-secret` with the Restic password.
+
+```bash
+$ echo -n 'changeit' > RESTIC_PASSWORD
+$ kubectl create secret generic -n demo encryption-secret \
+    --from-file=./RESTIC_PASSWORD 
+secret/encryption-secret created
+```
+
 
 #### Create BackupConfiguration
 
@@ -264,13 +237,6 @@ spec:
 ```
 
 Here,
-
-- `spec.target` specifies the backup target. `apiGroup`, `kind`, `namespace` and `name` refers to the `apiGroup`, `kind`, `namespace` and `name` of the targeted workload respectively.
-- `spec.sessions[*].scheduler.schedule` specifies a [cron expression](https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule) indicates that `BackupSession` will be created at 5 minute interval.
-- `spec.sessions[*].repositories[*].name` specifies the name of the `Repository` object that holds the backend information.
-- `spec.sessions[*].repositories[*].backend` specifies the name of the backend that holds the `BackupStorage` information.
-- `spec.sessions[*].repositories[*].directory` specifies the path of the `Repository` where the backed up data will be stored.
-- `spec.sessions[*].repositories[*].encryptionSecret` specifies the encryption secret for `Restic Repository` which will be used to encrypting the backup data.
 - `spec.sessions[*].addon.name` specifies the name of the `Addon` object that specifies addon configuration that will be used to perform backup of a stand-alone PVC.
 - `spec.sessions[*].addon.tasks[*].name` specifies the name of the `Task` that holds the `Function` and their order of execution to perform backup of a stand-alone PVC.
 

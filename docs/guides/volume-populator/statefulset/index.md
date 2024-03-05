@@ -38,9 +38,10 @@ namespace/demo created
 
 ## Prepare Workload
 
-At first, We are going to deploy a StatefulSet with a PVC `source-data`. This StatefulSet will automatically generate sample data in `/source/data` directory.
+At first, We are going to deploy a `StatefulSet` with a PVC. This `StatefulSet` will automatically generate sample data in `/source/data` directory.
 
 Below is the YAML of the StatefulSet that we are going to create,
+
 ```yaml
 apiVersion: v1
 kind: Service
@@ -96,15 +97,16 @@ spec:
           requests:
             storage: 256Mi
 ```
+
 Let's create the StatefulSet we have shown above.
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/statefulset/examples/statefulset.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volume-populator/statefulset/examples/statefulset.yaml
 service/busybox created
 statefulset.apps/sample-sts created
 ```
 
-Now, wait for the pods of the StatefulSet to go into the `Running` state.
+Now, wait for the pods of the `StatefulSet` to go into the `Running` state.
 
 ```bash
 $ kubectl get pod -n demo
@@ -113,6 +115,7 @@ sample-sts-0   1/1     Running   0          42s
 sample-sts-1   1/1     Running   0          40s
 sample-sts-2   1/1     Running   0          36s
 ```
+
 Verify that the sample data has been generated in `/source/data` directory for `sample-sts-0` , `sample-sts-1` and `sample-sts-2` pod respectively using the following commands,
 
 ```bash
@@ -125,12 +128,14 @@ sample-sts-2
 ```
 
 ### Prepare Backend
-We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a BackupStorage crd to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
-**Create Storage Secret:**
+Now, we are going to backup the `sample-sts` StatefulSet in a GCS bucket using KubeStash. We have to create a `Secret` with  necessary credentials and a `BackupStorage` object to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+
+> For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
+
+**Create Secret:**
 
 Let's create a Secret named `gcs-secret` with access credentials of our desired GCS backend,
-
 ```bash
 $ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
 $ cat /path/to/downloaded/sa_key_file.json > GOOGLE_SERVICE_ACCOUNT_JSON_KEY
@@ -207,7 +212,7 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ### Backup
 
-We have to create a `BackupConfiguration` crd targeting the `sample-sts` StatefulSet that we have deployed earlier. KubeStash will create a `CronJob` for each session to take periodic backup of `/source/data` directory of the target.
+We have to create a `BackupConfiguration` object targeting the `sample-sts` StatefulSet that we have deployed earlier.
 
 At first, we need to create a secret with a Restic password for backup data encryption.
 
@@ -280,7 +285,9 @@ backupconfiguration.core.kubestash.com/sample-backup-sts created
 
 **Verify Backup Setup Successful**
 
-If everything goes well, the phase of the `BackupConfiguration` should be `Ready`. The `Ready` phase indicates that the backup setup is successful. Let's verify the `Phase` of the BackupConfiguration,
+If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful.
+
+Let's check the `Phase` of the BackupConfiguration,
 
 ```bash
 $ kubectl get backupconfiguration -n demo
@@ -290,9 +297,9 @@ sample-backup-sts   Ready            2m50s
 
 **Verify CronJob:**
 
-It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` crd.
+It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
 
-Verify that the `CronJob` has been created using the following command,
+Check that the `CronJob` has been created using the following command,
 
 ```bash
 $ kubectl get cronjob -n demo
@@ -302,7 +309,7 @@ trigger-sample-backup-sts-demo-session   */5 * * * *             0        2m45s 
 
 **Wait for BackupSession:**
 
-Wait for the next schedule for backup. Run the following command to watch `BackupSession` crd,
+Now, wait for the next backup schedule. You can watch for `BackupSession` object using the following command,
 
 ```bash
 $ kubectl get backupsession -n demo -w
@@ -310,11 +317,9 @@ NAME                                        INVOKER-TYPE          INVOKER-NAME  
 sample-backup-sts-demo-session-1706015400   BackupConfiguration   sample-backup-sts   Succeeded              7m22s
 ```
 
-We can see from the above output that the backup session has succeeded. Now, we are going to verify whether the backed up data has been stored in the backend.
-
 **Verify Backup:**
 
-Once a backup is complete, KubeStash will update the respective `Repository` crd to reflect the backup. Check that the repository `gcs-repository` has been updated by the following command,
+When backup session is complete, KubeStash will update the respective `Repository` object to reflect the backup. Check that the repository `gcs-repository` has been updated by the following command,
 
 ```bash
 $ kubectl get repository -n demo gcs-demo-repo
@@ -322,7 +327,11 @@ NAME              INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-B
 gcs-repository    true        1                806 B   Ready   8m27s                    9m18s
 ```
 
+Once a backup is complete, KubeStash will update the respective `Repository` crd to reflect the backup. Check that the repository `gcs-repository` has been updated by the following command,
+
 At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+
+Verify created `Snapshot` object by the following command,
 
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-repository
@@ -332,9 +341,9 @@ gcs-repository-sample-backup-sts-frequent-backup-1706015400   gcs-demo-repo   de
 
 ## Populate Volumes
 
-This section will guide you through the process of populating volumes of a `StatefulSet` by restoring data previously backed up using KubeStash.
+This section will guide you through the process of populating volumes of a `StatefulSet` by restoring previously backed up data using KubeStash.
 
-Now, we need to create a new StatefulSet along with a PersistentVolumeClaim (PVC). This PVC configure with `spec.dataSourceRef` pointing to our `snapshot` object. Kubestash will populate volume with the restored data from dataSourceRef pointing snapshot and attach it to this PVC. As a result, the PVC will contain the data that has been restored.
+Now, we need to create a new `StatefulSet` along with a PersistentVolumeClaim (PVC) using `VolumeClaimTemplates`. This PVC configure with `spec.dataSourceRef` pointing to our `Snapshot` object. KubeStash will populate volume with the restored data from pointing snapshot and attach it to corresponding PVCs. As a result, this PVCs will contain the data that has been restored.
 
 Below is the YAML of the restored StatefulSet,
 
@@ -382,10 +391,10 @@ spec:
 ```
 Here,
 - `spec.dataSourceRef` specifies that which `snapshot` we want to restore into our populate volume. we are referencing a `snapshot` object that we have backed up in the previous section.
-- `metadata.annotations.populator.kubestash.com/app-name` field is mandatory for any volume population of a statefulset through KubeStash.
-  - This field denotes the statefulset that will attached those volumes via mount paths. The volume population will only be successful if the mount path of this volume matches the mount paths of the backup statefulset.
+- `metadata.annotations.populator.kubestash.com/app-name` field is mandatory for any volume population of a StatefulSet through KubeStash.
+  - This field denotes the StatefulSet that will be attached those volumes via mount paths. The volume population will only be successful if the mount path of this volume matches the mount paths of the backup StatefulSet.
 
-Let's create the statefulset we have shown above.
+Let's create the StatefulSet we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volume-populator/statefulset/examples/restore-statefulset.yaml
@@ -394,7 +403,9 @@ statefulset.apps/sample-restored-sts created
 
 **Wait for Populate Volume:**
 
-Now, wait for the volume populate process to complete. You can watch the `PVCs` status using the following command,
+When `StatefulSet` create `PVC` with `spec.dataSourceRef` set and refers our `Snapshot` object for each replica, KubeStash will create a restore Job each of them. Now, wait for the volume populate process to complete. 
+
+You can watch the `PVCs` status using the following command,
 
 ```bash
 $ watch kubectl get pvc -n demo 
@@ -411,9 +422,9 @@ From the output of the above command, we can see that `PVCs` status is `Bound` t
 
 **Verify Restored Data :**
 
-We are going to exec any pod of `sample-restored-sts` statefulset to verify whether the volume population with the backed up data has been restored successfully.
+We are going to exec any pod of `sample-restored-sts` StatefulSet to verify whether the volume population with the backed up data has been restored successfully.
 
-Now, wait for the statefulset pod to go into the `Running` state.
+Now, wait for the StatefulSet pod to go into the `Running` state.
 
 ```bash
 $ kubectl get pods -n demo 

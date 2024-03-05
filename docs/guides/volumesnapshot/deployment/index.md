@@ -6,7 +6,7 @@ menu:
     identifier: volume-snapshot-deployment
     name: Snapshot Deployment Volumes
     parent: volume-snapshot
-    weight: 20
+    weight: 30
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: guides
@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Snapshotting the volumes of a Deployment
 
-This guide will show you how to use KubeStash to snapshot the volumes of a Deployment and restore them from the snapshots using Kubernetes [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) API. In this guide, we are going to backup the volumes in Google Cloud Platform with the help of [GCE Persistent Disk CSI Driver](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver).
+This guide will show you how to use KubeStash to snapshot the volumes of a `Deployment` and restore them from the snapshots using Kubernetes [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) API. In this guide, we are going to backup the volumes in Google Cloud Platform with the help of [GCE Persistent Disk CSI Driver](https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver).
 
 ## Before You Begin
 
@@ -79,11 +79,11 @@ namespace/demo created
 
 ## Take Volume Snapshot
 
-Here, we are going to deploy a Deployment with two PVCs and generate some sample data in it. Then, we are going to take snapshot of these PVCs using Stash.
+Here, we are going to deploy a `Deployment` with two PVCs and generate some sample data in it. Then, we are going to take snapshot of these PVCs using KubeStash.
 
 **Create PersistentVolumeClaim :**
 
-At first, let's create two sample PVCs. We are going to mount these PVCs in our targeted Deployment.
+At first, let's create two sample PVCs. We are going to mount these PVCs in our targeted `Deployment`.
 
 Below is the YAML of the sample PVCs,
 
@@ -125,7 +125,7 @@ persistentvolumeclaim/source-config created
 
 **Deploy Deployment :**
 
-Now, we are going to deploy a Deployment that uses the above PVCs. This Deployment will automatically create `data.txt` and `config.cfg` file in `/source/data` and `/source/config` directory.
+Now, we are going to deploy a `Deployment` that uses the above PVCs. This `Deployment` will automatically create `data.txt` and `config.cfg` file in `/source/data` and `/source/config` directory.
 
 Below is the YAML of the Deployment that we are going to create,
 
@@ -169,14 +169,14 @@ spec:
           claimName: source-config
 ```
 
-Let's create the deployment we have shown above.
+Let's create the `Deployment` we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volumesnapshot/deployment/examples/deployment.yaml
 deployment.apps/kubestash-demo created
 ```
 
-Now, wait for the pod of the Deployment to go into the `Running` state.
+Now, wait for the pod of the `Deployment` to go into the `Running` state.
 
 ```bash
 $ kubectl get pod -n demo
@@ -193,15 +193,15 @@ $ kubectl exec -n demo kubestash-demo-5f7fcd67c8-4z766 -- cat /source/config/con
 config_data
 ```
 
-## Backup
+## Prepare Backend
 
-Now, we are going to taking `VolumeSnapshot` of the Deployment `kubestash-demo` PVCs using KubeStash. We have to create a `Secret` and a `BackupStorage` object with access credentials and backend information respectively.
+Now, we are going to taking `VolumeSnapshot` of the Deployment `kubestash-demo` PVCs using KubeStash. We have to create a `Secret` with  necessary credentials and a `BackupStorage` object to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
-**Create Storage Secret:**
+**Create Secret:**
 
-Let's create a Secret named `gcs-secret` with access credentials of our desired GCS backend,
+Let's create a `Secret` named `gcs-secret` with access credentials of our desired GCS backend,
 
 ```bash
 $ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
@@ -214,7 +214,7 @@ secret/gcs-secret created
 
 **Create BackupStorage:**
 
-Now, create a `BackupStorage` custom resource specifying the desired bucket, and directory inside the bucket where the backed up data will be stored.
+Now, create a `BackupStorage` object specifying the desired bucket, and directory inside the bucket where the backed up data will be stored.
 
 Below is the YAML of `BackupStorage` object that we are going to create,
 
@@ -245,9 +245,12 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
-Now, we have to create a `RetentionPolicy` custom resource which specifies how the old `Snapshots` should be cleaned up.
+Now, we are ready to backup our target volume into this backend.
+
 
 **Create RetentionPolicy:**
+
+Now, we have to create a `RetentionPolicy` object to specify how the old `Snapshots` should be cleaned up.
 
 Below is the YAML of the `RetentionPolicy` object that we are going to create,
 
@@ -268,6 +271,7 @@ spec:
     allowedNamespaces:
       from: Same
 ```
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy]().
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -276,11 +280,11 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 retentionpolicy.storage.kubestash.com/demo-retention created
 ```
 
-We are ready. Now, we have to create a `BackupConfiguration` custom resource targeting Deployment `kubestash-demo`.
+## Backup
+
+Now, we have to create a `BackupConfiguration` custom resource targeting the `kubestash-demo` Deployment that we have created earlier.
 
 **Create BackupConfiguration :**
-
-Now, create a `BackupConfiguration` custom resource to take `volumeSnapshot` of the `kubestash-demo` Deployment.
 
 Below is the YAML of the `BackupConfiguration` that we are going to create,
 
@@ -324,14 +328,7 @@ spec:
               volumeSnapshotClassName: csi-snapshot-class
 ```
 Here,
-- `spec.target` specifies the backup target. `apiGroup`, `kind`, `namespace` and `name` refers to the `apiGroup`, `kind`, `namespace` and `name` of the targeted workload respectively.
-- `spec.sessions[*].scheduler.schedule` specifies a [cron expression](https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule) indicates that `BackupSession` will be created at 5 minute interval.
-- `spec.sessions[*].repositories[*].name` specifies the name of the `Repository` object that holds the backend information.
-- `spec.sessions[*].repositories[*].backend` specifies the name of the backend that holds the `BackupStorage` information.
-- `spec.sessions[*].repositories[*].directory` specifies the path of the `Repository` where the backed up data will be stored.
-- `spec.sessions[*].addon.name` specifies the name of the `Addon` object that specifies addon configuration that will be used to perform backup of a stand-alone PVC.
-- `spec.sessions[*].addon.tasks[*].name` specifies the name of the `Task` that holds the `Function` and their order of execution to perform backup of a stand-alone PVC.
-- `spec.sessions[*].addon.tasks[*].params.volumeSnapshotClassName` indicates the [VolumeSnapshotClass](https://kubernetes.io/docs/concepts/storage/volume-snapshot-classes/) to be used for volume snapshotting. If we don't provide any then kubestash use default `volumeSnapshotClass` for volume snapshotting.
+- `spec.sessions[*].addon.tasks[*].params.volumeSnapshotClassName` indicates the [VolumeSnapshotClass](https://kubernetes.io/docs/concepts/storage/volume-snapshot-classes/) to be used for volume snapshotting. If we don't provide any then KubeStash use default `volumeSnapshotClass` for volume snapshotting.
 
 Let's create the `BackupConfiguration` object we have shown above.
 
@@ -349,21 +346,10 @@ $ kubectl get backupconfiguration -n demo
 NAME                          PHASE   PAUSED   AGE
 deployment-volume-snapshot    Ready            12s
 ```
-**Verify Repository:**
-
-Verify that KubeStash has created `Repositories` that holds the `BackupStorage` information by the following command,
-
-```bash
-$ kubectl get repositories -n demo
-NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repository                                       Ready                            28s
-```
 
 **Verify CronJob:**
 
-If everything goes well, KubeStash will create a `CronJob` to take periodic `VolumeSnapshot` of `source-data`, `source-config` volumes of the Deployment with the schedule specified in `spec.schedule` field of `BackupConfiguration` object.
-
-Check that the `CronJob` has been created using the following command,
+Verify that KubeStash has created a `CronJob` to trigger a periodic backup of the targeted `Deployment` by the following command,
 
 ```bash
 $ kubectl get cronjob -n demo
@@ -384,7 +370,18 @@ NAME                                                    INVOKER-TYPE          IN
 deployment-volume-snapshot-frequent-backup-1705483201   BackupConfiguration   deployment-volume-snapshot   Running              9s
 ```
 
-Once a `BackupSession` object is created, it creates a `Snapshot` custom resource for each `Repository`. This snapshot `spec.status.components` section represents the backup information of the targeted backup components.
+**Verify Backup:**
+
+Once a backup is complete, KubeStash will update the respective `Repository` object to reflect the backup. Check that the repository `gcs-repository` has been updated by the following command,
+
+```bash
+$ kubectl get repositories -n demo
+NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-repository   true        1                2.262 KiB   Ready   103s                     72s
+
+```
+
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
 
 Verify created `Snapshot` object by the following command,
 
@@ -396,6 +393,9 @@ Every 1.0s: kubectl get snapshot -n demo -l=kubestash.com/repo-name=gcs-reposito
 NAME                                                              REPOSITORY       SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       VERIFICATION-STATUS   AGE
 gcs-repository-deployment-volumeshot-frequent-backup-1705483201   gcs-repository   frequent-backup   2024-01-17T09:20:04Z   Delete            Succeeded                         56s
 ```
+
+> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: PersistentVolumeClaim`, `kubestash.com/app-ref-name: <volume-name>`, `kubestash.com/app-ref-namespace: <volume-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+
 Now, retrieve the YAML representation of the above created `Snapshot`, and inspect the `spec.status` section to see the backup information of the targeted backup components.
 
 ```bash
@@ -429,7 +429,7 @@ status:
 
 Here,
 - `spec.status.components` specifies the backup information of the backup target components.
-- `spec.status.components.[<component-name>].volumeSnapshotterStats` specifies the information about the `VolumeSnapshotter` driver. In the case of a deployment `PVC`, the component name is designated as `volumesnapshot`.
+- `spec.status.components.[<component-name>].volumeSnapshotterStats` specifies the information about the `VolumeSnapshotter` driver. In the case of a deployment `PVCs`, the component name is designated as `volumesnapshot`.
   - `volumeSnapshotterStats.hostPath` specifies the corresponding path of `PVC` volume for which `volumeSnapshot` has created.
   - `volumeSnapshotterStats.pvcName` specifies the name of the backed-up target `PVC` volume.
   - `volumeSnapshotterStats.volumeSnapshotName` specifies the created `VolumeSnapshot` object name corresponding to the target `PVC` volume.
@@ -486,7 +486,7 @@ Here, `spec.status.boundVolumeSnapshotContentName` field specifies the name of t
 </figure>
 
 
-## Restore PVCs from VolumeSnapshots
+## Restore
 
 This section will show you how to restore the PVCs from the snapshots we have taken in the previous section.
 
@@ -529,11 +529,6 @@ spec:
 ```
 
 Here,
-
-- `spec.dataSource.repository` specifies the name of the `Repository` from which the data will be restored.
-- `spec.dataSource.snapshot` specifies that we want to restore the latest snapshot of the `gcs-repository`. KubeStash retrieves `VolumeSnapshot` information from the `status.components[*]` field of this snapshot.
-- `spec.addon.name` specifies the name of the `Addon` object that specifies addon configuration that will be used to perform restore of a stand-alone PVC.
-- `spec.addon.tasks[*].name` specifies the name of the `Task` that holds the `Function` and their order of execution to perform restore of a stand-alone PVC.
 - `spec.addon.targetVolumes.volumeClaimTemplates[*]`:
   - `metadata.name` is a template for the name of the restored `PVC`. KubeStash will create `PVC` with the specified name.
 
@@ -542,17 +537,17 @@ Let's create the `RestoreSession` crd we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volumesnapshot/deployment/examples/restoresession.yaml
-restoresession.stash.appscode.com/restore-pvc created
+restoresession.core.kubestash.com/restore-deployment-pvc created
 ```
 
-Once, you have created the `RestoreSession` crd, Stash will create a job to restore. We can watch the `RestoreSession` phase to check if the restore process has been succeeded or not.
+Once, you have created the `RestoreSession` object, KubeStash will create a job to restore. We can watch the `RestoreSession` phase to check if the restore process has been succeeded or not.
 
 Run the following command to watch RestoreSession phase,
 
 ```bash
 $ watch -n 1 kubectl get -n demo restoresession 
 
-Every 1.0s: kubectl get -n demo restoresession                                       anisur: Wed Jan 17 15:28:39 2024
+Every 1.0s: kubectl get -n demo restoresession                  workstation: Wed Jan 17 15:28:39 2024
 
 NAME                     REPOSITORY       FAILURE-POLICY   PHASE       DURATION   AGE
 restore-deployment-pvc   gcs-repository                    Running     27s        62s
@@ -578,13 +573,11 @@ Notice the `STATUS` field. It indicates that the respective PV has been provisio
 
 > The [volumeBindingMode](https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode) field controls when volume binding and dynamic provisioning should occur. Kubernetes allows `Immediate` and `WaitForFirstConsumer` modes for binding volumes. The `Immediate` mode indicates that volume binding and dynamic provisioning occurs once the PVC is created and `WaitForFirstConsumer` mode indicates that volume binding and provisioning does not occur until a pod is created that uses this PVC. By default `volumeBindingMode` is `Immediate`.
 
-> If you use `volumeBindingMode: WaitForFirstConsumer`, respective PVC will be initialized from respective VolumeSnapshot after you create a workload with that PVC. In this case, Stash will mark the restore session as completed with phase `Unknown`.
-
 **Verify Restored Data :**
 
-We are going to create a new Deployment with the restored PVCs to verify whether the backed up data has been restored.
+We are going to create a new `Deployment` with the restored PVCs to verify whether the backed up data has been restored.
 
-Below is the YAML of the Deployment that we are going to create,
+Below is the YAML of the `Deployment` that we are going to create,
 
 ```yaml
 apiVersion: apps/v1
@@ -627,7 +620,7 @@ spec:
           claimName: restore-config
 ```
 
-Let's create the deployment we have shown above.
+Let's create the `Deployment` we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volumesnapshot/deployment/examples/restored-deployment.yaml

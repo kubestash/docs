@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Backup YAMLs of an Application using KubeStash
 
-KubeStash `{{< param "info.version" >}}` supports taking backup of the resource YAMLs using `kubedump` plugin. This guide will show you how you can take a backup of the YAMLs of an application along with it's dependant using KubeStash.
+This guide will show you how you can take a backup of the YAMLs of an application along with it's dependant using KubeStash.
 
 ## Before You Begin
 
@@ -36,46 +36,19 @@ You have to be familiar with the following custom resources:
 To keep things isolated, we are going to use a separate namespace called `demo` throughout this tutorial. Create the `demo` namespace if you haven't created it already.
 
 ```bash
-❯ kubectl create ns demo
+$ kubectl create ns demo
 namespace/demo created
 ```
 
 > Note: YAML files used in this tutorial are stored [here](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/addons/kubedump/application/examples).
 
-#### Ensure `kubedump` Addon
-
-**Verify necessary Addons and Functions:**
-
-When you install KubeStash, it automatically creates the necessary `Addon` and `Function` to backup Kubernetes Resource YAML.
-
-Let's verify that KubeStash has created the necessary `Function` to backup Kubernetes Resource YAML by the following command,
-
-```bash
-$ kubectl get functions | grep 'kubedump'
-kubedump-backup          142m
-```
-
-Also, verify that the necessary `Addon` has been created,
-
-```bash
-❯ kubectl get addons | grep 'kubedump'
-kubedump-addon   143m
-```
-
-Now, you can view all `BackupTasks` and `RestoreTasks` of the `pvc-addon` addon using the following command
-
-```bash
-❯ kubectl get addon kubedump-addon -o=jsonpath='{.spec.backupTasks[*].name}'| tr ' ' '\n'
-manifest-backup
-```
-
 #### Prepare Backend
 
-Now, we are going to store our backed-up data into a GCS bucket using KubeStash. We have to create a Secret and a `BackupStorage` object with access credentials and backend information respectively. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+Now, we are going backup of the YAMLs of an application in a GCS bucket using KubeStash. We have to create a `Secret` with  necessary credentials and a `BackupStorage` object to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
-**Create Storage Secret:**
+**Create Secret:**
 
 At first, let's create a secret called `gcs-secret` with access credentials to our desired GCS bucket,
 
@@ -121,22 +94,10 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-repo created
 ```
 
-Now, we also have to create another secret with an encryption key `RESTIC_PASSWORD` for Restic. This secret will be used by Restic for both encrypting and decrypting the backup data during backup & restore.
-
-**Create Restic Repository Secret:**
-
-Let's create a Secret named `encryption-secret` with an encryption key `RESTIC_PASSWORD` for Restic.
-
-```bash
-$ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encryption-secret \
-    --from-file=./RESTIC_PASSWORD 
-secret/encryption-secret created
-```
-
-Now, we have to create a `RetentionPolicy` custom resource which specifies how the old `Snapshots` should be cleaned up.
 
 **Create RetentionPolicy:**
+
+Now, we have to create a `RetentionPolicy` object to specify how the old `Snapshots` should be cleaned up.
 
 Below is the YAML of the `RetentionPolicy` object that we are going to create,
 
@@ -157,6 +118,8 @@ spec:
     allowedNamespaces:
       from: Same
 ```
+
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -206,7 +169,7 @@ Here, we have give permission to read all the cluster resources. You can restric
 Let's create the RBAC resources we have shown above,
 
 ```bash
-❯ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/application/examples/rbac.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/application/examples/rbac.yaml
 serviceaccount/cluster-resource-reader created
 clusterrole.rbac.authorization.k8s.io/cluster-resource-reader created
 clusterrolebinding.rbac.authorization.k8s.io/cluster-resource-reader created
@@ -216,17 +179,30 @@ Now, we are ready for backup. In the next section, we are going to schedule a ba
 
 ### Backup
 
-To schedule a backup, we have to create a `BackupConfiguration` object. Then KubeStash will create a CronJob to periodically backup the database.
+To schedule a backup, we have to create a `BackupConfiguration` object.
 
 At first, lets list available Deployment in `kubestash` namespace.
 
 ```bash
-❯ kubectl get deployments -n kubestash
+$ kubectl get deployments -n kubestash
 NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
 kubestash-kubestash-operator   1/1     1            1           19h
 ```
 
 Here, we are going to setup backup YAMLs for `kubestash-kubestash-operator` Deployment.
+
+we also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
+
+**Create Secret:**
+
+Let's create a secret named `encry-secret` with the Restic password.
+
+```bash
+$ echo -n 'changeit' > RESTIC_PASSWORD
+$ kubectl create secret generic -n demo encryption-secret \
+    --from-file=./RESTIC_PASSWORD 
+secret/encryption-secret created
+```
 
 #### Create BackupConfiguration
 
@@ -279,13 +255,6 @@ spec:
 ```
 
 Here,
-
-- `spec.target` specifies the backup target. `apiGroup`, `kind`, `namespace` and `name` refers to the `apiGroup`, `kind`, `namespace` and `name` of the targeted workload respectively.
-- `spec.sessions[*].scheduler.schedule` specifies a [cron expression](https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#schedule) indicates that `BackupSession` will be created at 5 minute interval.
-- `spec.sessions[*].repositories[*].name` specifies the name of the `Repository` object that holds the backend information.
-- `spec.sessions[*].repositories[*].backend` specifies the name of the backend that holds the `BackupStorage` information.
-- `spec.sessions[*].repositories[*].directory` specifies the path of the `Repository` where the backed up data will be stored.
-- `spec.sessions[*].repositories[*].encryptionSecret` specifies the encryption secret for `Restic Repository` which will be used to encrypting the backup data.
 - `spec.sessions[*].addon.name` specifies the name of the `Addon` object that specifies addon configuration that will be used to perform backup of a stand-alone PVC.
 - `spec.sessions[*].addon.tasks[*].name` specifies the name of the `Task` that holds the `Function` and their order of execution to perform backup of a stand-alone PVC.
 - `spec.sessions[*].addon.jobTemplate.runtimeSettings.pod.serviceAccountName` specifies the ServiceAccount name that we have created earlier with cluster-wide resource reading permission.
@@ -342,7 +311,7 @@ application-manifest-backup-frequent-backup-1708677300   BackupConfiguration   a
 
 **Verify Backup:**
 
-When backup session is created, kubestash operator creates `Snapshot` which represents the state of backup run for each `Repository` which are provided in `BackupConfiguration`.
+When backup session is created, KubeStash operator creates `Snapshot` which represents the state of backup run for each `Repository` which are provided in `BackupConfiguration`.
 
 Run the following command to check `Snapshot` phase,
 
@@ -549,7 +518,7 @@ Now, you can use these YAML files to re-create your desired application.
 
 ## Cleanup
 
-To cleanup the Kubernetes resources created by this tutorial, run:
+To clean up the Kubernetes resources created by this tutorial, run:
 
 ```bash
 kubectl delete -n demo backupconfiguration application-manifest-backup

@@ -28,9 +28,13 @@ The following diagram shows how KubeStash restores backup data into a specific v
 The `Volume Populator` process consists of the following steps:
 
 1. At first, a user creates a `workload` application that may mount a single or multiple `PVCs`. 
+
 2. KubeStash operator watches for `PVCs`. 
-3. When operator finds a `PVC` with `spec.dataSourceRef` set and refers our `snapshot` object, it starts populating this `PVC` volume by creating a volume populator `Job` that mounts a temporary `PVC`.
-4. Then the populator `Job` reads restore data information from this `snapshot` object and restore data into this `PVC`.
+
+3. When the operator finds a `PVC` with `spec.dataSourceRef` set and refers our `snapshot` object, it starts populating this `PVC` volume by creating a volume populator `Job` that mounts a temporary `PVC`.
+
+4. Then the populator `Job` reads restore data information from this `snapshot` object and restore data into this temporary `PVC` .
+
 5. Once the restoration process is complete, the KubeStash operator deletes this populator `Job` and temporary `PVC`, and binds the `PV` containing the restored data with our desired `PVC`.
 
 ## Next Steps

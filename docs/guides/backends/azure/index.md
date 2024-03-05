@@ -37,7 +37,7 @@ secret/azure-secret created
 
 ### Create BackupStorage
 
-Now, you have to create a `BackupStorage` crd. You have to provide the storage secret that we have created earlier in `spec.storage.azure.secret` field.
+Now, you have to create a `BackupStorage` crd. You have to provide the storage secret that we have created earlier in `spec.storage.azure.secretName` field.
 
 Following parameters are available for `azure` backend.
 
@@ -45,7 +45,7 @@ Following parameters are available for `azure` backend.
 |------------------------| ---------- |-----------------------------------------------------------------------------------------------------------------------------------------|
 | `azure.storageAccount` | `Required` | Name of the Storage account.                                                                                                            |
 | `azure.container`      | `Required` | Name of Storage container.                                                                                                              |
-| `azure.secret`         | `Required` | Specify the name of the Secret that contains the access credential for this storage.                                                    |        |
+| `azure.secretName`     | `Required` | Specify the name of the Secret that contains the access credential for this storage.                                                    |        |
 | `azure.prefix`         | `Optional` | Path prefix inside the container where backed up data will be stored.                                                                   |
 | `azure.maxConnections` | `Optional` | Maximum number of parallel connections to use for uploading backup data. By default, KubeStash will use maximum 5 parallel connections. |
 
@@ -84,5 +84,4 @@ Now, we are ready to use this backend to backup our desired data using KubeStash
 ## Next Steps
 
 - Learn how to use KubeStash to backup workloads data from [here](/docs/guides/workloads/overview/index.md).
-- Learn how to use KubeStash to backup databases from [here](/docs/guides/addons/overview/index.md).
 - Learn how to use KubeStash to backup stand-alone PVC from [here](/docs/guides/volumes/overview/index.md).
