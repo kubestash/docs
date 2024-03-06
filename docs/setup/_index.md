@@ -1,5 +1,5 @@
 ---
-title: Setup | Stash
+title: Setup | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: setup

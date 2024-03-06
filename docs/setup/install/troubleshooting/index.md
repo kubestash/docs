@@ -1,9 +1,9 @@
 ---
-title: Troubleshooting Stash Installation
-description: Troubleshooting guide for Stash installation
+title: Troubleshooting KubeStash Installation
+description: Troubleshooting guide for KubeStash installation
 menu:
   docs_{{ .version }}:
-    identifier: install-stash-troubleshoot
+    identifier: install-kubestash-troubleshoot
     name: Troubleshooting
     parent: installation-guide
     weight: 40
@@ -12,9 +12,13 @@ menu_name: docs_{{ .version }}
 section_menu_id: setup
 ---
 
+# Troubleshooting Kubestash
+
+This guide will show you how to troubleshoot some common KubeStash installation issues.
+
 ## Installing in GKE Cluster
 
-If you are installing Stash on a GKE cluster, you will need cluster admin permissions to install Stash operator. Run the following command to grant admin permision to the cluster.
+If you are installing KubeStash on a GKE cluster, you will need cluster admin permissions to install KubeStash operator. Run the following command to grant admin permission to the cluster.
 
 ```bash
 $ kubectl create clusterrolebinding "cluster-admin-$(whoami)" \
@@ -26,8 +30,7 @@ In addition, if your GKE cluster is a [private cluster](https://cloud.google.com
 
 ## Configuring Network Volume Accessor
 
-For network volume such as NFS, Stash needs to deploy a helper deployment in the same namespace as the Repository that uses the NFS as backend to provide Snapshot listing facility. We call this helper deployment network volume accessor. You can configure its resources, user id, privileged permission etc. Run the following command to enable network volume accessor,
-
+For network volumes like NFS, KubeStash requires deploying a helper deployment within the same namespace as the BackupStorage. This deployment mounts the NFS volume to access the necessary resources. We call this helper deployment `network volume accessor`. You can configure its resources, user id, privileged permission etc. To enable the network volume accessor, run the following command:
 
 <ul class="nav nav-tabs" id="installerTab" role="tablist">
   <li class="nav-item">
@@ -42,18 +45,18 @@ For network volume such as NFS, Stash needs to deploy a helper deployment in the
 
 ### New Installation
 
-If you haven't installed Stash yet, run the following command to configure the network volume accessor during installation
+If you haven't installed KubeStash yet, run the following command to configure the network volume accessor during installation
 
 ```bash
-$ helm upgrade -i kubestash oci://ghcr.io/appscode-charts/kubestash \
-  --version {{< param "info.version" >}} \
-  --namespace kubestash --create-namespace \
-  --set kubestash-operator.netVolAccessor.cpu=200m \
-  --set kubestash-operator.netVolAccessor.memory=128Mi \
-  --set kubestash-operator.netVolAccessor.runAsUser=0 \
-  --set kubestash-operator.netVolAccessor.privileged=true \
-  --set-file global.license=/path/to/license-file.txt \
-  --wait --burst-limit=10000 --debug
+$ helm install -i kubestash oci://ghcr.io/appscode-charts/kubestash \
+--version {{< param "info.version" >}} \
+--namespace kubestash --create-namespace \
+--set kubestash-operator.netVolAccessor.cpu=200m \
+--set kubestash-operator.netVolAccessor.memory=128Mi \
+--set kubestash-operator.netVolAccessor.runAsUser=0 \
+--set kubestash-operator.netVolAccessor.privileged=true \
+--set-file global.license=/path/to/license-file.txt \
+--wait --burst-limit=10000 --debug
 ```
 
 </div>
@@ -61,33 +64,32 @@ $ helm upgrade -i kubestash oci://ghcr.io/appscode-charts/kubestash \
 
 ### Existing Installation
 
-If you have installed Stash already in your cluster but didn't configure the network volume accessor, you can use `helm upgrade` command to configure it in the existing installation.
+If you have installed KubeStash already in your cluster but didn't configure the network volume accessor, you can use `helm upgrade` command to configure it in the existing installation.
 
 ```bash
 $ helm upgrade -i kubestash oci://ghcr.io/appscode-charts/kubestash \
-  --version {{< param "info.version" >}} \
-  --namespace kubestash --create-namespace \
-  --reuse-values \
-  --set kubestash-operator.netVolAccessor.cpu=200m \
-  --set kubestash-operator.netVolAccessor.memory=128Mi \
-  --set kubestash-operator.netVolAccessor.runAsUser=0 \
-  --set kubestash-operator.netVolAccessor.privileged=true \
-  --set-file global.license=/path/to/license-file.txt \
-  --wait --burst-limit=10000 --debug
+--version {{< param "info.version" >}} \
+--namespace kubestash --create-namespace \
+--set kubestash-operator.netVolAccessor.cpu=200m \
+--set kubestash-operator.netVolAccessor.memory=128Mi \
+--set kubestash-operator.netVolAccessor.runAsUser=0 \
+--set kubestash-operator.netVolAccessor.privileged=true \
+--set-file global.license=/path/to/license-file.txt \
+--wait --burst-limit=10000 --debug
 ```
 </div>
 </div>
 
 
 
-## Detect Stash version
+## Detect KubeStash version
 
-To detect Stash version, exec into the operator pod and run `stash version` command.
+To detect KubeStash version, exec into the operator pod and run `kubestash version` command.
 
 ```bash
 $ POD_NAMESPACE=kubestash
-$ POD_NAME=$(kubectl get pods -n $POD_NAMESPACE -l app.kubernetes.io/name=kubestash -o jsonpath={.items[0].metadata.name})
-$ kubectl exec $POD_NAME -c operator -n $POD_NAMESPACE -- /stash version
+$ POD_NAME=$(kubectl get pods -n $POD_NAMESPACE -l app.kubernetes.io/name=kubestash-operator -o jsonpath={.items[0].metadata.name})
+$ kubectl exec $POD_NAME -c operator -n $POD_NAMESPACE -- /kubestash version
 
 Version = {{< param "info.version" >}}
 VersionStrategy = tag

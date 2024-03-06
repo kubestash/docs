@@ -1,10 +1,10 @@
 ---
-title: Uninstall Stash
-description: Uninstallation guide for Stash
+title: Uninstall kubeStash
+description: Uninstallation guide for KubeStash
 menu:
   docs_{{ .version }}:
-    identifier: uninstall-stash-enterprise
-    name: Stash
+    identifier: uninstall-kubestash-enterprise
+    name: KubeStash
     parent: uninstallation-guide
     weight: 20
 product_name: kubestash
@@ -12,9 +12,9 @@ menu_name: docs_{{ .version }}
 section_menu_id: setup
 ---
 
-# Uninstall Stash
+# Uninstall KubeStash
 
-To uninstall Stash, run the following command:
+To uninstall KubeStash, run the following command:
 
 <ul class="nav nav-tabs" id="installerTab" role="tablist">
   <li class="nav-item">
@@ -32,7 +32,7 @@ To uninstall Stash, run the following command:
 In Helm 3, release names are [scoped to a namespace](https://v3.helm.sh/docs/faq/#release-names-are-now-scoped-to-the-namespace). So, provide the namespace you used to install the operator when installing.
 
 ```bash
-$ helm uninstall stash --namespace kubestash
+$ helm uninstall kubestash --namespace kubestash
 ```
 
 </div>
@@ -40,14 +40,13 @@ $ helm uninstall stash --namespace kubestash
 
 ## Using YAML (with helm 3)
 
-If you prefer to not use Helm, you can generate YAMLs from Stash chart and uninstall using `kubectl`.
+If you prefer to not use Helm, you can generate YAMLs from KubeStash chart and uninstall using `kubectl`.
 
 ```bash
 $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash \
-  --version {{< param "info.version" >}} \
-  --namespace kubestash --create-namespace \
-  --set global.license="nothing" \
-  --set global.skipCleaner=true | kubectl delete -f -
+        --version {{< param "info.version" >}} \
+        --namespace kubestash --create-namespace \
+        --set-file global.license="nothing" | kubectl delete -f -
 ```
 
 </div>
@@ -55,13 +54,13 @@ $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash \
 
 ## Delete CRDs
 
-The above uninstallation process will uninstall the Stash operator. However, it will keep the Stash registered CRDs so that you don't lose your Stash objects i.e. `BackupConfiguration`, `Repository`, etc. during re-installation. If you want to remove the Stash CRDs too, please run the following command.
+The above uninstallation process will uninstall the KubeStash operator. However, it will keep the KubeStash registered CRDs so that you don't lose your KubeStash objects i.e. `BackupConfiguration`, `BackupStorage`, etc. during re-installation. If you want to remove the KubeStash CRDs too, please run the following command.
 
 ```bash
-kubectl delete crd -l=app.kubernetes.io/name=stash
+kubectl delete crd -l=app.kubernetes.io/name=kubestash
 ```
 
-If you wan't to delete the `AppBinding` CRD, run the following command.
+If you want to delete the `AppBinding` CRD, run the following command.
 
 ```bash
  kubectl delete crd -l=app.kubernetes.io/name=catalog
