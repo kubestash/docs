@@ -273,7 +273,7 @@ executor:
 
 ### Function Executor
 
-Hook is executed by a Job. We need to create a [Function](/docs/concepts/crds/function/index.md) define the `Function` and its parameters in [FunctionHookExecutorSpec](/docs/concepts/crds/hooktemplate/index.md#specexecutor) that will be used to create hook executor job.
+Hook is executed by a Job. We need to create a [Function](/docs/concepts/crds/function/index.md) and refer it in [FunctionHookExecutorSpec](/docs/concepts/crds/hooktemplate/index.md#specexecutor). This Function will be used to create the hook executor job.
 
 **Example:**
 

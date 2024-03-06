@@ -24,13 +24,12 @@ spec:
               volumeMounts:
                 - mountPath: /source/data
                   name: source-data
-      failurePolicy: Fail
       name: demo-session
       repositories:
         - backend: gcs-backend
           directory: /demo/data
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
           name: gcs-demo-repo
       retryConfig:

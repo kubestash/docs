@@ -43,7 +43,7 @@ spec:
     - pod-0
     - pod-2
     encryptionSecret:
-      name: encry-secret
+      name: encrypt-secret
       namespace: demo
     repository: gcs-demo-repo
     snapshot: latest
@@ -104,50 +104,47 @@ A `RestoreSession` object has the following fields in the `spec` section.
 
 `spec.dataSource` specifies the information about the data that will be restored. It consists of the following fields:
 
-- **repository** points to the `Repository` name from which the data will be restored. The `Repository` must be in the same namespace as the `RestoreSession` CR. This field can be empty if the snapshot is explicitly given.
-- **snapshot**  specifies the `Snapshot` name that will be restored. If you want to use **Point-In-Time** recovery option, don't specify this field. Specify `pitr` field instead. If you want to use the latest `Snapshot`, use `latest` value in this field. KubeStash will automatically find the latest `Snapshot`.
-- **pitr** stands for Point-In-Time Recovery. You can provide a target time instead of specifying a particular `Snapshot`. KubeStash will automatically find the latest `Snapshot` that satisfies the targeted time and restore it. It consists of the following fields:
-  - **targetTime** specifies the desired date and time at which you want to roll back your application data.
-  - **exclusive** specifies whether to exclude the `Snapshot` that falls in the exact time specified in the `targetTime` field. By default, KubeStash will select the `Snapshot` that fall in the exact time.
-- **components** specifies the list of components that will be restored. If you keep this field empty, then all the components that were backed up in the desired `Snapshot` will be restored.
-- **encryptionSecret** refers to the Secret containing the encryption key which will be used to encode/decode the backed up data. You can refer to a Secret of a different namespace. You have to specify `name` and `namespace` of the secret.
+- **repository :** points to the `Repository` name from which the data will be restored. The `Repository` must be in the same namespace as the `RestoreSession` CR. This field can be empty if the snapshot name is specified.
+- **snapshot :**  specifies the `Snapshot` name that will be restored. If you want to use **Point-In-Time** recovery option, don't specify this field. Specify `pitr` field instead. If you want to use the latest `Snapshot`, use `latest` value in this field. KubeStash will automatically find the latest `Snapshot`.
+- **components :** specifies the list of components that will be restored. If you keep this field empty, then all the components that were backed up in the desired `Snapshot` will be restored.
+- **encryptionSecret :** refers to the Secret containing the encryption key which will be used to decrypt the backed up data. You can refer to a Secret of a different namespace. You have to specify `name` and `namespace` of the secret. This field is optional. No encryption secret is required for restoring from `VolumeSnapshot` backups.
 
 #### spec.addon
 
 `spec.addon` specifies addon configuration that will be used to restore the target. Addon has the following fields:
-  - **name** specifies the name of the addon that will be used for the restore purpose.
-  - **tasks** specifies a list of restore tasks and their configuration parameters. To learn about the fields under `task`, see [Task Reference](#task-reference).
-  - **containerRuntimeSettings** specifies runtime settings for the restore executor container. More information can be found [here](#container-level-runtime-settings).
-  - **jobTemplate** specifies runtime configurations for the restore Job. More information can be found [here](#podtemplate-spec).
+  - **name :** specifies the name of the addon that will be used for the restore purpose.
+  - **tasks :** specifies a list of restore tasks and their configuration parameters. To learn about the fields under `task`, see [Task Reference](#task-reference).
+  - **containerRuntimeSettings :** specifies runtime settings for the restore executor container. More information can be found [here](#container-level-runtime-settings).
+  - **jobTemplate :** specifies runtime configurations for the restore Job. More information can be found [here](#podtemplate-spec).
 
 #### spec.hooks
 `spec.hooks` specifies the restore hooks that should be executed before and/or after the restore. Hooks has two fields:
-  - **preRestore** specifies a list of hooks that will be executed before restore. To learn about the fields under `preRestore`, see [HookInfo](#hookinfo).
-  - **postRestore** specifies a list of hooks that will be executed after restore. To learn about the fields under `postRestore`, see [HookInfo](#hookinfo).
+  - **preRestore :** specifies a list of hooks that will be executed before restore. To learn about the fields under `preRestore`, see [HookInfo](#hookinfo).
+  - **postRestore :** specifies a list of hooks that will be executed after restore. To learn about the fields under `postRestore`, see [HookInfo](#hookinfo).
 
 #### spec.timeout 
 `spec.timeout` specifies a duration that KubeStash should wait for the session execution to be completed. If the session execution does not finish within this time period, KubeStash will consider this session as a failure.
 
 #### spec.manifestOptions
 `spec.manifestOptions` provide options to select particular manifest object to restore. It consists of the following fields:
-- **restoreNamespace** specifies the Namespace where the restored files will be applied.
-- **mongoDB** specifies the options for selecting particular `MongoDB` components to restore in manifest restore. To know more about the fields in MongoDB manifest option, see [here](#kubedb-manifestoption).
-- **postgres** specifies the options for selecting particular `Postgres` components to restore in manifest restore. To know more about the fields in Postgres manifest option, see [here](#kubedb-manifestoption).
-- **mySQL** specifies the options for selecting particular `MySQL` components to restore in manifest restore. To know more about the fields in MySQL manifest option, see [here](#kubedb-manifestoption).
-- **mariaDB** specifies the options for selecting particular `MariaDB` components to restore in manifest restore. To know more about the fields in MariaDB manifest option, see [here](#kubedb-manifestoption).
+- **restoreNamespace :** specifies the Namespace where the restored manifest files will be created.
+- **mongoDB :** specifies the options for selecting particular `MongoDB` components to restore in manifest restore. To know more about the fields in MongoDB manifest option, see [here](#kubedb-manifestoption).
+- **postgres :** specifies the options for selecting particular `Postgres` components to restore in manifest restore. To know more about the fields in Postgres manifest option, see [here](#kubedb-manifestoption).
+- **mySQL :** specifies the options for selecting particular `MySQL` components to restore in manifest restore. To know more about the fields in MySQL manifest option, see [here](#kubedb-manifestoption).
+- **mariaDB :** specifies the options for selecting particular `MariaDB` components to restore in manifest restore. To know more about the fields in MariaDB manifest option, see [here](#kubedb-manifestoption).
 
 #### Task Reference
 Task Reference specifies a task and its configuration parameters. A `task` contains the following fields:
-- **name** indicates to the name of the task.
-- **variables** specifies a list of variables and their sources that will be used to resolve the task. For more details, please visit [here](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/)
-- **params** specifies parameters for the task. You must provide the parameter in the Addon desired structure.
-- **targetVolumes** specifies which volumes from the target should be mounted in the restore job/container. It contains the following fields:
-  - **volumes** indicates the list of volumes of targeted application that should be mounted on the restore job.
-  - **volumeMounts** specifies the mount for the volumes specified in `Volumes` section.
-  - **volumeClaimTemplates** specifies a template for the PersistentVolumeClaims that will be created for each Pod in a StatefulSet.
-- **addonVolumes** lets you overwrite the volume sources used in the VolumeTemplate section of Addon. Make sure that name of your volume matches with the name of the volume you want to overwrite. Each `addonVolume` contains the following fields:
-  - **name** specifies the name of the volume.
-  - **source** specifies the source of this volume or a template for volume to use.
+- **name :** indicates to the name of the task.
+- **variables :** specifies a list of variables and their sources that will be used to resolve the task. For more details, please visit [here](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/)
+- **params :** specifies parameters for the task. These parameters must be defined in the respective Addon.
+- **targetVolumes :** specifies which volumes from the target should be mounted in the restore job/container. It contains the following fields:
+  - **volumes :** indicates the list of volumes of targeted application that should be mounted on the restore job.
+  - **volumeMounts :** specifies the mount for the volumes specified in `Volumes` section.
+  - **volumeClaimTemplates :** specifies a template for the PersistentVolumeClaims that will be created for each Pod in a StatefulSet.
+- **addonVolumes :** lets you overwrite the volume sources used in the VolumeTemplate section of Addon. Make sure that name of your volume matches with the name of the volume you want to overwrite. Each `addonVolume` contains the following fields:
+  - **name :** specifies the name of the volume.
+  - **source :** specifies the source of this volume or a template for volume to use.
 
 #### HookInfo
 HookInfo specifies the information about the restore hooks. It consists of the following fields:
@@ -156,7 +153,7 @@ HookInfo specifies the information about the restore hooks. It consists of the f
 |-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `name`            | specifies a name for the hook                                                                                                                                                                                                                                                                                                                                                                                 |
 | `hookTemplate`    | points to a HookTemplate CR that will be used to execute the hook. You can refer to a HookTemplate from other namespaces as long as your current namespace is allowed by the `usagePolicy` in the respective HookTemplate.                                                                                                                                                                                    |
-| `params`          | specifies parameters for the hook. You must provide the parameter in the HookTemplates desired structure.                                                                                                                                                                                                                                                                                                     |
+| `params`          | specifies parameters for the hook. These parameters must be defined in the respective HookTemplates.                                                                                                                                                                                                                                                                                                          |
 | `maxRetry`        | MaxRetry specifies how many times Stash should retry the hook execution in case of failure.   The default value of this field is 0 which means no retry.                                                                                                                                                                                                                                                      |
 | `timeout`         | Timeout specifies a duration in seconds that KubeStash should wait for the hook execution to be completed. If the hook execution does not finish within this time period, KubeStash will consider this hook execution as failure. Then, it will be re-tried according to MaxRetry policy.                                                                                                                     |
 | `executionPolicy` | ExecutionPolicy specifies when to execute the hook. Valid values are: <ul><li>**Always** KubeStash will execute this hook no matter the backup/restore failed. This is the default execution policy.</li><li>**OnSuccess** KubeStash will execute this hook only if the backup/restore has succeeded.</li><li>**OnFailure** KubeStash will execute this hook only if the backup/restore has failed.</li></ul> |
@@ -166,7 +163,7 @@ HookInfo specifies the information about the restore hooks. It consists of the f
 | `runtimeSettings` | specifies runtime configurations for the hook executor Job. Use this field only for `Function` type hook executor. To know more about the fields in `runtimeSettings`, see [Runtime Settings](#runtime-settings)                                                                                                                                                                                              |
 
 #### Runtime Settings
-Runtime Settings allows to configure runtime environment for the `Function` type hook executor job. You can specify runtime settings at both pod level and container level.
+Runtime Settings allows to configure runtime environment for the corresponding job. You can specify runtime settings at both pod level and container level.
 
 ##### Container Level Runtime Settings
 `runtimeSettings.container` is used to configure the corresponding job at container level. You can configure the following container level parameters:
@@ -184,31 +181,31 @@ Runtime Settings allows to configure runtime environment for the `Function` type
 | `envFrom`         | This allows to set environment variables to the container that will be created for this function from a Secret or ConfigMap.                                                                                                 |
 
 ##### Pod Level Runtime Settings
-`runtimeSettings.pod` is used to configure the corresponding job in pod level. You can configure the following pod level parameters:
+`runtimeSettings.pod` is used to configure the corresponding job at pod level. You can configure the following pod level parameters:
 
 | Field                          | Usage                                                                                                                                                                                                                                    |
 |--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `podLabels`                    | The labels that will be attached with the respective Pod                                                                                                                                                                                 |
 | `serviceAccountName`           | Name of the `ServiceAccount` to use for the corresponding job.                                                                                                                                                                           |
 | `nodeSelector`                 | Selector which must be true for corresponding job pod to fit on a node.                                                                                                                                                                  |
-| `automountServiceAccountToken` | Indicates whether a service account token should be automatically mounted into the restore pod.                                                                                                                                          |
-| `nodeName`                     | `nodeName` is used to request to schedule restore job's pod onto a specific node.                                                                                                                                                        |
-| `securityContext`              | Security options that restore job's pod should run with. For more details, please visit [here](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).                                                              |
+| `automountServiceAccountToken` | Indicates whether a service account token should be automatically mounted into the pod.                                                                                                                                                  |
+| `nodeName`                     | `nodeName` is used to request to schedule job's pod onto a specific node.                                                                                                                                                                |
+| `securityContext`              | Security options that job's pod should run with. For more details, please visit [here](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).                                                                      |
 | `imagePullSecrets`             | A list of secret names in the same namespace that will be used to pull image from private Docker registry. For more details, please visit [here](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/). |
-| `affinity`                     | Affinity and anti-affinity to schedule restore job's pod on a desired node. For more details, please visit [here](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity).                        |
-| `schedulerName`                | Name of the scheduler that should dispatch the restore job.                                                                                                                                                                              |
-| `tolerations`                  | Taints and Tolerations to ensure that restore job's pod is not scheduled in inappropriate nodes. For more details about `toleration`, please visit [here](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/).      |
-| `priorityClassName`            | Indicates the restore job pod's priority class. For more details, please visit [here](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/).                                                                       |
-| `priority`                     | Indicates the restore job pod's priority value.                                                                                                                                                                                          |
+| `affinity`                     | Affinity and anti-affinity to schedule job's pod on a desired node. For more details, please visit [here](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity).                                |
+| `schedulerName`                | Name of the scheduler that should dispatch the job.                                                                                                                                                                                      |
+| `tolerations`                  | Taints and Tolerations to ensure that job's pod is not scheduled in inappropriate nodes. For more details about `toleration`, please visit [here](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/).              |
+| `priorityClassName`            | Indicates the job pod's priority class. For more details, please visit [here](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/).                                                                               |
+| `priority`                     | Indicates the job pod's priority value.                                                                                                                                                                                                  |
 | `readinessGates`               | Specifies additional conditions to be evaluated for Pod readiness. For more details, please visit [here](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-readiness-gate).                                          |
 | `runtimeClassName`             | RuntimeClass is used for selecting the container runtime configuration. For more details, please visit [here](https://kubernetes.io/docs/concepts/containers/runtime-class/)                                                             |
 | `enableServiceLinks`           | EnableServiceLinks indicates whether information about services should be injected into pod's environment variables.                                                                                                                     |
 
 #### PodTemplate Spec
 PodTemplate Spec describes the data a pod should have when created from a template. `template` has the following fields:
-- **metadata** specifies standard object's metadata. It contains `labels` and `annotations` fields.
-- **controller** specifies workload controller's metadata. It contains `labels` and `annotations` fields.
-- **spec** specifies the desired behavior of the pod. It contains the following fields:
+- **metadata :** specifies standard object's metadata. It contains `labels` and `annotations` fields.
+- **controller :** specifies workload controller's metadata. It contains `labels` and `annotations` fields.
+- **spec :** specifies the desired behavior of the pod. It contains the following fields:
 
 | Field                           | Usage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 |---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -249,12 +246,12 @@ KubeDB ManifestOption consists of the following fields:
 | Field              | Usage                                                          |
 |--------------------|----------------------------------------------------------------|
 | `db`               | specifies whether to restore the DB manifest or not.           |
-| `dbName`           | specifies the new name of the DB yaml after restore.           |
+| `dbName`           | specifies the new name of the DB object after restore.         |
 | `authSecret`       | specifies whether to restore the AuthSecret manifest or not.   |
-| `authSecretName`   | specifies new name of the AuthSecret yaml after restore.       |
+| `authSecretName`   | specifies the new name of the AuthSecret object after restore. |
 | `configSecret`     | specifies whether to restore the ConfigSecret manifest or not. |
-| `configSecretName` | specifies new name of the ConfigSecret yaml after restore.     |
-| `issuerRefName`    | specifies new name of the IssuerRef after restore.             |
+| `configSecretName` | specifies the new name of the ConfigSecret yaml after restore. |
+| `issuerRefName`    | specifies the new name of the TLS IssuerRef after restore.     |
 
 ### RestoreSession `Status`
 
@@ -262,11 +259,11 @@ KubeDB ManifestOption consists of the following fields:
 
 #### status.phase
 
-`status.phase` represents the current state of the restore process for this `RestoreSession`. `status.phase` will be `Succeeded` only if the phase of all components are `Succeeded`. If any of the components fail to complete restore, `status.phase` will be `Failed`.
+`status.phase` represents the current state of the restore process for this `RestoreSession`. `status.phase` will be `Succeeded` only if the phase of all components are `Succeeded` and the post-restore actions are successful.
 
 #### status.targetFound
 
-`status.targetFound` specifies whether the restore target exist or not.
+`status.targetFound` specifies whether the restore target exists or not.
 
 #### status.duration
 
@@ -274,7 +271,7 @@ KubeDB ManifestOption consists of the following fields:
 
 #### status.deadline
 
-`status.deadline` specifies a timestamp till this session is valid. If the session does not complete within this deadline, it will be considered as failed.
+`status.deadline` indicates the deadline of the restore process. `RestoreSession` will be considered `Failed` if the restore does not complete within this deadline.
 
 #### status.totalComponents
 
@@ -283,22 +280,22 @@ KubeDB ManifestOption consists of the following fields:
 #### status.components
 
 `status.components` represents the individual component restore status. Each component consists of the following fields:
-- **phase** represents the restore phase of the component.
-- **duration** specifies the total time taken to complete the restore process for this component.
-- **error** specifies the reason in case of restore failure for the component.
+- **phase :** represents the restore phase of the component.
+- **duration :** specifies the total time taken to complete the restore process for this component.
+- **error :** specifies the reason in case of restore failure for the component.
 
 #### status.hooks
 
 `status.hooks` represents the hook execution status. It consists of the following fields:
-- **preHooks** represents the pre-restore hook execution status.
-- **postHooks** represents the post-restore hook execution status.
+- **preHooks :** represents the pre-restore hook execution status.
+- **postHooks :** represents the post-restore hook execution status.
 
 Each `preHook` or `postHook` has the following fields:
-- **name** indicates the name of the hook whose status is being shown here.
-- **phase** represents the hook execution phase.
+- **name :** indicates the name of the hook whose status is being shown here.
+- **phase :** represents the hook execution phase.
 
 #### status.dependencies
-`status.dependencies` specifies whether the objects required by this `RestoreSession` exist or not. This field contains the resource reference and indicates whether the resource was found or not.
+`status.dependencies` specifies whether the objects required by this `RestoreSession` exist or not.
 
 #### status.pausedBackups
 
@@ -308,18 +305,17 @@ Each `preHook` or `postHook` has the following fields:
 
 `status.conditions` shows the conditions of various steps of the restore process. KubeStash sets the following conditions for a `RestoreSession`:
 
-| Condition Type                       | Usage                                                                     |
-|--------------------------------------|---------------------------------------------------------------------------|
-| `RestoreExecutorEnsured`             | Indicates whether the restore executor was ensured or not.                |
-| `RestoreTargetFound`                 | Indicates whether the restore target was found or not.                    |
-| `PreRestoreHooksExecutionSucceeded`  | Indicates whether the preRestore hooks are successfully executed or not.  |
-| `PostRestoreHooksExecutionSucceeded` | Indicates whether the postRestore hooks are successfully executed or not. |
-| `ValidationPassed`                   | Indicates whether the resource has passed validation checks or not.       |
-| ` MetricsPushed`                     | Indicates whether the metrics have been pushed or not.                    |
-| `DeadlineExceeded`                   | Indicates whether the session deadline was exceeded or not.               |
+| Condition Type                       | Usage                                                                      |
+|--------------------------------------|----------------------------------------------------------------------------|
+| `RestoreExecutorEnsured`             | Indicates whether the restore executor was ensured or not.                 |
+| `RestoreTargetFound`                 | Indicates whether the restore target was found or not.                     |
+| `PreRestoreHooksExecutionSucceeded`  | Indicates whether the preRestore hooks were successfully executed or not.  |
+| `PostRestoreHooksExecutionSucceeded` | Indicates whether the postRestore hooks were successfully executed or not. |
+| `ValidationPassed`                   | Indicates whether the validation checks were passed or not.                |
+| `MetricsPushed`                      | Indicates whether the metrics were pushed or not.                          |
+| `DeadlineExceeded`                   | Indicates whether the session deadline was exceeded or not.                |
 
 ## Next Steps
 
 - Learn how restore of workloads data works from [here](/docs/guides/workloads/overview/index.md).
-- Learn how restore of databases works from [here](/docs/guides/addons/overview/index.md).
 - Learn how restore stand-alone PVC works from [here](/docs/guides/volumes/overview/index.md).

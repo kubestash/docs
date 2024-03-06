@@ -13,7 +13,7 @@ spec:
     repository: s3-demo-repo
     snapshot: latest
     encryptionSecret:
-      name: encry-secret
+      name: encrypt-secret
       namespace: demo
   addon:
     name: workload-addon

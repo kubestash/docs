@@ -16,7 +16,7 @@ section_menu_id: concepts
 # BackupConfiguration
 
 ## What is BackupConfiguration
-A `BackupConfiguration` is a Kubernetes `CustomResourceDefinition`(CRD) which specifies the backup target, the backends reference and the sessions that specifies when and how to take backup in a Kubernetes native way.
+A `BackupConfiguration` is a Kubernetes `CustomResourceDefinition`(CRD) which specifies the backup target, the backends references and the sessions that specifies when and how to take backup in a Kubernetes native way.
 
 You have to create a `BackupConfiguration` object for each backup target. A backup target can be a workload, database or a PV/PVC.
 
@@ -52,13 +52,12 @@ spec:
               volumeMounts:
                 - mountPath: /source/data
                   name: source-data
-      failurePolicy: Fail
       name: demo-session
       repositories:
         - backend: gcs-backend
           directory: /demo/data
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
           name: gcs-demo-repo
       retryConfig:
@@ -134,41 +133,38 @@ However, it must be allowed by the `usagePolicy` of the `BackupStorage` to refer
 for the namespace. If a default `BackupStorage` does not exist in the same namespace, then KubeStash will look for a default `BackupStorage` in other namespaces that allows using it from the `BackupConfiguration`
 namespace. Each backend has the following fields:
 
-| Field             | Usage                                                                                                                                                                                                                                                                                                                                                                                              |
-|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `name`            | specifies an identifier for this storage. This name must be **unique**.                                                                                                                                                                                                                                                                                                                            |
-| `storageRef`      | refers to the CR that holds the information of a storage. You can refer to the `BackupStorage` CR of a different namespace as long as it is allowed by the `usagePolicy` of the `BackupStorage`.                                                                                                                                                                                                   |
-| `retentionPolicy` | refers to a `RetentionPolicy` CRs which defines how to cleanup the old `Snapshots`. This field is optional, if you don't provide this field, KubeStash will use the default `RetentionPolicy` for the namespace. If there is no default `RetentionPolicy` for the namespace, then KubeStash will find a `RetentionPolicy` from other namespaces that is allowed to use from the current namespace. |
+| Field             | Usage                                                                                                                                                                                                                                                                                                                                                                                                          |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`            | specifies an identifier for this storage. This name must be **unique** among all the backend names provided in this `BackupConfiguration`.                                                                                                                                                                                                                                                                     |
+| `storageRef`      | refers to the `BackupStorage` custom resource that holds the information of a storage.                                                                                                                                                                                                                                                                                                                         |
+| `retentionPolicy` | refers to a `RetentionPolicy` custom resource which defines how to cleanup the old `Snapshots`. This field is optional, if you don't provide this field, KubeStash will use the default `RetentionPolicy` for the namespace. If there is no default `RetentionPolicy` for the namespace, then KubeStash will find a `RetentionPolicy` from other namespaces that is allowed to use from the current namespace. |
 
 **spec.sessions**
 
 `spec.sessions` defines a list of session configuration that specifies when and how to take backup. Each session has the following fields:
-- **name** specifies an identifier for this session. This name must be **unique**.
-- **scheduler** specifies the configuration for backup triggering CronJob. To learn about the fields under `scheduler`, see [Scheduler Spec](#scheduler-spec).
-- **hooks** specifies the backup hooks that should be executed before and/or after the backup. Hooks has two fields:
-  - **preBackup** specifies a list of hooks that will be executed before backup. To learn about the fields under `preBackup`, see [HookInfo](#hookinfo).
-  - **postBackup** specifies a list of hooks that will be executed after backup. To learn about the fields under `postBackup`, see [HookInfo](#hookinfo).
-- **failurePolicy** specifies what to do if the backup fail. Valid values are:
-  - **Fail** KubeStash should mark the backup as failed if any component fail to complete its backup. This is the default behavior.
-  - **Retry** KubeStash will retry to backup the failed component according to the `retryConfig`.
-- **retryConfig** specifies the behavior of retry in case of a backup failure. RetryConfig has the following fields:
-  - **maxRetry** specifies the maximum number of times Stash should retry the backup/restore process. By default, KubeStash will retry only 1 time.
-  - **delay** The amount of time to wait before next retry. If you don't specify this field, KubeStash will retry immediately. Format: 30s, 2m, 1h etc.
-- **timeout** specifies the maximum duration of backup. BackupSession will be considered Failed if backup does not complete within this time limit. By default, KubeStash don't set any timeout for backup.
-- **sessionHistoryLimit** specifies how many backup Jobs and associate resources KubeStash should keep for debugging purpose. The default value is 1.
-- **addon** specifies addon configuration that will be used to backup the target. Addon has the following fields:
-  - **name** specifies the name of the addon that will be used for the backup purpose.
-  - **tasks** specifies a list of backup tasks and their configuration parameters. To learn about the fields under `task`, see [Task Reference](#task-reference).
-  - **containerRuntimeSettings** specifies runtime settings for the backup executor container. More information can be found [here](#container-level-runtime-settings).
-  - **jobTemplate** specifies runtime configurations for the backup Job. More information can be found [here](#podtemplate-spec).
-- **repositories** specifies a list of repository information where the backed up data will be stored. KubeStash will create the respective `Repository` CRs using this information. Each repository consists of the following fields:
-  - **name** specifies the name of the `Repository`.
-  - **backend** specifies the name of the backend where this repository will be initialized. This should point to a backend name specified in `.spec.backends` section. For using a default backend, keep this field empty.
-  - **directory** specifies the path inside the backend where the backed up data will be stored.
-  - **encryptionSecret** refers to the Secret containing the encryption key which will be used to encode/decode the backed up data. You can refer to a Secret of a different namespace by providing `name` and `namespace` fields.
-  - **deletionPolicy** specifies what to do when you delete a `Repository` CR. The valid values for this field are:
-    - **Delete** This will delete just the `Repository` CR from the cluster but keep the backed up data in the remote backend. This is the default behavior.
-    - **WipeOut** This will delete the `Repository` CR as well as the backed up data from the backend.
+- **name :** specifies an identifier for this session. This name must be **unique** among all the session names provided in this `BackupConfiguration`.
+- **scheduler :** specifies the configuration for backup triggering CronJob. To learn about the fields under `scheduler`, see [Scheduler Spec](#scheduler-spec).
+- **hooks :** specifies the backup hooks that should be executed before and/or after the backup. Hooks has two fields:
+  - **preBackup :** specifies a list of hooks that will be executed before backup. To learn about the fields under `preBackup`, see [HookInfo](#hookinfo).
+  - **postBackup :** specifies a list of hooks that will be executed after backup. To learn about the fields under `postBackup`, see [HookInfo](#hookinfo).
+- **retryConfig :** specifies the behavior of retry in case of a backup failure. RetryConfig has the following fields:
+  - **maxRetry :** specifies the maximum number of times KubeStash should retry the backup/restore process. By default, KubeStash will retry only 1 time.
+  - **delay :** The amount of time to wait before next retry. If you don't specify this field, KubeStash will retry immediately. Format: 30s, 2m, 1h etc.
+- **timeout :** specifies the maximum duration of backup. BackupSession will be considered Failed if backup does not complete within this time limit. By default, KubeStash don't set any timeout for backup.
+- **sessionHistoryLimit :** specifies how many backup Jobs and associate resources KubeStash should keep for debugging purpose. The default value is 1.
+- **addon :** specifies addon configuration that will be used to backup the target. Addon has the following fields:
+  - **name :** specifies the name of the addon that will be used for the backup purpose.
+  - **tasks :** specifies a list of backup tasks and their configuration parameters. To learn about the fields under `task`, see [Task Reference](#task-reference).
+  - **containerRuntimeSettings :** specifies runtime settings for the backup executor container. More information can be found [here](#container-level-runtime-settings).
+  - **jobTemplate :** specifies runtime configurations for the backup Job. More information can be found [here](#podtemplate-spec).
+- **repositories :** specifies a list of repository information where the backed up data will be stored. KubeStash will create the respective `Repository` CRs using this information. Each repository consists of the following fields:
+  - **name :** specifies the name of the `Repository`.
+  - **backend :** specifies the name of the backend where this repository will be initialized. This should point to a backend name specified in `.spec.backends` section. For using a default backend, keep this field empty.
+  - **directory :** specifies the path inside the backend where the backed up data will be stored.
+  - **encryptionSecret :** refers to the Secret containing the encryption key which will be used to encrypt the backed up data. You can refer to a Secret of a different namespace by providing `name` and `namespace` fields. This field is optional. No encryption secret is required for `VolumeSnapshot` backups.
+  - **deletionPolicy :** specifies what to do when you delete a `Repository` CR. The valid values for this field are:
+    - **Delete :** This will delete just the `Repository` CR from the cluster but keep the backed up data in the remote backend. This is the default behavior.
+    - **WipeOut :** This will delete the `Repository` CR as well as the backed up data from the backend.
 
 **spec.paused**
 
@@ -176,16 +172,16 @@ namespace. Each backend has the following fields:
 
 #### Scheduler Spec
 Scheduler Spec specifies the configuration for the backup triggering CronJob for a session. `scheduler` has the following fields:
-- **schedule** The schedule in Cron format, see [here](https://en.wikipedia.org/wiki/Cron) to learn more.
-- **startingDeadlineSeconds** Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones.
-- **concurrencyPolicy** Specifies how to treat concurrent executions of a Job. Valid values are:
-  - **Allow** (default) allows CronJobs to run concurrently.
-  - **Forbid** forbids concurrent runs, skipping next run if previous run hasn't finished yet.
-  - **Replace** cancels currently running job and replaces it with a new one.
-- **suspend** This flag tells the controller to suspend subsequent executions, it does not apply to already started executions. Defaults to false.
-- **successfulJobsHistoryLimit** The number of successful finished jobs to retain. Value must be non-negative integer. Defaults to 3.
-- **failedJobsHistoryLimit** The number of failed finished jobs to retain. Value must be non-negative integer. Defaults to 1.
-- **jobTemplate** Specifies the job that will be created when executing a CronJob. JobTemplate has the following fields:
+- **schedule :** The schedule in Cron format, see [here](https://en.wikipedia.org/wiki/Cron) to learn more.
+- **startingDeadlineSeconds :** Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones.
+- **concurrencyPolicy :** Specifies how to treat concurrent executions of a Job. Valid values are:
+  - **Allow :** (default) allows CronJobs to run concurrently.
+  - **Forbid :** forbids concurrent runs, skipping next run if previous run hasn't finished yet.
+  - **Replace :** cancels currently running job and replaces it with a new one.
+- **suspend :** This flag tells the controller to suspend subsequent executions, it does not apply to already started executions. Defaults to false.
+- **successfulJobsHistoryLimit :** The number of successful finished jobs to retain. Value must be non-negative integer. Defaults to 3.
+- **failedJobsHistoryLimit :** The number of failed finished jobs to retain. Value must be non-negative integer. Defaults to 1.
+- **jobTemplate :** Specifies the job that will be created when executing a CronJob. JobTemplate has the following fields:
 
   | Field                     | Usage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
     |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -200,9 +196,9 @@ Scheduler Spec specifies the configuration for the backup triggering CronJob for
 
 #### PodTemplate Spec
 PodTemplate Spec describes the data a pod should have when created from a template. `template` has the following fields:
-- **metadata** specifies standard object's metadata. It contains `labels` and `annotations` fields.
-- **controller** specifies workload controller's metadata. It contains `labels` and `annotations` fields.
-- **spec** specifies the desired behavior of the pod. It contains the following fields:
+- **metadata :** specifies standard object's metadata. It contains `labels` and `annotations` fields.
+- **controller :** specifies workload controller's metadata. It contains `labels` and `annotations` fields.
+- **spec :** specifies the desired behavior of the pod. It contains the following fields:
 
 | Field                           | Usage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 |---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -239,21 +235,21 @@ PodTemplate Spec describes the data a pod should have when created from a templa
 #### HookInfo
 HookInfo specifies the information about the backup hooks. It contains the following fields:
 
-| Field             | Usage                                                                                                                                                                                                                                                                                                                                                                                                         |
-|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `name`            | specifies a name for the hook                                                                                                                                                                                                                                                                                                                                                                                 |
-| `hookTemplate`    | points to a HookTemplate CR that will be used to execute the hook. You can refer to a HookTemplate from other namespaces as long as your current namespace is allowed by the `usagePolicy` in the respective HookTemplate.                                                                                                                                                                                    |
-| `params`          | specifies parameters for the hook. You must provide the parameter in the HookTemplates desired structure.                                                                                                                                                                                                                                                                                                     |
-| `maxRetry`        | MaxRetry specifies how many times Stash should retry the hook execution in case of failure.   The default value of this field is 0 which means no retry.                                                                                                                                                                                                                                                      |
-| `timeout`         | Timeout specifies a duration in seconds that KubeStash should wait for the hook execution to be completed. If the hook execution does not finish within this time period, KubeStash will consider this hook execution as failure. Then, it will be re-tried according to MaxRetry policy.                                                                                                                     |
-| `executionPolicy` | ExecutionPolicy specifies when to execute the hook. Valid values are: <ul><li>**Always** KubeStash will execute this hook no matter the backup/restore failed. This is the default execution policy.</li><li>**OnSuccess** KubeStash will execute this hook only if the backup/restore has succeeded.</li><li>**OnFailure** KubeStash will execute this hook only if the backup/restore has failed.</li></ul> |
-| `variables`       | specifies a list of variables and their sources that will be used to resolve the HookTemplate.                                                                                                                                                                                                                                                                                                                |
-| `volumes`         | indicates the list of volumes of targeted application that should be mounted on the hook executor. Use this field only for `Function` type hook executor.                                                                                                                                                                                                                                                     |
-| `volumeMounts`    | specifies the mount for the volumes specified in `Volumes` section. Use this field only for `Function` type hook executor.                                                                                                                                                                                                                                                                                    |
-| `runtimeSettings` | specifies runtime configurations for the hook executor Job. Use this field only for `Function` type hook executor. To know more about the fields in `runtimeSettings`, see [Runtime Settings](#runtime-settings)                                                                                                                                                                                              |
+| Field             | Usage                                                                                                                                                                                                                                                                                                                                                                                 |
+|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`            | specifies a name for the hook                                                                                                                                                                                                                                                                                                                                                         |
+| `hookTemplate`    | points to a HookTemplate CR that will be used to execute the hook. You can refer to a HookTemplate from other namespaces as long as your current namespace is allowed by the `usagePolicy` in the respective HookTemplate.                                                                                                                                                            |
+| `params`          | specifies parameters for the hook. These parameters must be defined in the respective HookTemplate.                                                                                                                                                                                                                                                                                   |
+| `maxRetry`        | MaxRetry specifies how many times KubeStash should retry the hook execution in case of failure. The default value of this field is 0 which means no retry.                                                                                                                                                                                                                            |
+| `timeout`         | Timeout specifies a duration in seconds that KubeStash should wait for the hook execution to be completed. If the hook execution does not finish within this time period, KubeStash will consider this hook execution as failure. Then, it will be re-tried according to MaxRetry policy.                                                                                             |
+| `executionPolicy` | ExecutionPolicy specifies when to execute the hook. Valid values are: <ul><li>**Always** KubeStash will execute this hook no matter the backup failed. This is the default execution policy.</li><li>**OnSuccess** KubeStash will execute this hook only if the backup has succeeded.</li><li>**OnFailure** KubeStash will execute this hook only if the backup has failed.</li></ul> |
+| `variables`       | specifies a list of variables and their sources that will be used to resolve the HookTemplate.                                                                                                                                                                                                                                                                                        |
+| `volumes`         | indicates the list of volumes of targeted application that should be mounted on the hook executor. Use this field only for `Function` type hook executor.                                                                                                                                                                                                                             |
+| `volumeMounts`    | specifies the mount for the volumes specified in `Volumes` section. Use this field only for `Function` type hook executor.                                                                                                                                                                                                                                                            |
+| `runtimeSettings` | specifies runtime configurations for the hook executor Job. Use this field only for `Function` type hook executor. To know more about the fields in `runtimeSettings`, see [Runtime Settings](#runtime-settings)                                                                                                                                                                      |
 
 #### Runtime Settings
-Runtime Settings allows to configure runtime environment for the `Function` type hook executor job. You can specify runtime settings at both pod level and container level.
+Runtime Settings allows to configure runtime environment for the corresponding job. You can specify runtime settings at both pod level and container level.
 
 ##### Container Level Runtime Settings
 `runtimeSettings.container` is used to configure the corresponding job at container level. You can configure the following container level parameters:
@@ -271,22 +267,22 @@ Runtime Settings allows to configure runtime environment for the `Function` type
 | `envFrom`         | This allows to set environment variables to the container that will be created for this function from a Secret or ConfigMap.                                                                                                 |
 
 ##### Pod Level Runtime Settings
-`runtimeSettings.pod` is used to configure the corresponding job in pod level. You can configure the following pod level parameters:
+`runtimeSettings.pod` is used to configure the corresponding job at pod level. You can configure the following pod level parameters:
 
 | Field                          | Usage                                                                                                                                                                                                                                    |
 |--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `podLabels`                    | The labels that will be attached with the respective Pod                                                                                                                                                                                 |
 | `serviceAccountName`           | Name of the `ServiceAccount` to use for the corresponding job.                                                                                                                                                                           |
 | `nodeSelector`                 | Selector which must be true for corresponding job pod to fit on a node.                                                                                                                                                                  |
-| `automountServiceAccountToken` | Indicates whether a service account token should be automatically mounted into the backup pod.                                                                                                                                           |
-| `nodeName`                     | `nodeName` is used to request to schedule backup job's pod onto a specific node.                                                                                                                                                         |
-| `securityContext`              | Security options that backup job's pod should run with. For more details, please visit [here](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).                                                               |
+| `automountServiceAccountToken` | Indicates whether a service account token should be automatically mounted into the pod.                                                                                                                                                  |
+| `nodeName`                     | `nodeName` is used to request to schedule job's pod onto a specific node.                                                                                                                                                                |
+| `securityContext`              | Security options that job's pod should run with. For more details, please visit [here](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).                                                                      |
 | `imagePullSecrets`             | A list of secret names in the same namespace that will be used to pull image from private Docker registry. For more details, please visit [here](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/). |
-| `affinity`                     | Affinity and anti-affinity to schedule backup job's pod on a desired node. For more details, please visit [here](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity).                         |
-| `schedulerName`                | Name of the scheduler that should dispatch the backup job.                                                                                                                                                                               |
-| `tolerations`                  | Taints and Tolerations to ensure that backup job's pod is not scheduled in inappropriate nodes. For more details about `toleration`, please visit [here](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/).       |
-| `priorityClassName`            | Indicates the backup job pod's priority class. For more details, please visit [here](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/).                                                                        |
-| `priority`                     | Indicates the backup job pod's priority value.                                                                                                                                                                                           |
+| `affinity`                     | Affinity and anti-affinity to schedule job's pod on a desired node. For more details, please visit [here](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity).                                |
+| `schedulerName`                | Name of the scheduler that should dispatch the job.                                                                                                                                                                                      |
+| `tolerations`                  | Taints and Tolerations to ensure that job's pod is not scheduled in inappropriate nodes. For more details about `toleration`, please visit [here](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/).              |
+| `priorityClassName`            | Indicates the job pod's priority class. For more details, please visit [here](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/).                                                                               |
+| `priority`                     | Indicates the job pod's priority value.                                                                                                                                                                                                  |
 | `readinessGates`               | Specifies additional conditions to be evaluated for Pod readiness. For more details, please visit [here](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-readiness-gate).                                          |
 | `runtimeClassName`             | RuntimeClass is used for selecting the container runtime configuration. For more details, please visit [here](https://kubernetes.io/docs/concepts/containers/runtime-class/)                                                             |
 | `enableServiceLinks`           | EnableServiceLinks indicates whether information about services should be injected into pod's environment variables.                                                                                                                     |
@@ -294,54 +290,53 @@ Runtime Settings allows to configure runtime environment for the `Function` type
 
 #### Task Reference
 Task Reference specifies a task and its configuration parameters. A `task` contains the following fields:
-- **name** indicates to the name of the task.
-- **variables** specifies a list of variables and their sources that will be used to resolve the task. For more details, please visit [here](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/)
-- **params** specifies parameters for the task. You must provide the parameter in the Addon desired structure.
-- **targetVolumes** specifies which volumes from the target should be mounted in the backup job/container. It contains the following fields:
-  - **volumes** indicates the list of volumes of targeted application that should be mounted on the backup job.
-  - **volumeMounts** specifies the mount for the volumes specified in `Volumes` section.
-  - **volumeClaimTemplates** specifies a template for the PersistentVolumeClaims that will be created for each Pod in a StatefulSet.
-- **addonVolumes** lets you overwrite the volume sources used in the VolumeTemplate section of Addon. Make sure that name of your volume matches with the name of the volume you want to overwrite. Each `addonVolume` contains the following fields:
-  - **name** specifies the name of the volume.
-  - **source** specifies the source of this volume or a template for volume to use.
+- **name :** indicates to the name of the task.
+- **variables :** specifies a list of variables and their sources that will be used to resolve the task. For more details, please visit [here](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/)
+- **params :** specifies parameters for the task. These parameters must be defined in the respective Addon.
+- **targetVolumes :** specifies which volumes from the target should be mounted in the backup job/container. It contains the following fields:
+  - **volumes :** indicates the list of volumes of targeted application that should be mounted on the backup job.
+  - **volumeMounts :** specifies the mount for the volumes specified in `Volumes` section.
+  - **volumeClaimTemplates :** specifies a template for the PersistentVolumeClaims that will be created for each Pod in a StatefulSet.
+- **addonVolumes :** lets you overwrite the volume sources used in the `VolumeTemplate` section of Addon. Make sure that name of your volume matches with the name of the volume you want to overwrite. Each `addonVolume` contains the following fields:
+  - **name :** specifies the name of the volume.
+  - **source :** specifies the source of this volume or a template for volume to use.
 
 ## BackupConfiguration `Status`
 A `BackupConfiguration` object has the following fields in the `status` section.
-- **backends** specifies whether the backends exist or not. Each backend consists of the following fields:
-  - **name** indicates the backend name.
-  - **ready** indicates whether the respective `BackupStorage` is ready or not.
-  - **storage** indicates the status of the respective `BackupStorage`. It has the following fields:
-    - **ref** indicates to the `BackupStorage` object.
-    - **phase** indicates the current phase of the respective `BackupStorage` which can be `Ready` or `NotReady`.
-    - **reason** specifies the error messages found while checking the `BackupStorage` phase.
-  - **retentionPolicy** indicates the status of the respective `RetentionPolicy`. It has the following fields:
-    - **ref** indicates the `RetentionPolicy` object reference.
-    - **found** indicates whether the `RetentionPolicy` is Found or not.
-    - **reason** specifies the error messages found while checking the `RetentionPolicy`.
-- **repositories** specifies whether the repositories have been successfully initialized or not. It consists of the following fields:
-  - **name** indicate the name of the `Repository`.
-  - **phase** indicates whether the respective Repository is ready or not. The value of this field can be `Ready` or `NotReady`.
-  - **reason** specifies the error messages found while ensuring the respective `Repository`.
-- **dependencies** specifies whether the objects required by this `BackupConfiguration` exist or not. This field contains the resource reference and indicates whether the resource was found or not.
-- **sessions** specifies status of the session specific resources. It consists of the following fields:
-  - **name** indicates the name of the session.
-  - **nextSchedule** specifies when the next backup will execute for this session.
-  - **conditions** specifies a list of conditions related to this session. The following condition is set by the KubeStash operator on each `.status.sessions`.
+- **backends :** specifies whether the backends are ready or not. Each backend consists of the following fields:
+  - **name :** indicates the backend name.
+  - **ready :** indicates whether the respective backend is ready or not.
+  - **storage :** indicates the status of the respective `BackupStorage`. It has the following fields:
+    - **ref :** indicates to the `BackupStorage` object.
+    - **phase :** indicates the current phase of the respective `BackupStorage` which can be `Ready` or `NotReady`.
+    - **reason :** specifies the error messages found while checking the `BackupStorage` phase.
+  - **retentionPolicy :** indicates the status of the respective `RetentionPolicy`. It has the following fields:
+    - **ref :** indicates the `RetentionPolicy` object reference.
+    - **found :** indicates whether the `RetentionPolicy` is Found or not.
+    - **reason :** specifies the error messages found while checking the `RetentionPolicy`.
+- **repositories :** indicates the status of the respective repositories. It consists of the following fields:
+  - **name :** indicate the name of the `Repository`.
+  - **phase :** indicates the phase of the respective Repository which can be `Ready` or `NotReady`.
+  - **reason :** specifies the error messages found while ensuring the respective `Repository`.
+- **dependencies :** specifies whether the objects required by this `BackupConfiguration` exist or not.
+- **sessions :** specifies status of the session specific resources. It consists of the following fields:
+  - **name :** indicates the name of the session.
+  - **nextSchedule :** specifies when the next backup will execute for this session.
+  - **conditions :** specifies a list of conditions related to this session. The following condition is set by the KubeStash operator on each `.status.sessions`.
   
-| Condition Type     | Usage                                              |
-|--------------------|----------------------------------------------------|
-| `SchedulerEnsured` | indicates whether the Scheduler is ensured or not. |
+| Condition Type     | Usage                                               |
+|--------------------|-----------------------------------------------------|
+| `SchedulerEnsured` | indicates whether the Scheduler was ensured or not. |
 
-- **phase** represents the current state of the Backup Invoker.
-- **targetFound** specifies whether the backup target exist or not.
-- **conditions** represents list of conditions regarding this `BackupConfiguration`. The following condition is set by the KubeStash operator on a `BackupConfiguration`.
+- **phase :** represents the current state of the Backup Invoker.
+- **targetFound :** specifies whether the backup target exists or not.
+- **conditions :** represents list of conditions regarding this `BackupConfiguration`. The following condition is set by the KubeStash operator on a `BackupConfiguration`.
 
-| Condition Type     | Usage                                                             |
-|--------------------|-------------------------------------------------------------------|
-| `ValidationPassed` | indicates the validation conditions of the CRD are passed or not. |
+| Condition Type     | Usage                                                       |
+|--------------------|-------------------------------------------------------------|
+| `ValidationPassed` | indicates whether the validation checks were passed or not. |
 
 ## Next Steps
 
 - Learn how to configure `BackupConfiguration` to backup workloads data from [here](/docs/guides/workloads/overview/index.md).
-- Learn how to configure `BackupConfiguration` to backup databases from [here](/docs/guides/addons/overview/index.md).
 - Learn how to configure `BackupConfiguration` to backup stand-alone PVC from [here](/docs/guides/volumes/overview/index.md).

@@ -17,9 +17,9 @@ section_menu_id: concepts
 
 ## What is BackupSession
 
-A `BackupSession` is a Kubernetes `CustomResourceDefinition`(CRD) which represents a backup run of the respective target referenced by a `BackupConfiguration` in a Kubernetes native way.
+A `BackupSession` is a Kubernetes `CustomResourceDefinition`(CRD) which represents a backup run triggered for a session of a `BackupConfiguration` for a target application.
 
-KubeStash operator creates a Kubernetes `CronJob` according to the schedule defined in a `BackupConfiguration`. On each backup schedule, this `CronJob` creates a `BackupSession` object. It points to the respective `BackupConfiguration`. The `BackupSession` will trigger a backup executor (job, sidecar, multilevel jobs etc.) and take backup instantly.
+KubeStash operator creates a Kubernetes `CronJob` according to the schedule for each session defined in a `BackupConfiguration`. On each backup schedule, this `CronJob` creates a `BackupSession` object that corresponds to the respective session specified in the `BackupConfiguration`. The `BackupSession` will trigger a backup executor job to initiate the backup process.
 
 You can also create a `BackupSession` object manually to trigger backup at any time.
 
@@ -129,7 +129,7 @@ A `BackupSession` object has the following fields in the `spec` section:
 
 #### status.phase
 
-`status.phase` indicates the overall phase of the backup process for this BackupSession. `status.phase` will be `Succeeded` only if the phase of all targets is `Succeeded`. If any of the targets fail to complete its backup, `status.phase` will be `Failed`.
+`status.phase` indicates the overall phase of the backup process for this BackupSession. It will be `Succeeded` only when all Snapshots are successfully completed and the post-backup actions are successful.
 
 #### status.duration
 
@@ -141,27 +141,27 @@ A `BackupSession` object has the following fields in the `spec` section:
 
 #### status.snapshots
 `status.snapshots` specifies the `Snapshot`s status. It contains the following fields:
-- **name** indicates to the name of the `Snapshot`.
-- **phase** indicate the phase of the `Snapshot`.
-- **appRef** points to the application that is being backed up in this `Snapshot`.
-- **repository** indicates the name of the Repository where the Snapshot is being stored.
+- **name :** indicates to the name of the `Snapshot`.
+- **phase :** indicates the phase of the `Snapshot`.
+- **appRef :** points to the application that is being backed up in this `Snapshot`.
+- **repository :** indicates the name of the `Repository` where the `Snapshot` is being stored.
 
 #### status.hooks
 `status.hooks` represents the hook execution status. Each hook contains the following fields:
-- **preHooks** represents the pre-restore hook execution status.
-- **postHooks** represents the post-restore hook execution status.
+- **preHooks :** represents the pre-restore hook execution status.
+- **postHooks :** represents the post-restore hook execution status.
 
 Each `preHook` or `postHook` contains the following fields:
-- **name** indicates the name of the hook whose status is being shown here.
-- **phase** represents the hook execution phase.
+- **name :** indicates the name of the hook whose status is being shown here.
+- **phase :** represents the hook execution phase.
 
 
 #### status.retentionPolicy
 `status.retentionPolicy` specifies whether the retention policies were properly applied on the repositories or not. Each one of them consists of the following fields:
-- **ref** points to the `RetentionPolicy` CR that is being used to cleanup the old `Snapshot`s for this session.
-- **repository** specifies the name of the Repository on which the RetentionPolicy has been applied.
-- **phase** specifies the state of retention policy apply process.
-- **error** represents the reason if the retention policy applying fail.
+- **ref :** points to the `RetentionPolicy` CR that is being used to cleanup the old `Snapshot`s for this session.
+- **repository :** specifies the name of the Repository on which the RetentionPolicy has been applied.
+- **phase :** specifies the state of retention policy apply process.
+- **error :** represents the reason if the retention policy applying fail.
 
 #### status.retried
 
@@ -180,15 +180,14 @@ Each `preHook` or `postHook` contains the following fields:
 | `BackupSkipped`                     | indicates that the current session was skipped.                                            |
 | `SessionHistoryCleaned`             | indicates whether the backup history was cleaned or not according to `backupHistoryLimit`. |
 | `PreBackupHooksExecutionSucceeded`  | indicates whether the pre-backup hooks were executed successfully or not.                  |
-| `PostBackupHooksExecutionSucceeded` | indicates whether the pre-backup hooks were executed successfully or not.                  |
-| `BackupExecutorEnsured`             | indicates whether the Backup Executor is ensured or not.                                   |
-| `SnapshotsEnsured`                  | indicates whether Snapshots are ensured for each Repository or not                         |
+| `PostBackupHooksExecutionSucceeded` | indicates whether the post-backup hooks were executed successfully or not.                 |
+| `BackupExecutorEnsured`             | indicates whether the Backup Executor was ensured or not.                                  |
+| `SnapshotsEnsured`                  | indicates whether Snapshots were ensured for each Repository or not                        |
 | `DeadlineExceeded`                  | indicates whether the session deadline was exceeded or not.                                |
-| `MetricsPushed`                     | indicates whether Metrics are pushed or not                                                |
+| `MetricsPushed`                     | indicates whether Metrics were pushed or not                                               |
 
 
 ## Next Steps
 
 - Learn how backup of workloads data works from [here](/docs/guides/workloads/overview/index.md).
-- Learn how backup of databases works from [here](/docs/guides/addons/overview/index.md).
 - Learn how backup stand alone PVC works from [here](/docs/guides/volumes/overview/index.md).

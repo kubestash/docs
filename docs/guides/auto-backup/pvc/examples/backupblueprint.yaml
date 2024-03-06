@@ -29,7 +29,7 @@ spec:
             backend: gcs-backend
             directory: ${namespace}/${targetName}
             encryptionSecret:
-              name: encry-secret
+              name: encrypt-secret
               namespace: demo
         addon:
           name: pvc-addon

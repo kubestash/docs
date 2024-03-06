@@ -1,6 +1,6 @@
 ---
-title: RBAC | Stash
-description: Using Stash in RBAC enabled cluster
+title: RBAC | KubeStash
+description: Using KubeStash in RBAC enabled cluster
 menu:
   docs_{{ .version }}:
     identifier: security-rbac
@@ -12,36 +12,41 @@ menu_name: docs_{{ .version }}
 section_menu_id: guides
 ---
 
-# Stash with RBAC Enabled Cluster
+# KubeStash with RBAC Enabled Cluster
 
-Stash comes with built-in support for RBAC enabled cluster. Stash installer create a `ClusterRole` and `RoleBinding` giving necessary permission to the operator.
+KubeStash comes with built-in support for RBAC enabled cluster. KubeStash installer create a `ClusterRole` and `ClusterRoleBinding` giving necessary permission to the operator.
 
 ## Operator Permissions
 
-Stash operator needs the following RBAC permissions,
+KubeStash operator needs the following RBAC permissions,
 
-| API Groups                   | Resources                                                      | Permissions                                 |
-| ---------------------------- | -------------------------------------------------------------- | ------------------------------------------- |
-| apiextensions.k8s.io         | customresourcedefinitions                                      | *                                           |
-| apiextensions.k8s.io         | apiservices                                                    | get, patch, delete                          |
-| admissionregistration.k8s.io | mutatingwebhookconfigurations, validatingwebhookconfigurations | get, list, watch, patch, delete             |
-| stash.appscode.com           | *                                                              | *                                           |
-| appcatalog.appscode.com      | *                                                              | *                                           |
-| apps                         | daemonsets, deployments, replicasets, statefulsets             | get, list, watch, patch                     |
-| batch                        | jobs, cronjobs                                                 | get, list, watch, create, patch, delete     |
-| ""                           | namespaces, replicationcontrollers                             | get, list, watch, patch                     |
-| ""                           | configmaps                                                     | get, list, watch,create, update, delete     |
-| ""                           | persistentvolumeclaims                                         | get, list, watch, create, patch             |
-| ""                           | services, endpoints                                            | get                                         |
-| ""                           | secrets, events                                                | get, list, create, patch                    |
-| ""                           | nodes                                                          | list                                        |
-| ""                           | pods, pods/exec                                                | get, list, create, delete, deletecollection |
-| ""                           | serviceaccounts                                                | get, create, patch, delete                  |
-| rbac.authorization.k8s.io    | clusterroles, roles, rolebindings, clusterrolebindings         | get, create, delete, patch                  |
-| apps.openshift.io            | deploymentconfigs                                              | get, list, watch, patch                     |
-| policy                       | podsecuritypolicies                                            | use                                         |
-| snapshot.storage.k8s.io      | volumesnapshots, volumesnapshotcontents, volumesnapshotclasses | get, list, watch, create, patch, delete     |
-| storage.k8s.io               | storageclasses                                                 | get                                         |
+| API Groups                   | Resources                                                      | Permissions                                     |
+|------------------------------|----------------------------------------------------------------|-------------------------------------------------|
+| apiextensions.k8s.io         | customresourcedefinitions                                      | get, create, patch, update                      |
+| admissionregistration.k8s.io | mutatingwebhookconfigurations, validatingwebhookconfigurations | *                                               |
+| core.kubestash.com           | *                                                              | *                                               |
+| storage.kubestash.com        | *                                                              | *                                               |
+| config.kubestash.com         | *                                                              | *                                               |
+| addons.kubestash.com         | *                                                              | *                                               |
+| kubedb.com                   | *                                                              | *                                               |
+| catalog.kubedb.com           | elasticsearchs                                                 | get, list, watch                                |
+| elasticsearch.kubedb.com     | elasticsearchdashboards                                        | list                                            |
+| appcatalog.appscode.com      | *                                                              | get, list, watch                                |
+| apps                         | daemonsets, replicasets, statefulsets                          | get, list, watch                                |
+| apps                         | deployments                                                    | get, list, watch, create, patch, update         |
+| batch                        | jobs, cronjobs                                                 | get, list, watch, create, patch, update, delete |
+| ""                           | events                                                         | create                                          |
+| ""                           | persistentvolumeclaims, persistentvolumes                      | get, list, watch, create, patch, delete, update |
+| ""                           | services, endpoints, pods                                      | get, list, watch                                |
+| ""                           | secrets                                                        | get, list, create, patch, watch, delete         |
+| ""                           | nodes, namespaces                                              | get, list, watch                                |
+| ""                           | pods/exec                                                      | create                                          |
+| ""                           | serviceaccounts                                                | get, list, watch, create, delete, patch, update |
+| rbac.authorization.k8s.io    | clusterroles, roles, rolebindings, clusterrolebindings         | get, list, watch, create, delete, patch, update |
+| apps.openshift.io            | deploymentconfigs                                              | get, list, watch, patch                         |
+| policy                       | podsecuritypolicies                                            | use                                             |
+| snapshot.storage.k8s.io      | *                                                              | *                                               |
+| storage.k8s.io               | storageclasses                                                 | get, list, watch                                |
 
 Here,
 
@@ -51,11 +56,11 @@ Here,
 
 ## User facing ClusterRoles
 
-Stash introduces custom resources, such as, `BackupConfiguration`,`BackupBatch`, `BackupSession`,  `Repository`, `RestoreSession`, `RestoreBatch`, `Function`, and `Task` etc. Stash installer will create 2 user facing cluster roles:
+KubeStash introduces custom resources, such as, `BackupConfiguration`, `BackupSession`,  `BackupStorage`, `RestoreSession`, `Function`, and `Addon` etc. KubeStash installer will create 2 user facing cluster roles:
 
-| ClusterRole         | Aggregates To | Desription                                                                                            |
-| ------------------- | ------------- | ----------------------------------------------------------------------------------------------------- |
-| appscode:stash:edit | admin, edit   | Allows edit access to Stash CRDs, intended to be granted within a namespace using a RoleBinding.      |
-| appscode:stash:view | view          | Allows read-only access to Stash CRDs, intended to be granted within a namespace using a RoleBinding. |
+| ClusterRole                                | Aggregates To | Description                           |
+|--------------------------------------------|---------------|---------------------------------------|
+| appscode:kubestash-kubestash-operator:edit | admin, edit   | Allows edit access to KubeStash CRDs. |
+| appscode:kubestash-kubestash-operator:view | view          | Allows read-only access to Stash CRDs |
 
 These user facing roles supports [ClusterRole Aggregation](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles) feature in Kubernetes 1.9 or later clusters.

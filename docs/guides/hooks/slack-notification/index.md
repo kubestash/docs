@@ -267,6 +267,8 @@ spec:
     type: Operator
 ```
 
+Here we have setup an action to send an HTTP POST request. In the `path` field of the `httpPost` section, we have specified the Slack incoming webhook path that we copied in the last step of configuring Slack incoming webhook.
+
 Let’s create the above `HookTemplate`,
 
 ```bash
@@ -278,13 +280,13 @@ Now, we need to create a secret with a Restic password for backup data encryptio
 
 **Create Secret:**
 
-Let's create a secret called `encry-secret` with the Restic password,
+Let's create a secret called `encrypt-secret` with the Restic password,
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encry-secret \
+$ kubectl create secret generic -n demo encrypt-secret \
     --from-file=./RESTIC_PASSWORD \
-secret "encry-secret" created
+secret "encrypt-secret" created
 ```
 
 Here, is the YAML of the BackupConfiguration that we are going to create:
@@ -329,7 +331,7 @@ spec:
           backend: gcs-backend
           directory: /demo/daemon
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
       addon:
         name: workload-addon
@@ -342,7 +344,7 @@ spec:
         delay: 1m
 ```
 
-Notice the `hooks` section. We have setup a `postBackup` hook which sends an HTTP POST request. In the `path` field of the `httpPost` section, we have specified the Slack incoming webhook path that we copied in the last step of configuring Slack incoming webhook.
+Notice the `hooks` section. We have specified the HookTemplate as the `postBackup` hook for this BackupConfiguration.
 
 Also, notice the `body` field of the `httpPost` section. We have used Go template to include information about the backup target and status.
 
@@ -462,7 +464,7 @@ spec:
           backend: gcs-backend
           directory: /demo/daemon
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
       addon:
         name: workload-addon
@@ -477,7 +479,7 @@ spec:
 
 Here, we have provided an invalid path in the `paths` field of the `target` section. This will force the backup to fail.
 
-Notice that, this time we have specified the `executionPolicy` field to `OnFailure`. This will tell KubeStash to send the notification only if the backup fail. In the message body, we have included information about target and reason of failure.
+Notice that, this time we have specified the `executionPolicy` field to `OnFailure`. This will tell KubeStash to send the notification only if the backup fails. In the message body, we have included information about target and reason of the failure.
 
 Let's apply the above BackupConfiguration:
 
@@ -514,7 +516,7 @@ To clean up the test resources we have created throughout this tutorial, run the
 kubectl delete backupconfiguration -n demo sample-backup
 kubectl delete backupstorage -n demo gcs-storage
 kubectl delete secret -n demo gcs-secret
-kubectl delete secret -n demo encry-secret
+kubectl delete secret -n demo encrypt-secret
 kubectl delete daemonset -n demo ks-demo
 kubectl delete hooktemplate -n demo slack-hook
 ```

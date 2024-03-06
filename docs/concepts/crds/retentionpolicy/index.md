@@ -60,7 +60,7 @@ Sample duration format:
 You can also combine the above durations. For example: `30d12h30m`
 
 #### spec.usagePolicy
-UsagePolicy specifies a policy of how this RetentionPolicy will be used. For example, you can use `allowedNamespaces` policy to restrict the usage of this RetentionPolicy to particular namespaces. This field is optional. If you don't provide the usagePolicy, then it can be used only from the current namespace.
+UsagePolicy lets you control which namespaces are allowed to use the `RetentionPolicy` and which are not. If you refer to a `RetentionPolicy` from a restricted namespace, KubeStash will reject creating the respective `BackupConfiguration` from validating webhook. You can use the `usagePolicy` to allow only the same namespace, a subset of namespaces, or all the namespaces to refer to the `RetentionPolicy`. If you don’t specify any `usagePolicy`, KubeStash will allow referencing the `RetentionPolicy` only from the namespace where it was created.
 
 Here is an example of `spec.usagePolicy` that limits referencing the `RetentionPolicy` only from the same namespace,
 ```yaml
@@ -91,12 +91,12 @@ spec:
 
 #### spec.successfulSnapshots
 SuccessfulSnapshots specifies how many successful Snapshots should be kept. It consists of the following fields:
-- **last** specifies how many last Snapshots should be kept.
-- **hourly** specifies how many hourly Snapshots should be kept.
-- **daily** specifies how many daily Snapshots should be kept.
-- **weekly** specifies how many weekly Snapshots should be kept.
-- **monthly** specifies how many monthly Snapshots should be kept.
-- **yearly** specifies how many yearly Snapshots should be kept.
+- **last :** specifies how many last Snapshots should be kept.
+- **hourly :** specifies how many hourly Snapshots should be kept.
+- **daily :** specifies how many daily Snapshots should be kept.
+- **weekly :** specifies how many weekly Snapshots should be kept.
+- **monthly :** specifies how many monthly Snapshots should be kept.
+- **yearly :** specifies how many yearly Snapshots should be kept.
 
 #### spec.failedSnapshots
 FailedSnapshots specifies how many failed Snapshots should be kept. It consists of only one field **last** which specifies how many last failed Snapshots should be kept. By default, KubeStash will keep only the last 1 failed Snapshot.

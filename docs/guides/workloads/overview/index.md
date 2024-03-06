@@ -41,7 +41,7 @@ The backup process consists of the following steps:
 
 3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file into the target storage.
 
-4. Then, she creates a `BackupConfiguration` crd which specifies the targeted workload and desired file paths to backup. The `BackupConfiguration` object specifies the `Repository` pointing to a `BackupStorage` that contains backend information, indicating where to upload backup data. It also defines the `Addon` information with a specified task to be used for backing up the volume.
+4. Then, she creates a `BackupConfiguration` custom resource that specifies the targeted workload, the Addon info with a specified task, etc. It also provides information about one or more repositories, each indicating a path and a `BackupStorage` for storing the backed-up data.
 
 5. KubeStash operator watches for `BackupConfiguration` objects.
 
@@ -59,11 +59,11 @@ The backup process consists of the following steps:
 
 12. Then it resolves the respective `Addon` and `Function` and prepares backup `Job`(s) definition.
 
-13. Then, it mounts the targeted workload volume(s) into the `Job`(s) and creates it.
+13. Then, it mounts the targeted workload volume(s) into the `Job`(s) and creates it/them.
 
 14. The `Job`(s) takes backup of the targeted workload.
 
-15. After the backup process is completed, the backup `Job` updates the `status.components[*]` field of the `Snapshot` resources with each target volume information. It also updates the `status.phase` field of the `BackupSession` to reflect backup completion.
+15. After the backup process is completed, the backup `Job` updates the `status.components[*]` field of the `Snapshot` resources with backup information of the target application components.
 
 ## How Restore Process Works
 
@@ -78,15 +78,15 @@ The restore process consists of the following steps:
 
 1. At first, the user creates a workload where the data will be restored or the user can use the same workload.
 
-2. Then, she creates a `RestoreSession` crd that specifies the target workload volume(s) where the backed-up data will be restored, the `Repository` object that points to a `BackupStorage` that holds backend information, and the target `Snapshot`, which will be restored. It also specifies the `Addon` info with task to use to restore the volume.
+2. Then, she creates a `RestoreSession` custom resource that specifies the target workload volume(s) where the backed-up data will be restored, the `Repository` object that points to a `BackupStorage` that holds backend information, and the target `Snapshot`, which will be restored. It also specifies the `Addon` info with task to use to restore the volume.
 
-3. KubeStash operator watches for `RestoreSession` crds.
+3. KubeStash operator watches for `RestoreSession` custom resources.
 
-4. When it finds a `RestoreSession` crd, it resolves the respective `Addon` and `Function` and prepares a restore `Job`(s) definition.
+4. When it finds a `RestoreSession` custom resource, it resolves the respective `Addon` and `Function` and prepares a restore `Job`(s) definition.
 
 5. The restore `Job`(s) restores the backed-up data into the targeted workload volume(s).
 
-6. Finally, when the restore process is completed, the `Job`(s) updates the `status.phase` field of the `RestoreSession` to reflect restore completion.
+6. Finally, when the restore process is completed, the `Job`(s) updates the `status.components` field of the `RestoreSession` to reflect restore process.
 
 ## Next Steps
 

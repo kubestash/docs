@@ -1,10 +1,10 @@
 ---
-title: Install Stash
-description: Installation guide for Stash
+title: Install KubeStash
+description: Installation guide for KubeStash
 menu:
   docs_{{ .version }}:
-    identifier: install-stash-enterprise
-    name: Stash
+    identifier: install-kubestash-enterprise
+    name: KubeStash
     parent: installation-guide
     weight: 20
 product_name: kubestash
@@ -12,7 +12,7 @@ menu_name: docs_{{ .version }}
 section_menu_id: setup
 ---
 
-# Install Stash
+# Install KubeStash
 
 ## Get a Free License
 
@@ -22,7 +22,7 @@ Download a FREE license from [AppsCode License Server](https://appscode.com/issu
 
 ## Install
 
-Stash operator can be installed as a Helm chart or simply as Kubernetes manifests.
+KubeStash operator can be installed as a Helm chart or simply as Kubernetes manifests.
 
 <ul class="nav nav-tabs" id="installerTab" role="tablist">
   <li class="nav-item">
@@ -37,141 +37,103 @@ Stash operator can be installed as a Helm chart or simply as Kubernetes manifest
 
 ## Using Helm 3
 
-Stash can be installed via [Helm](https://helm.sh/) using the [chart](https://github.com/kubestash/installer/tree/{{< param "info.installer" >}}/charts/stash) from [AppsCode Charts Repository](https://github.com/appscode/charts). To install the chart with the release name `stash`:
+KubeStash can be installed via [Helm](https://helm.sh/) using the [chart](https://github.com/kubestash/installer/tree/master/charts/kubestash) from [AppsCode Charts Repository](https://github.com/appscode/charts). To install the chart with the release name `kubestash`:
 
 ```bash
 $ helm install kubestash oci://ghcr.io/appscode-charts/kubestash \
-  --version {{< param "info.version" >}} \
-  --namespace kubestash --create-namespace \
-  --set-file global.license=/path/to/the/license.txt \
-  --wait --burst-limit=10000 --debug
+        --version {{< param "info.version" >}} \
+        --namespace kubestash --create-namespace \
+        --set-file global.license=/path/to/the/license.txt \
+        --wait --burst-limit=10000 --debug
 ```
 
-To see the detailed configuration options, visit [here](https://github.com/kubestash/installer/tree/{{< param "info.installer" >}}/charts/kubestash).
+To see the detailed configuration options, visit [here](https://github.com/kubestash/installer/tree/master/charts/kubestash).
 
 </div>
 <div class="tab-pane fade" id="script" role="tabpanel" aria-labelledby="script-tab">
 
-## Using YAML
+### Using YAML
 
-If you prefer to not use Helm, you can generate YAMLs from Stash chart and deploy using `kubectl`. Here we are going to show the prodecure using Helm 3.
+If you prefer to not use Helm, you can generate YAMLs from KubeStash chart and deploy using `kubectl`. Here we are going to show the prodecure using Helm 3.
 
 ```bash
 $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash \
-  --version {{< param "info.version" >}} \
-  --namespace kubestash --create-namespace \
-  --set global.skipCleaner=true \
-  --set-file global.license=/path/to/the/license.txt | kubectl apply -f -
+        --version {{< param "info.version" >}} \
+        --namespace kubestash --create-namespace \
+        --set-file global.license=/path/to/the/license.txt | kubectl apply -f -
 ```
 
-To see the detailed configuration options, visit [here](https://github.com/kubestash/installer/tree/{{< param "info.installer" >}}/charts/kubestash).
+To see the detailed configuration options, visit [here](https://github.com/kubestash/installer/tree/master/charts/kubestash).
 
 </div>
 </div>
 
-## Verify installation
+### Verify installation
 
-To check if Stash operator pods have started, run the following command:
+To check if KubeStash operator pods have started, run the following command:
 
 ```bash
-❯ kubectl get pods --all-namespaces -l app.kubernetes.io/name=stash-enterprise --watch
-NAMESPACE     NAME                                      READY   STATUS    RESTARTS   AGE
-kube-system   stash-stash-enterprise-678bcb6db4-267vk   2/2     Running   0          3m
+$ kubectl get pods --all-namespaces -l app.kubernetes.io/name=kubestash-operator --watch
+NAMESPACE     NAME                                           READY   STATUS    RESTARTS   AGE
+kubestash     kubestash-kubestash-operator-fcd8bf7c6-psjs6   2/2     Running   0          5m49s
 ```
 
 Once the operator pod is running, you can cancel the above command by typing `Ctrl+C`.
 
 Now, to confirm CRD groups have been registered by the operator, run the following command:
 ```bash
-$ kubectl get crd -l app.kubernetes.io/name=stash
-
+$ kubectl get crd -l app.kubernetes.io/name=kubestash
 NAME                                      CREATED AT
-backupbatches.stash.appscode.com          2020-08-24T08:20:54Z
-backupblueprints.stash.appscode.com       2020-08-24T08:20:55Z
-backupconfigurations.stash.appscode.com   2020-08-24T08:20:54Z
-backupsessions.stash.appscode.com         2020-08-24T08:20:55Z
-functions.stash.appscode.com              2020-08-24T08:20:55Z
-recoveries.stash.appscode.com             2020-08-24T08:20:54Z
-repositories.stash.appscode.com           2020-08-24T08:20:54Z
-restics.stash.appscode.com                2020-08-24T08:20:54Z
-restorebatches.stash.appscode.com         2020-08-24T08:20:55Z
-restoresessions.stash.appscode.com        2020-08-24T08:20:55Z
-tasks.stash.appscode.com                  2020-08-24T08:20:55Z
+addons.addons.kubestash.com               2023-12-07T06:27:41Z
+backupbatches.core.kubestash.com          2023-12-07T06:27:41Z
+backupblueprints.core.kubestash.com       2023-12-07T06:27:41Z
+backupconfigurations.core.kubestash.com   2023-12-07T06:40:37Z
+backupsessions.core.kubestash.com         2023-12-07T06:40:37Z
+backupstorages.storage.kubestash.com      2023-12-07T06:40:37Z
+functions.addons.kubestash.com            2023-12-07T06:27:41Z
+hooktemplates.core.kubestash.com          2023-12-07T06:27:42Z
+repositories.storage.kubestash.com        2023-12-07T06:40:37Z
+restoresessions.core.kubestash.com        2023-12-07T06:27:42Z
+retentionpolicies.storage.kubestash.com   2023-12-07T06:27:42Z
+snapshots.storage.kubestash.com           2023-12-07T06:40:37Z
 ```
 
-### Verify Catalogs
+### Verify Addons
 
-Stash automatically installs the necessary Addon catalogs for database backup. Verify that the Addon catalogs have been installed using the following command.
+KubeStash automatically installs the necessary Addons for workload, pvc backup & restore. Verify that the Addons have been installed using the following command:
 
 ```bash
-❯ kubectl get tasks.stash.appscode.com
-NAME                          AGE
-elasticsearch-backup-5.6.4    5m8s
-elasticsearch-backup-6.2.4    5m8s
-elasticsearch-backup-6.3.0    5m8s
-elasticsearch-backup-6.4.0    5m8s
-elasticsearch-backup-6.5.3    5m8s
-elasticsearch-backup-6.8.0    5m8s
-elasticsearch-backup-7.2.0    5m8s
-elasticsearch-backup-7.3.2    5m8s
-elasticsearch-restore-5.6.4   5m8s
-elasticsearch-restore-6.2.4   5m8s
-elasticsearch-restore-6.3.0   5m8s
-elasticsearch-restore-6.4.0   5m8s
-elasticsearch-restore-6.5.3   5m8s
-elasticsearch-restore-6.8.0   5m8s
-elasticsearch-restore-7.2.0   5m8s
-elasticsearch-restore-7.3.2   5m8s
-mariadb-backup-10.5.8         5m8s
-mariadb-restore-10.5.8        5m8s
-mongodb-backup-3.4.17         5m8s
-mongodb-backup-3.4.22         5m8s
-mongodb-backup-3.6.13         5m8s
-mongodb-backup-4.0.11         5m8s
-mongodb-backup-4.0.3          5m8s
-mongodb-backup-4.1.13         5m8s
-mongodb-backup-4.1.4          5m8s
-mongodb-backup-4.1.7          5m8s
-mongodb-backup-4.2.3          5m8s
-mongodb-restore-3.4.17        5m8s
-mongodb-restore-3.4.22        5m8s
-mongodb-restore-3.6.13        5m8s
-mongodb-restore-4.0.11        5m8s
-mongodb-restore-4.0.3         5m8s
-mongodb-restore-4.1.13        5m8s
-mongodb-restore-4.1.4         5m8s
-mongodb-restore-4.1.7         5m8s
-mongodb-restore-4.2.3         5m8s
-mysql-backup-5.7.25           5m8s
-mysql-backup-8.0.14           5m8s
-mysql-backup-8.0.21           5m8s
-mysql-backup-8.0.3            5m8s
-mysql-restore-5.7.25          5m8s
-mysql-restore-8.0.14          5m8s
-mysql-restore-8.0.21          5m8s
-mysql-restore-8.0.3           5m8s
-perconaxtradb-backup-5.7      5m8s
-perconaxtradb-restore-5.7     5m8s
-postgres-backup-10.14         5m8s
-postgres-backup-11.9          5m8s
-postgres-backup-12.4          5m8s
-postgres-backup-13.1          5m8s
-postgres-backup-9.6.19        5m8s
-postgres-restore-10.14        5m8s
-postgres-restore-11.9         5m8s
-postgres-restore-12.4         5m8s
-postgres-restore-13.1         5m8s
-postgres-restore-9.6.19       5m8s
-pvc-backup                    5m2s
-pvc-restore                   5m2s
+$ kubectl get addons.addons.kubestash.com
+NAME             AGE
+kubedump-addon   7m1s
+pvc-addon        7m1s
+workload-addon   7m1s
 ```
 
-As you can see from the above output that Stash has created `Task` objects for each supported databases.
+As you can see from the above output that KubeStash has created `Addon` objects.
 
-Now, you are ready to [take your first backup](/docs/guides/README.md) using Stash.
+### Verify Functions
 
-## Purchase Stash License
+KubeStash also automatically installs the necessary functions for the corresponding installed addons. Verify that the functions have been installed using the following command:
 
-If you are interested in purchasing Stash license, please contact us via sales@appscode.com for further discussion. You can also set up a meeting via our [calendly link](https://calendly.com/appscode/intro).
+```bash
+$ kubectl get functions.addons.kubestash.com 
+NAME                     AGE
+kubedump-backup          7m25s
+pvc-backup               7m25s
+pvc-restore              7m25s
+volumesnapshot-backup    7m25s
+volumesnapshot-restore   7m25s
+workload-backup          7m25s
+workload-restore         7m25s
+```
 
-If you are willing to purchase Stash license but need more time to test in your dev cluster, feel free to contact sales@appscode.com. We will be happy to extend your trial period.
+As you can see from the above output that KubeStash has created `Functions` objects.
+
+Now, you are ready to [take your first backup](/docs/guides/README.md) using KubeStash.
+
+## Purchase KubeStash License
+
+If you are interested in purchasing KubeStash license, please contact us via sales@appscode.com for further discussion. You can also set up a meeting via our [calendly link](https://calendly.com/appscode/intro).
+
+If you are willing to purchase KubeStash license but need more time to test in your dev cluster, feel free to contact sales@appscode.com. We will be happy to extend your trial period.

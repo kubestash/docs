@@ -27,6 +27,7 @@ This guide will show you how to use KubeStash to backup and restore volumes of a
   - [BackupSession](/docs/concepts/crds/backupsession/index.md)
   - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
   - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
+  - [Snapshot](/docs/concepts/crds/snapshot/index.md)
 - You will need access to [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/) to store the backup snapshots.
 
 To keep everything isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
@@ -188,7 +189,7 @@ In this section, we are going to prepare the necessary resources before backup.
 
 ### Prepare ServiceAccount
 
-We are going create a Kubernetes service account and attach annotation `azure.workload.identity/client-id: <user-assigned-managed-identity-client-ID>` to the service account.
+We are going create a Kubernetes service account and attach annotation `azure.workload.identity/client-id: <user-assigned-managed-identity-client-ID>` to it.
 
 Let's create a `ServiceAccount` in the `demo` namespace,
 
@@ -220,7 +221,7 @@ Now we are going to store our backed up data into an [Azure Blob Storage](https:
 
 **Create BackupStorage:**
 
-Now, let's create a `BackupStorage` with the information of our desired azure blob storage. Below is the YAML of `BackupStorage` crd we are going to create,
+Now, let's create a `BackupStorage` with the information of our desired azure blob storage. Below is the YAML of `BackupStorage` CR we are going to create,
 
 ```yaml
 apiVersion: storage.kubestash.com/v1alpha1
@@ -281,7 +282,6 @@ spec:
     allowedNamespaces:
       from: All
 ```
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
 
 Let’s create the above `RetentionPolicy`,
 
@@ -298,13 +298,13 @@ At first, we need to create a secret with a Restic password for backup data encr
 
 **Create Secret:**
 
-Let's create a secret called `encry-secret` with the Restic password,
+Let's create a secret called `encrypt-secret` with the Restic password,
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encry-secret \
+$ kubectl create secret generic -n demo encrypt-secret \
     --from-file=./RESTIC_PASSWORD \
-secret "encry-secret" created
+secret "encrypt-secret" created
 ```
 
 **Create BackupConfiguration:**
@@ -342,7 +342,7 @@ spec:
           backend: azure-backend
           directory: /dep
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
       addon:
         name: workload-addon
@@ -368,7 +368,7 @@ spec:
 
 Here, `spec.sessions[*].addon.jobTemplate.spec.serviceAccountName` refers to the name of the `ServiceAccount` to use in the backup job and `spec.sessions[*].addon.jobTemplate.metadata.labels` refers to the labels to use in the backup job.
 
-Let's create the `BackupConfiguration` crd we have shown above,
+Let's create the `BackupConfiguration` CR we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/platforms/aks/examples/backupconfiguration.yaml
@@ -384,6 +384,16 @@ $ kubectl get backupconfiguration -n demo
 NAME                PHASE   PAUSED   AGE
 sample-backup-dep   Ready            3m
 ```
+
+Additionally, we can verify that the `Repository` specified in the `BackupConfiguration` has been created using the following command,
+
+```bash
+kubectl get repo -n demo
+NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE     PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+azure-demo-repo                0                0 B      Ready                            3m
+```
+
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the [Azure Blob Container](https://azure.microsoft.com/en-us/services/storage/blobs/), we will see the `Repository` YAML stored in the `demo/dep` directory.
 
 **Wait for BackupSession:**
 
@@ -409,7 +419,7 @@ NAME              INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-B
 azure-demo-repo   true        1                801 B   Ready   8m                       9m
 ```
 
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=azure-demo-repo
@@ -417,7 +427,13 @@ NAME                                                        REPOSITORY        SE
 azure-demo-repo-sample-backup-dep-demo-session-1705907281   azure-demo-repo   demo-session   2024-01-22T07:08:07Z   Delete            Succeeded   29m
 ```
 
-> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <workload-kind>`
+> - `kubestash.com/app-ref-name: <workload-name>`
+> - `kubestash.com/app-ref-namespace: <workload-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the Deployment.
 
@@ -454,11 +470,11 @@ status:
       size: 801 B
   ...
 ```
-> For Deployment, KubeStash takes backup from only one pod of the Deployment. So, only one component has been taken backup.
+> For Deployment, KubeStash takes backup from only one pod of the Deployment. So, only one component has been backed up. For logical backup, KubeStash uses `dump` as the component name for Deployment.
 
-Now, if we navigate to `dep/repository/v1/demo-session/` directory of our [Azure Blob Container](https://azure.microsoft.com/en-us/services/storage/blobs/), we are going to see that the component of the Deployment has been stored there.
+Now, if we navigate to the [Azure Blob Container](https://azure.microsoft.com/en-us/services/storage/blobs/), we will see the backed up data stored in the `demo/dep/repository/v1/demo-session/dump` directory. KubeStash also keeps backup for `Snapshot` YAMLs, which can be found in the `demo/dep/snapshots` directory.
 
-> KubeStash keeps all backup data encrypted. So, the files in the bucket will not contain any meaningful data until they are decrypted.
+> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
 
 ## Restore
 
@@ -499,7 +515,7 @@ spec:
     repository: azure-demo-repo
     snapshot: latest
     encryptionSecret:
-      name: encry-secret
+      name: encrypt-secret
       namespace: demo
   addon:
     name: workload-addon
@@ -558,7 +574,7 @@ kubectl delete -n demo deployment kubestash-demo
 kubectl delete -n demo backupconfiguration sample-backup-dep
 kubectl delete -n demo restoresession sample-restore
 kubectl delete -n demo backupstorage azure-storage
-kubectl delete -n demo secret encry-secret
+kubectl delete -n demo secret encrypt-secret
 kubectl delete -n demo pvc --all
 ```
 

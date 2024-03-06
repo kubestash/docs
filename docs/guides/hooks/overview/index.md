@@ -70,7 +70,7 @@ If a `preBackup` or `preRestore` hook fails to execute, the rest of the backup/r
 
 If the backup or restore process fails then the respective `postBackup` or `postRestore` hook will be executed according to the policy specified in the `executionPolicy` field of the respective hook in `BackupConfiguration` / `RestoreSession`. The current acceptable values and behaviors are:
 
-- `Always`: The hook will be executed after the backup/restore process no matter the backup/restore has failed or succeeded. This is the default behavior.
+- `Always`: The hook will be executed after the backup/restore process regardless of whether the backup/restore has failed or succeeded. This is the default behavior.
 - `OnSuccess`: The hook will be executed after the backup/restore process only if the backup/restore has succeeded.
 - `OnFailure`: The hook will be executed after the backup/restore process only if the backup/restore has failed.
 

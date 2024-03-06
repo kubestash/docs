@@ -13,7 +13,7 @@ spec:
     repository: gcs-demo-repo
     snapshot: latest
     encryptionSecret:
-      name: encry-secret
+      name: encrypt-secret
       namespace: demo
     components:
       - dump-pod-0

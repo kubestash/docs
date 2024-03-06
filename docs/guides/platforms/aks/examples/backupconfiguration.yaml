@@ -28,7 +28,7 @@ spec:
           backend: azure-backend
           directory: /dep
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
       addon:
         name: workload-addon

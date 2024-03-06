@@ -16,9 +16,9 @@ section_menu_id: concepts
 
 ## What is Snapshot
 
-A `Snapshot` is a Kubernetes `CustomResourceDefinition`(CRD) which represents the state of a backup run to a particular `Repository`. Multiple components of the same target may be backed up in the same `Snapshot`. This is a namespaced CRD. It should be in the same namespace as the respective `Repository`. 
+A `Snapshot` is a Kubernetes `CustomResourceDefinition`(CRD) which represents the state of a backup run for one or more components of an application. For every `BackupSession`, it creates `Snapshot` CRs. If a `BackupSession` involves multiple repositories, a `Snapshot` is created for each repository. 
 
-KubeStash operator is responsible for creating `Snapshot` CR. `Snapshot` is not supposed to be created/edited by the end user.
+KubeStash operator is responsible for creating `Snapshot` CR. `Snapshot` CR is not supposed to be created/edited by the end user.
 
 ## Snapshot CRD Specification
 
@@ -52,11 +52,11 @@ spec:
   version: v1
 status:
   components:
-    pod-0:
+    dump-pod-0:
       driver: Restic
       duration: 10.595356615s
       integrity: true
-      path: repository/v1/demo-session/pod-0
+      path: repository/v1/demo-session/dump-pod-0
       phase: Succeeded
       resticStats:
         - hostPath: /source/data
@@ -64,11 +64,11 @@ status:
           size: 10.240 MiB
           uploaded: 10.242 MiB
       size: 10.242 MiB
-    pod-1:
+    dump-pod-1:
       driver: Restic
       duration: 8.789930136s
       integrity: true
-      path: repository/v1/demo-session/pod-1
+      path: repository/v1/demo-session/dump-pod-1
       phase: Succeeded
       resticStats:
         - hostPath: /source/data
@@ -76,11 +76,11 @@ status:
           size: 1.978 MiB
           uploaded: 1.979 MiB
       size: 1.979 MiB
-    pod-2:
+    dump-pod-2:
       driver: Restic
       duration: 6.261958475s
       integrity: true
-      path: repository/v1/demo-session/pod-2
+      path: repository/v1/demo-session/dump-pod-2
       phase: Succeeded
       resticStats:
         - hostPath: /source/data
@@ -169,7 +169,7 @@ A `Snapshot` object holds `repository` and target application `kind`, `name` and
 
 **status.snapshotTime**
 
-`status.snapshotTime` represents the timestamp when this `Snapshot` was taken.
+`status.snapshotTime` represents the original creation timestamp for this `Snapshot`.
 
 **status.lastUpdateTime**
 
@@ -187,10 +187,10 @@ A `Snapshot` object holds `repository` and target application `kind`, `name` and
 
 `status.conditions` represents list of conditions regarding this `Snapshot`. KubeStash sets the following conditions for a `Snapshot`:
 
-| Field                       | Usage                                                          |
-|-----------------------------|----------------------------------------------------------------|
-| `SnapshotMetadataUploaded`  | Indicates whether the metadata of Snapshot is uploaded or not. |
-| `RecentSnapshotListUpdated` | Indicates whether the recent Snapshot list is updated or not.  |
+| Field                       | Usage                                                           |
+|-----------------------------|-----------------------------------------------------------------|
+| `SnapshotMetadataUploaded`  | Indicates whether the metadata of Snapshot was uploaded or not. |
+| `RecentSnapshotListUpdated` | Indicates whether the recent Snapshot list was updated or not.  |
 
 **status.totalComponents**
 
@@ -200,27 +200,26 @@ A `Snapshot` object holds `repository` and target application `kind`, `name` and
 
 `status.components` represents the backup information of the individual components of this `Snapshot`. Each component consists of the following fields:
 
-- **path** specifies the path inside the `Repository` where the backed up data for this component has been stored. This path is relative to `Repository` path.
-- **phase** represents the backup phase of the component.
-- **size** represents the size of the restic repository for this component.
-- **duration** specifies the total time taken to complete the backup process for this component.
-- **integrity** represents the result of the restic repository integrity check for this component.
-- **error** specifies the reason in case of backup failure for the component.
-- **driver** specifies the name of the tool that has been used to upload the underlying backed up data.
-- **resticStats** specifies the **Restic** driver specific information. Each resticStat consists of the following fields:
-  - **id** represents the restic snapshot id.
-  - **uploaded** specifies the amount of data that has been uploaded in the restic snapshot.
-  - **hostPath** represents the backup path for which restic snapshot is taken.
-  - **size** represents the restic snapshot size.
-- **volumeSnapshotterStats** specifies the **VolumeSnapshotter** driver specific information. Each volumeSnapshotterStat consists of the following fields:
-  - **pvcName** represents the backup PVC name for which volumeSnapshot is created.
-  - **hostPath** represents the corresponding path of PVC for which volumeSnapshot is created.
-  - **volumeSnapshotName** represents the name of created volumeSnapshot.
-  - **volumeSnapshotTime** indicates the timestamp at which the volumeSnapshot was created.
-- **walSegments** specifies a list of wall segment for individual component. Each walSegment consists of `start` time and `end` time fields.
+- **path :** specifies the path inside the `Repository` where the backed up data for this component has been stored. This path is relative to `Repository` path.
+- **phase :** represents the backup phase of the component.
+- **size :** represents the size of the restic repository for this component.
+- **duration :** specifies the total time taken to complete the backup process for this component.
+- **integrity :** represents the result of the restic repository integrity check for this component.
+- **error :** specifies the reason in case of backup failure for the component.
+- **driver :** specifies the name of the tool that has been used to upload the underlying backed up data.
+- **resticStats :** specifies the **Restic** driver specific information. Each resticStat consists of the following fields:
+  - **id :** represents the restic snapshot id.
+  - **uploaded :** specifies the amount of data that has been uploaded in the restic snapshot.
+  - **hostPath :** represents the backup path for which restic snapshot is taken.
+  - **size :** represents the restic snapshot size.
+- **volumeSnapshotterStats :** specifies the **VolumeSnapshotter** driver specific information. Each volumeSnapshotterStat consists of the following fields:
+  - **pvcName :** represents the backup PVC name for which volumeSnapshot was created.
+  - **hostPath :** represents the mount path of PVC for which volumeSnapshot was created.
+  - **volumeSnapshotName :** represents the name of created volumeSnapshot.
+  - **volumeSnapshotTime :** indicates the timestamp at which the volumeSnapshot was created.
+- **walSegments :** specifies a list of wall segment for individual component. Each walSegment consists of `start` time and `end` time fields.
 
 ## Next Steps
 
 - Learn how to configure `BackupConfiguration` to backup workloads data from [here](/docs/guides/workloads/overview/index.md).
-- Learn how to configure `BackupConfiguration` to backup databases from [here](/docs/guides/addons/overview/index.md).
 - Learn how to configure `BackupConfiguration` to backup stand-alone PVC from [here](/docs/guides/volumes/overview/index.md).

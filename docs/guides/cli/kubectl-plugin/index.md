@@ -45,7 +45,7 @@ Available command for `kubectl kubestash` cli are:
 
 ### Copy Secret
 
-To copy a Secret, you need to provide `Secret` name and destination namespace. You will provide the destination namespace by using flag. The available flags are:
+To copy a Secret, you need to provide `Secret` name and destination namespace. The available flags are:
 
 | Flag             | Description                                                            |
 |------------------|------------------------------------------------------------------------|
@@ -66,7 +66,7 @@ $ kubectl kubestash cp secret my-secret --namespace=demo --to-namespace=demo1
 
 ### Copy VolumeSnapshot
 
-To copy a VolumeSnapshot, you need to provide `VolumeSnapshot` name and destination namespace. You will provide the destination namespace by using flag. The available flags are:
+To copy a VolumeSnapshot, you need to provide `VolumeSnapshot` name and destination namespace. The available flags are:
 
 | Flag             | Description                                                                    |
 |------------------|--------------------------------------------------------------------------------|
@@ -89,8 +89,7 @@ $ kubectl kubestash cp volumesnapshot my-vol-snap --namespace=demo --to-namespac
 - After the backup process succeeded, It creates a RestoreSession in the source namespace with the target in destination namespace.
 - finally, It restores the backed up data into VolumeClaimTemplate in the destination namespace.
 
-To clone a PVC, you need to provide backend credentials for creating BackupStorage (if no storage is provided) and encryption secret.
-You will provide the backend credential and encryption secret by using flags. The available flags are:
+To clone a PVC, you can provide the reference of the existing BackupStorage if you already have one; otherwise, you have to provide the backend information. Additionally, you need to provide the encryption secret reference. The available flags are:
 
 | Flag                         | Description                                                           |
 |------------------------------|-----------------------------------------------------------------------|
@@ -125,7 +124,7 @@ $ kubectl kubestash clone pvc my-pvc -n demo --to-namespace=demo-1 --storage-sec
 ## Download Snapshot
 
 `kubectl kubestash download` command is used to download the components of a snapshot from backend repository into your local machine.
-To download the snapshot you have to provide `Snapshot` name and download directory. You will provide the download directory using flag. The available flags are:
+To download the snapshot you have to provide `Snapshot` name and download directory. The available flags are:
 
 | Flag            | Description                                                                                                                              |
 |-----------------|------------------------------------------------------------------------------------------------------------------------------------------|
@@ -151,7 +150,7 @@ $ kubectl kubestash download demo-storage-sample-backup-frequent-backup-16993550
 
 `kubectl kubestash trigger` command is used to take an instant backup in KubeStash.
 To trigger an instant backup, you need to have a BackupConfiguration in your cluster. You need to provide the BackupConfiguration name. You can also provide the namespace by using the `--namespace` flag. This flag indicates the namespace where the trigger backup will be occurred. 
-To trigger backup for specific sessions, you need to provide the sessions name (comma seperated) by using the `--sessions` flag. If you want to trigger backup for all sessions present in the BackupConfiguration, then this flag can be omitted.
+To trigger backup for specific sessions, you need to provide the session names (comma seperated) by using the `--sessions` flag. If you want to trigger backup for all the sessions present in the BackupConfiguration, then this flag should be omitted.
 
 **Format:**
 
@@ -167,9 +166,11 @@ $ kubectl kubestash trigger my-config --namespace=demo --sessions=frequent-backu
 
 ## Unlock Repository
 
-`kubectl kubestash unlock` are used to remove lock from the backend repository.
+`kubectl kubestash unlock` is used to remove lock from the backend repository.
+
 To unlock the Repository, you need to provide a Repository name. You can also provide the namespace by using the `--namespace` flag. This flag indicates the Repository namespace.
-To unlock the Repository for a specific component, you need to provide the component paths (comma seperated) by using the `--paths` flag. You can find the paths in the `status` section of the respective Repository. If you want to unlock all the components of the respective Repository, then this flag can be omitted.
+
+A Repository can have multiple components. To unlock the repository for a specific component, you need to provide the component paths (comma seperated) by using the `--paths` flag. You can find the paths in the `status.componentPaths` section of the respective Repository. If you want to unlock all the components of the respective Repository, then this flag should be omitted.
 
 **Format:**
 
@@ -246,6 +247,13 @@ kubectl kubestash debug restore <restoresession-name> [flags]
 
 ```bash
 $ kubectl kubestash debug restore sample-restore --namespace=demo 
+```
+
+### Debug Operator
+To debug the KubeStash operator you need to run the following command:
+
+```bash
+$ kubectl kubestash debug operator
 ```
 
 ## Password Command

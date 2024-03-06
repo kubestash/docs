@@ -38,7 +38,7 @@ spec:
           backend: gcs-backend
           directory: /demo/daemon
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
       addon:
         name: workload-addon

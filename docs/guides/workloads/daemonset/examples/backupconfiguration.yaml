@@ -28,7 +28,7 @@ spec:
           backend: gcs-backend
           directory: /data/ks-demo
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
       addon:
         name: workload-addon

@@ -186,7 +186,7 @@ Bye
 
 ### Prepare Backend
 
-We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a BackupStorage crd to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a BackupStorage CR to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 **Create Secret:**
 
@@ -203,7 +203,7 @@ secret/gcs-secret created
 
 **Create BackupStorage:**
 
-Now, create a `BackupStorage` using this secret. Below is the YAML of `BackupStorage` crd we are going to create,
+Now, create a `BackupStorage` using this secret. Below is the YAML of `BackupStorage` CR we are going to create,
 
 ```yaml
 apiVersion: storage.kubestash.com/v1alpha1
@@ -257,7 +257,6 @@ spec:
     allowedNamespaces:
       from: All
 ```
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
 
 Let’s create the above `RetentionPolicy`,
 
@@ -313,13 +312,13 @@ Now, we need to create a secret with a Restic password for backup data encryptio
 
 **Create Secret:**
 
-Let's create a secret called `encry-secret` with the Restic password,
+Let's create a secret called `encrypt-secret` with the Restic password,
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encry-secret \
+$ kubectl create secret generic -n demo encrypt-secret \
     --from-file=./RESTIC_PASSWORD \
-secret "encry-secret" created
+secret "encrypt-secret" created
 ```
 
 **Create BackupConfiguration:**
@@ -366,7 +365,7 @@ spec:
           backend: gcs-backend
           directory: /demo/hook
           encryptionSecret:
-            name: encry-secret # some addon may not support encryption
+            name: encrypt-secret # some addon may not support encryption
             namespace: demo
       addon:
         name: mysql-addon
@@ -383,7 +382,7 @@ backupconfiguration.core.kubestash.com/sample-backup created
 
 **Verify CronJob:**
 
-It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` crd.
+It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` CR.
 
 Verify that the `CronJob` has been created using the following command,
 
@@ -395,7 +394,7 @@ trigger-sample-backup-frequent-backup   */5 * * * *   False     0        107m   
 
 **Wait for BackupSession:**
 
-Wait for the next schedule for backup. Run the following command to watch `BackupSession` crd,
+Wait for the next schedule for backup. Run the following command to watch `BackupSession` CR,
 
 ```bash
 $ kubectl get backupsession -n demo -w
@@ -408,7 +407,7 @@ Here, the phase `Succeeded` means that the backup process has been completed suc
 
 **Verify Backup:**
 
-Once a backup is complete, KubeStash will update the respective `Repository` crd to reflect the backup. Check that the repository `demo-repo` has been updated by the following command,
+Once a backup is complete, KubeStash will update the respective `Repository` CR to reflect the backup. Check that the repository `demo-repo` has been updated by the following command,
 
 ```bash
 $ kubectl get repository -n demo demo-repo
@@ -417,7 +416,7 @@ NAME        INTEGRITY   SNAPSHOT-COUNT   SIZE          PHASE   LAST-SUCCESSFUL-B
 demo-repo   true        1                664.373 KiB   Ready   141m                     147m
 ```
 
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-demo-repo
@@ -426,7 +425,13 @@ NAME                                                 REPOSITORY   SESSION       
 demo-repo-sample-backup-frequent-backup-1708327500   demo-repo    frequent-backup   2024-02-19T07:25:01Z   Delete            Succeeded   168m
 ```
 
-> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <workload-kind>`
+> - `kubestash.com/app-ref-name: <workload-name>`
+> - `kubestash.com/app-ref-namespace: <workload-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the MySQL database.
 
@@ -464,9 +469,9 @@ status:
   ...
 ```
 
-Now, if we navigate to `demo/hook/repository/v1/frequent-backup/` directory of our gcs bucket, we are going to see that the component of the MySQL database has been stored there.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/demo/hook/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/sample-sts/snapshots` directory.
 
-> KubeStash keeps all backup data encrypted. So, the files in the bucket will not contain any meaningful data until they are decrypted.
+> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
 
 **Verify PreBackup Hook Executed:**
 
@@ -587,7 +592,7 @@ spec:
           backend: gcs-backend
           directory: /demo/hook
           encryptionSecret:
-            name: encry-secret # some addon may not support encryption
+            name: encrypt-secret # some addon may not support encryption
             namespace: demo
       addon:
         name: mysql-addon
@@ -736,7 +741,7 @@ spec:
     repository: demo-repo
     snapshot: latest
     encryptionSecret:
-      name: encry-secret
+      name: encrypt-secret
       namespace: demo
   addon:
     name: mysql-addon
@@ -873,7 +878,7 @@ spec:
     repository: demo-repo
     snapshot: latest
     encryptionSecret:
-      name: encry-secret
+      name: encrypt-secret
       namespace: demo
   addon:
     name: mysql-addon
@@ -944,7 +949,7 @@ kubectl delete -n demo restoresession sample-restore
 kubectl delete -n demo backupconfiguration sample-backup
 kubectl delete -n demo backupstorage gcs-storage
 kubectl delete -n demo secret gcs-secret
-kubectl delete -n demo secret encry-secret
+kubectl delete -n demo secret encrypt-secret
 kubectl delete -n demo mysql sample-mysql
 kubectl delete -n demo hooktemplate readonly-hook readonly-off-hook migration-hook drop-db-hook
 kubectl delete -n demo retentionpolicy demo-retention

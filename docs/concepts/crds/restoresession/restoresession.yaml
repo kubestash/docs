@@ -13,7 +13,7 @@ spec:
       - pod-0
       - pod-2
     encryptionSecret:
-      name: encry-secret
+      name: encrypt-secret
       namespace: demo
     repository: gcs-demo-repo
     snapshot: latest

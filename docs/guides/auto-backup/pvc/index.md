@@ -28,6 +28,7 @@ This tutorial will show you how to configure automatic backup for PersistentVolu
   - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
   - [Function](/docs/concepts/crds/function/index.md)
   - [Addon](/docs/concepts/crds/addon/index.md)
+  - [Snapshot](/docs/concepts/crds/snapshot/index.md)
 
 To keep everything isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
 
@@ -108,8 +109,6 @@ spec:
   default: true
   deletionPolicy: WipeOut
 ```
-Notice the `spec.usagePolicy` that allows referencing the `BackupStorage` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [BackupStorage usage policy](/docs/concepts/crds/backupstorage/index.md#backupstorage-spec). We have set `spec.deletionPolicy` to `WipeOut` which will delete the respective `Repository` and `Snapshot` CRs as well as the backed up data from the storage.
-If you want to keep the backed up data in the storage then use `Delete` instead of `WipeOut` in `spec.deletionPolicy`.
 
 Let’s create the above `BackupStorage`,
 ```bash
@@ -140,7 +139,6 @@ spec:
     allowedNamespaces:
       from: All
 ```
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
 
 Let’s create the above `RetentionPolicy`,
 
@@ -151,7 +149,7 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 **Create BackupBlueprint:**
 
-Now, we have to create a `BackupBlueprint` crd with a blueprint for `BackupConfiguration` object.
+Now, we have to create a `BackupBlueprint` CR with a blueprint for `BackupConfiguration` object.
 
 Below is the YAML of the `BackupBlueprint` object that we are going to create,
 
@@ -187,7 +185,7 @@ spec:
             backend: gcs-backend
             directory: ${namespace}/${targetName}
             encryptionSecret:
-              name: encry-secret
+              name: encrypt-secret
               namespace: demo
         addon:
           name: pvc-addon
@@ -299,9 +297,7 @@ spec:
   storageClassName: ""
 ```
 
-Notice the `spec.accessModes` section. We are using `ReadWriteMany` access mode so that multiple pods can use this PVC simultaneously. Without this access mode, KubeStash will fail to backup the volume as we are going to mount this volume to the backup job.
-
-Also, notice the `spec.volumeName` section. We have specified `nfs-pv` pv name as the volume name.
+Notice the `spec.volumeName` section. We have specified `nfs-pv` pv name as the volume name.
 
 Let's create the PVC we have shown above,
 
@@ -404,7 +400,7 @@ hello from pod 2.
 
 ## Backup
 
-Now, we are going to add auto backup specific annotation to the PVC. KubeStash watches for PVC with auto-backup annotations. Once it finds a PVC with auto-backup annotations, it will create a `BackupConfiguration` crd according to respective `BackupBlueprint`. Then, rest of the backup process will proceed as normal backup of a stand-alone PVC as describe [here](/docs/guides/volumes/pvc/index.md).
+Now, we are going to add auto backup specific annotation to the PVC. KubeStash watches for PVC with auto-backup annotations. Once it finds a PVC with auto-backup annotations, it will create a `BackupConfiguration` CR according to respective `BackupBlueprint`. Then, rest of the backup process will proceed as normal backup of a stand-alone PVC as describe [here](/docs/guides/volumes/pvc/index.md).
 
 **Add Annotations:**
 
@@ -457,10 +453,10 @@ status:
   phase: Bound
 ```
 
-Now, KubeStash will create a `BackupConfiguration` crd according to the blueprint.
+Now, KubeStash will create a `BackupConfiguration` CR according to the blueprint.
 
 **Verify BackupConfiguration:**
-If everything goes well, KubeStash should create a `BackupConfiguration` for our PVC and the phase of that `BackupConfiguration` should be `Ready`. Verify the `BackupConfiguration` crd by the following command,
+If everything goes well, KubeStash should create a `BackupConfiguration` for our PVC and the phase of that `BackupConfiguration` should be `Ready`. Verify the `BackupConfiguration` CR by the following command,
 
 ```bash
 $ kubectl get backupconfiguration -n demo
@@ -491,7 +487,7 @@ spec:
     - backend: gcs-backend
       directory: demo/nfs-pvc
       encryptionSecret:
-        name: encry-secret
+        name: encrypt-secret
         namespace: demo
       name: pvc-repo
     ...
@@ -507,7 +503,7 @@ Notice that the `spec.target` is pointing to the `nfs-pvc` PVC. Also, notice tha
 
 **Wait for BackupSession:**
 
-Now, wait for the next backup schedule. Run the following command to watch `BackupSession` crd:
+Now, wait for the next backup schedule. Run the following command to watch `BackupSession` CR:
 
 ```bash
 Every 2.0s: kubectl get backupsession -n demo                                   AppsCode-PC-03: Tue Jan  9 12:26:47 2024
@@ -528,7 +524,7 @@ NAME       INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACK
 pvc-repo   true        1                2.286 KiB   Ready   45m                      45m
 ```
 
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=pvc-repo
@@ -536,7 +532,13 @@ NAME                                                              REPOSITORY   S
 pvc-repo-persistentvolumeclaim-n-pvc-frequent-backup-1704779101   pvc-repo     frequent-backup   2024-01-09T05:45:08Z   Delete            Succeeded                         50m
 ```
 
-> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <workload-kind>`
+> - `kubestash.com/app-ref-name: <workload-name>`
+> - `kubestash.com/app-ref-namespace: <workload-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the PVC.
 
@@ -573,11 +575,11 @@ status:
       size: 2.287 KiB
   ...
 ```
-> For PVC, KubeStash takes backup the targeted PVC in `/kubestash-data` file path.
+> For PVC, KubeStash takes backup the targeted PVC in `/kubestash-data` file path. For logical backup, KubeStash uses `dump` as the component name for a stand-alone PVC.
 
-Now, if we navigate to `demo/nfs-pvc/repository/v1/frequent-backup/` directory of our GCS bucket, we are going to see that the components of the StatefulSet have been stored there.
+Now, if we navigate to the GCS bucket, we will see the backed up data has been stored in the `demo/demo/nfs-pvc/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/nfs-pvc/snapshots` directory.
 
-> KubeStash keeps all backup data encrypted. So, the files in the bucket will not contain any meaningful data until they are decrypted.
+> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
 
 ## Cleanup
 

@@ -28,6 +28,7 @@ This tutorial will show you how to configure automatic backup for Kubernetes wor
   - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
   - [BackupBlueprint](/docs/concepts/crds/backupblueprint/index.md)
   - [BackupSession](/docs/concepts/crds/backupsession/index.md)
+  - [Snapshot](/docs/concepts/crds/snapshot/index.md)
 
 To keep things isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
 
@@ -78,8 +79,6 @@ spec:
   default: true
   deletionPolicy: WipeOut
 ```
-Notice the `spec.usagePolicy` that allows referencing the `BackupStorage` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [BackupStorage usage policy](/docs/concepts/crds/backupstorage/index.md#backupstorage-spec). We have set `spec.deletionPolicy` to `WipeOut` which will delete the respective `Repository` and `Snapshot` CRs as well as the backed up data from the storage.
-If you want to keep the backed up data in the storage then use `Delete` instead of `WipeOut` in `spec.deletionPolicy`.
 
 Let’s create the above `BackupStorage`,
 ```bash
@@ -110,7 +109,6 @@ spec:
     allowedNamespaces:
       from: All
 ```
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
 
 Let’s create the above `RetentionPolicy`,
 
@@ -121,18 +119,18 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 **Create Encryption Secret:**
 
-Let's create a secret called `encry-secret` with the Restic password,
+Let's create a secret called `encrypt-secret` with the Restic password,
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encry-secret \
+$ kubectl create secret generic -n demo encrypt-secret \
     --from-file=./RESTIC_PASSWORD \
-secret "encry-secret" created
+secret "encrypt-secret" created
 ```
 
 **Create BackupBlueprint:**
 
-Now, we have to create a `BackupBlueprint` crd with a blueprint for `BackupConfiguration` object.
+Now, we have to create a `BackupBlueprint` CR with a blueprint for `BackupConfiguration` object.
 
 Below is the YAML of the `BackupBlueprint` object that we are going to create,
 
@@ -168,7 +166,7 @@ spec:
             backend: gcs-backend
             directory: ${namespace}/${targetName}
             encryptionSecret:
-              name: encry-secret
+              name: encrypt-secret
               namespace: demo
         addon:
           name: workload-addon
@@ -181,7 +179,7 @@ spec:
           delay: 1m
 ```
 
-Note that we have used some variables (format: `${<variable name>}`) in different fields. KubeStash will substitute these variables with values from the respective target's annotations. You can use arbitrary variables.
+Note that we have used some variables (format: `${<variable name>}`) in different fields. KubeStash will substitute these variables with values from the respective target's annotations. You're free to use any variables you like.
 
 Let's create the `BackupBlueprint` that we have shown above,
 
@@ -196,25 +194,29 @@ Now, automatic backup is configured for Kubernetes workloads (`Deployment`, `Sta
 
 You have to add the auto-backup annotations to the workload that you want to backup. The following auto-backup annotations are available:
 
-- **BackupBlueprint Name:** You have to specify the `BackupBlueprint` name that holds the template for `BackupConfiguration` in the following annotation:
+Required Annotations:
+
+- **BackupBlueprint Name:** Specifies the name of the `BackupBlueprint` to be used for this workload's backup.
 
 ```yaml
 blueprint.kubestash.com/name: <BackupBlueprint name>
 ```
 
-- **BackupBlueprint Namespace:** You have to specify the `BackupBlueprint` namespace that holds the template for `BackupConfiguration` in the following annotation:
+- **BackupBlueprint Namespace:** Specifies the namespace where the `BackupBlueprint` resides.
 
 ```yaml
 blueprint.kubestash.com/namespace: <BackupBlueprint namespace>
 ```
 
-- **Sessions:** You can specify with which sessions you want to create the `BackupConfiguration`. If you don't specify this annotation, all sessions from the `BackupBlueprint` will be used. For multiple sessions, you can provide comma (,) seperated sessions name.
+Optional Annotations:
+
+- **Session Names:** Defines which sessions from the `BackupBlueprint` should be used for the `BackupConfiguration`. If you don’t specify this annotation, all sessions from the `BackupBlueprint` will be used. For multiple sessions, you can provide comma (,) seperated sessions name.
 
 ```yaml
  blueprint.kubestash.com/sessions: <Sessions name>
 ```
 
-- **Variables:** You can specify arbitrary number of annotations for variables. KubeStash will resolve the  variables and create `BackupConfiguration` accordingly.
+- **Variables:** Allows you to customize the `BackupConfiguration` by providing values for variables defined within the `BackupBlueprint`. You can define as many annotations as needed for variables.
 
 ```yaml
 variables.kubestash.com/<variable-name>: <Variable value>
@@ -222,7 +224,7 @@ variables.kubestash.com/<variable-name>: <Variable value>
 
 Example:
 
-Assume you are using a variable, named `schedule`, in `BackupBlueprint`. By this variable we can configure different backup schedule for different target. We will add this annotation in the target.
+Assuming you are using a variable named `schedule` for a session schedule in the `BackupBlueprint`, you can configure different backup schedules for each target application using annotations like this:
 ```yaml
 variables.kubestash.com/schedule: "*/5 * * * *"
 ```
@@ -361,7 +363,7 @@ spec:
         - backend: gcs-backend
           directory: demo/sample-sts
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
           name: sts-repo
       retryConfig:
@@ -383,7 +385,7 @@ Notice that the `spec.target` is pointing to the `sample-sts` StatefulSet. Also,
 
 **Wait for BackupSession:**
 
-Now, wait for the next backup schedule. Run the following command to watch `BackupSession` crd:
+Now, wait for the next backup schedule. Run the following command to watch `BackupSession` CR:
 
 ```bash
 $ watch kubectl get backupsession -n demo
@@ -405,7 +407,7 @@ NAME       INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACK
 sts-repo   true        1                2.487 KiB   Ready   23s                      23s
 ```
 
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=sts-repo
@@ -413,7 +415,13 @@ NAME                                                         REPOSITORY   SESSIO
 sts-repo-statefulset-sample-sts-frequent-backup-1704431400   sts-repo     frequent-backup   2024-01-05T05:10:09Z   Delete            Succeeded                         72s
 ```
 
-> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <workload-kind>`
+> - `kubestash.com/app-ref-name: <workload-name>`
+> - `kubestash.com/app-ref-namespace: <workload-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the StatefulSet.
 
@@ -474,11 +482,11 @@ status:
       size: 850 B
  ...
 ```
-> For StatefulSet, KubeStash takes backup from every pod of the StatefulSet. Since we are using three replicas, three components have been taken backup. The ordinal value in the component's name represents the ordinal value of the StatefulSet pod ordinal.
+> For StatefulSet, KubeStash takes backup from every pod of the StatefulSet. Since we are using three replicas, three components have been backed up. For logical backup, KubeStash uses `dump-pod-<ordinal-value>` as the component name where `<ordinal-value>` corresponds to the pod's ordinal number for the StatefulSet.
 
-Now, if we navigate to `demo/sample-sts/repository/v1/frequent-backup/` directory of our GCS bucket, we are going to see that the components of the StatefulSet have been stored there.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/demo/sample-sts/repository/v1/frequent-backup/dump-pod-<ordinal-value>` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/sample-sts/snapshots` directory.
 
-> KubeStash keeps all backup data encrypted. So, the files in the bucket will not contain any meaningful data until they are decrypted.
+> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
 
 ## Backup Deployment
 
@@ -611,7 +619,7 @@ spec:
     - backend: gcs-backend
       directory: demo/kubestash-demo
       encryptionSecret:
-        name: encry-secret
+        name: encrypt-secret
         namespace: demo
       name: dep-repo
     retryConfig:
@@ -649,13 +657,21 @@ $ kubectl get repository -n demo dep-repo
 NAME       INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
 dep-repo   true        1                1.386 KiB   Ready   16m                      46m
 ```
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=dep-repo
 NAME                                                            REPOSITORY   SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       VERIFICATION-STATUS   AGE
 dep-repo-deployment-kubestash-demo-frequent-backup-1704460503   dep-repo     frequent-backup   2024-01-05T13:15:07Z   Delete            Succeeded                         72s
 ```
+
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <workload-kind>`
+> - `kubestash.com/app-ref-name: <workload-name>`
+> - `kubestash.com/app-ref-namespace: <workload-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the Deployment.
 
@@ -697,9 +713,9 @@ status:
   ...
 ```
 
-> For Deployment, KubeStash takes backup only one pod of the Deployment. So we can see only one component is available for Deployment.
+> For Deployment, KubeStash takes backup only one pod of the Deployment. So only one component has been backed up. For logical backup, KubeStash uses `dump` as the component name for Deployment.
 
-Now, if we navigate to `demo/kubestash-demo/repository/v1/frequent-backup/` directory of our GCS bucket, we are going to see that the components of the Deployment have been stored there.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/demo/sample-sts/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/sample-sts/snapshots` directory.
 
 ## Backup DaemonSet
 
@@ -760,7 +776,7 @@ daemonset.apps/ks-demo created
 ```
 
 **Verify BackupConfiguration:**
-If everything goes well, KubeStash should create a `BackupConfiguration` for our DaemonSet and the phase of that `BackupConfiguration` should be `Ready`. Verify the `BackupConfiguration` crd by the following command,
+If everything goes well, KubeStash should create a `BackupConfiguration` for our DaemonSet and the phase of that `BackupConfiguration` should be `Ready`. Verify the `BackupConfiguration` CR by the following command,
 
 ```bash
 $  kubectl get backupconfiguration -n demo
@@ -797,7 +813,7 @@ spec:
         - backend: gcs-backend
           directory: demo/ks-demo
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
           name: daemon-repo
       retryConfig:
@@ -835,13 +851,21 @@ NAME          INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-BACKU
 daemon-repo   true        1                804 B   Ready   55m                      7m
 ```
 
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=daemon-repo
 NAME                                                       REPOSITORY    SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       VERIFICATION-STATUS   AGE
 daemon-repo-daemonset-ks-demo-frequent-backup-1704705120   daemon-repo   frequent-backup   2024-01-08T09:12:08Z   Delete            Succeeded                         7m
 ```
+
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <workload-kind>`
+> - `kubestash.com/app-ref-name: <workload-name>`
+> - `kubestash.com/app-ref-namespace: <workload-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the DaemonSet.
 
@@ -879,9 +903,9 @@ status:
   ...
 ```
 
-> For DaemonSet, KubeStash takes backup from every daemon pod running on different nodes. Since we are using a single node cluster (Kind), only one component has been taken backup. The component's name represent the node name.
+> For DaemonSet, KubeStash takes backup from every daemon pod running on different nodes. Since we are using a single node cluster (Kind), only one component has been backed up. For logical backup, KubeStash uses `dump-<node-name>` as the component name, with `<node-name>` representing the name of the node where DaemonSet's pod is deployed.
 
-Now, if we navigate to `demo/ks-demo/repository/v1/frequent-backup/` directory of our GCS bucket, we are going to see that the component of the DaemonSet been stored there.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/demo/sample-sts/repository/v1/frequent-backup/dump-<node-name>` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/sample-sts/snapshots` directory.
 
 ## Cleanup
 

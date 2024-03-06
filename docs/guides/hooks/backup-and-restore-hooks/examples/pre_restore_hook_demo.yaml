@@ -13,7 +13,7 @@ spec:
     repository: demo-repo
     snapshot: latest
     encryptionSecret:
-      name: encry-secret
+      name: encrypt-secret
       namespace: demo
   addon:
     name: mysql-addon

@@ -11,7 +11,7 @@ spec:
     namespace: demo
   deletionPolicy: Delete
   encryptionSecret:
-    name: encry-secret
+    name: encrypt-secret
     namespace: demo
   path: /demo/data
   storageRef:

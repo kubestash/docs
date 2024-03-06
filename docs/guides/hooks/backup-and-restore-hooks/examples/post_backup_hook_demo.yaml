@@ -44,7 +44,7 @@ spec:
           backend: gcs-backend
           directory: /demo/hook
           encryptionSecret:
-            name: encry-secret # some addon may not support encryption
+            name: encrypt-secret # some addon may not support encryption
             namespace: demo
       addon:
         name: mysql-addon

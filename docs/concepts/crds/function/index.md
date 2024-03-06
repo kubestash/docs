@@ -17,9 +17,9 @@ section_menu_id: concepts
 
 ## What is Function
 
-A complete process of a task such as, backup or restore, is called a `Function` in KubeStash.
+In KubeStash, a complete task like backup or restore is referred to as a `Function`.
 
-A `Function` is a Kubernetes `CustomResourceDefinition`(CRD) which basically specifies a template for a container that performs only a specific action or task. For example, `postgres-backup` function only take backup of PostgreSQL Database.
+A `Function` is a Kubernetes `CustomResourceDefinition`(CRD) which basically specifies a template for a container that performs only a specific action or task. When backing up or restoring an application, there can be multiple tasks involved. For example, with a PostgreSQL database, you might need to do a manifest backup and a logical backup. In KubeStash, each of these tasks is performed using a dedicated `Function`.
 
 When you install KubeStash, some `Function`s will be pre-installed for supported targets like workloads, pvc etc. However, you can create your own function to customize or extend the backup/restore process.
 
