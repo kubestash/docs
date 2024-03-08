@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Stand-alone Volume Backup Overview
 
-If you are using a volume that can be mounted in multiple workloads, aka `ReadWriteMany`/`RWX`, you might want to take backup the volume independent of the workloads. KubeStash supports backup of stand-alone volumes. This guide will give you an overview of how stand-alone volume backup and restore process works in KubeStash.
+This guide will give you an overview of how stand-alone volume backup and restore process works in KubeStash.
 
 ## How Backup Works
 

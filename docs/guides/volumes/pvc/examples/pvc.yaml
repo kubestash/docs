@@ -5,7 +5,7 @@ metadata:
   namespace: demo
 spec:
   accessModes:
-  - ReadWriteMany
+  - ReadWriteOnce
   storageClassName: ""
   resources:
     requests:

@@ -26,6 +26,7 @@ The following diagram shows how KubeStash creates VolumeSnapshot via Kubernetes 
 </figure>
 
 The `VolumeSnapshot` process consists of the following steps:
+
 1. At first, a user creates a `Secret` with access credentials of the backend where the backed-up data will be stored. 
 
 2. Then, she creates a `BackupStorage` custom resource that specifies the backend information, along with the `Secret` containing the credentials needed to access the backend. 

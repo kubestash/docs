@@ -13,7 +13,7 @@ spec:
     repository: gcs-repository
     snapshot: latest
     encryptionSecret:
-      name: encryption-secret
+      name: encrypt-secret
       namespace: demo
   addon:
     name: pvc-addon

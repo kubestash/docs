@@ -24,7 +24,7 @@ spec:
           backend: gcs-backend
           directory: /kube-system-manifests
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:

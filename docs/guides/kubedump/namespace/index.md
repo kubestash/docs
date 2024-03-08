@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Backup resource YAMLs of a Namespace using KubeStash
 
-KubeStash `{{< param "info.version" >}}` supports taking backup of the resource YAMLs using `kubedump` plugin. This guide will show you how you can take a backup of the resource YAMLs of a particular namespace using KubeStash.
+This guide will show you how you can take backup of the resource YAMLs of a particular namespace using KubeStash.
 
 ## Before You Begin
 
@@ -28,7 +28,7 @@ You have to be familiar with the following custom resources:
 - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
 - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
 - [BackupSession](/docs/concepts/crds/backupsession/index.md)
-- [SnapShot](/docs/concepts/crds/snapshot/index.md)
+- [Snapshot](/docs/concepts/crds/snapshot/index.md)
 - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
 - [RetentionPolicy](/docs/concepts/crds/retentionpolicy/index.md)
 
@@ -48,7 +48,7 @@ In this section, we are going to configure a backup for all the resource YAMLs o
 
 #### Prepare Backend
 
-Now, we are going to store our backed-up data into a GCS bucket using KubeStash. We have to create a Secret and a `BackupStorage` object with access credentials and backend information respectively. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+Now, we are going backup of the YAMLs of a particular namespace to a GCS bucket using KubeStash. For this, we have to create a `Secret` with  necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
@@ -100,7 +100,7 @@ backupstorage.storage.kubestash.com/gcs-repo created
 
 **Create RetentionPolicy:**
 
-Now, we have to create a `RetentionPolicy` custom resource which specifies how the old `Snapshots` should be cleaned up.
+Now, we have to create a `RetentionPolicy` object to specify how the old `Snapshots` should be cleaned up.
 
 Below is the YAML of the `RetentionPolicy` object that we are going to create,
 
@@ -122,6 +122,8 @@ spec:
       from: Same
 ```
 
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md).
+
 Let's create the `RetentionPolicy` object that we have shown above,
 
 ```bash
@@ -131,7 +133,7 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 #### Create RBAC
 
-The `kubedump` plugin requires read permission for all the resources of the desired namespace. By default, KubeStash does not grant such permissions. We have to provide the necessary permissions manually.
+To take backup of the resource YAMLs of a particular namespace KubeStash creates a backup `Job`. This `Job` requires read permission for all the resources of the desired namespace. By default, KubeStash does not grant such permissions. We have to provide the necessary permissions manually.
 
 Here, is the YAML of the `ServiceAccount`, `ClusterRole`, and `ClusterRoleBinding` that we are going to use for granting the necessary permissions.
 
@@ -170,7 +172,7 @@ Here, we have give permission to read all the cluster resources. You can restric
 Let's create the RBAC resources we have shown above,
 
 ```bash
-❯ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/namespace/examples/rbac.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/namespace/examples/rbac.yaml
 serviceaccount/cluster-resource-reader created
 clusterrole.rbac.authorization.k8s.io/cluster-resource-reader created
 clusterrolebinding.rbac.authorization.k8s.io/cluster-resource-reader created
@@ -182,17 +184,18 @@ Now, we are ready for backup. In the next section, we are going to schedule a ba
 
 To schedule a backup, we have to create a `BackupConfiguration` object.
 
-we also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
 **Create Secret:**
+
+We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
 Let's create a secret named `encry-secret` with the Restic password.
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encryption-secret \
+$ kubectl create secret generic -n demo encrypt-secret \
     --from-file=./RESTIC_PASSWORD 
-secret/encryption-secret created
+secret/encrypt-secret created
 ```
 
 #### Create BackupConfiguration
@@ -230,7 +233,7 @@ spec:
           backend: gcs-backend
           directory: /kube-system-manifests
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:
@@ -256,28 +259,22 @@ backupconfiguration.core.kubestash.com/kube-system-backup created
 
 #### Verify Backup Setup Successful
 
-If everything goes well, the phase of the `BackupConfiguration` should be `Ready`. The `Ready` phase indicates that the backup setup is successful. Let's verify the `Phase` of the BackupConfiguration,
+If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful.
+
+Let's check the `Phase` of the BackupConfiguration
 
 ```bash
-❯ kubectl get backupconfiguration -n demo
+$ kubectl get backupconfiguration -n demo
 NAME                              PHASE   PAUSED   AGE
 kube-system-backup                Ready            79s
 
 ```
 
-**Verify Repository:**
-
-Verify that KubeStash has created `Repositories` that holds the `BackupStorage` information by the following command,
-
-```bash
-$ kubectl get repositories -n demo
-NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repository                                       Ready                            28s
-```
-
 **Verify CronJob:**
 
-Verify that KubeStash has created a CronJob to trigger a periodic backup of the targeted PVC by the following command,
+Verify that KubeStash has created a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
+
+Check that the `CronJob` has been created using the following command,
 
 ```bash
 $ kubectl get cronjob -n demo
@@ -287,7 +284,7 @@ trigger-kube-system-backup-frequent-backup            */5 * * * *   False     0 
 
 **Wait for BackupSession:**
 
-Now, wait for the next backup schedule. You can watch for `BackupSession` crd using the following command,
+Now, wait for the next backup schedule. You can watch for `BackupSession` CR using the following command,
 
 ```bash
 $ Every 1.0s: kubectl get backupsession -n demo -l=kubestash.com/invoker-name=kube-system-backup                                               anisur: Fri Feb 23 18:34:53 2024
@@ -299,27 +296,23 @@ kube-system-backup-frequent-backup-1708691400   BackupConfiguration   kube-syste
 
 **Verify Backup:**
 
-When backup session is created, kubestash operator creates `Snapshot` which represents the state of backup run for each `Repository` which are provided in `BackupConfiguration`.
+When backup session is created, KubeStash operator creates `Snapshot` which represents the state of backup run for each `Repository` which are provided in `BackupConfiguration`.
 
-Run the following command to check `Snapshot` phase,
+```bash
+$ kubectl get repositories -n demo
+NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-repository   true        1                2.262 KiB   Ready   103s                     8m
+
+```
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot`.
+
+Verify created `Snapshot` object by the following command,
 
 ```bash
 $ kubectl get snapshots -n demo
 NAME                                                           REPOSITORY       SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
 gcs-repository-kube-system-backup-frequent-backup-1708691400   gcs-repository   frequent-backup   2024-02-23T12:30:00Z   Delete            Succeeded   5m9s
 ```
-
-When backup session is completed, KubeStash will update the respective `Repository` to reflect the latest state of backed up data.
-
-Run the following command to check if a backup snapshot has been stored in the backend,
-
-```bash
-$ kubectl get repositories -n demo
-NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repository   true        1                2.262 KiB   Ready   103s                     8m
-```
-
-From the output above, we can see that `1` snapshot has been stored in the backend specified by Repository `gcs-repository`.
 
 Now, if we navigate to the GCS bucket, we will see the backed up data has been stored in `/manifest/namespace/kube-system` directory as specified by `.spec.backend.gcs.prefix` field of the `Repository` object.
 
@@ -343,13 +336,13 @@ KubeStash provides a [kubectl plugin](/docs/guides/cli/cli/#download-snapshots) 
 Now, let's download the latest Snapshot from our backed-up data into the `$HOME/Downloads/kubestash/namespace/kube-system` folder of our local machine.
 
 ```bash
-❯ kubectl kubestash download --namespace=demo gcs-repository-kube-system-backup-frequent-backup-1708691400  --destination=$HOME/Downloads/kubestash/namespace/kube-system/
+$ kubectl kubestash download --namespace=demo gcs-repository-kube-system-backup-frequent-backup-1708691400  --destination=$HOME/Downloads/kubestash/namespace/kube-system/
 ```
 
 Now, lets use [tree](https://linux.die.net/man/1/tree) command to inspect downloaded YAMLs files.
 
 ```bash
-❯ tree /home/anisur/Downloads/kubestash/namespace/kube-system
+$ tree /home/anisur/Downloads/kubestash/namespace/kube-system
 /home/anisur/Downloads/kubestash/namespace/kube-system
 └── gcs-repository-kube-system-backup-frequent-backup-1708691400
     └── manifest
@@ -410,7 +403,7 @@ Here, the resources has been grouped under the respective Kind folder.
 Let's inspect the YAML of `coredns.yaml` file under ConfigMap folder,
 
 ```yaml
-❯ cat /home/anisur/Downloads/kubestash/namespace/kube-system/gcs-repository-kube-system-backup-frequent-backup-1708691400/manifest/tmp/manifest/ConfigMap/coredns.yaml
+$ cat /home/anisur/Downloads/kubestash/namespace/kube-system/gcs-repository-kube-system-backup-frequent-backup-1708691400/manifest/tmp/manifest/ConfigMap/coredns.yaml
 apiVersion: v1
 data:
   Corefile: |
@@ -454,6 +447,6 @@ kubectl delete clusterrole cluster-resource-reader
 kubectl delete clusterrolebinding cluster-resource-reader
 kubectl delete retentionPolicy -n demo demo-retention
 kubectl delete -n demo backupstorage gcs-storage
-kubectl delete secret -n demo encryption-secret
+kubectl delete secret -n demo encrypt-secret
 kubectl delete secret -n demo gcs-secret
 ```

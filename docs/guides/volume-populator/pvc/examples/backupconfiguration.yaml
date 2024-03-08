@@ -29,7 +29,7 @@ spec:
           backend: gcs-backend
           directory: /pvc-backup-demo
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:

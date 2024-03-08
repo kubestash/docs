@@ -6,7 +6,7 @@ spec:
   capacity:
     storage: 1Gi
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   csi:
     driver: nfs.csi.k8s.io
     volumeHandle: nfs-server.default.svc.cluster.local/share##

@@ -29,7 +29,7 @@ spec:
           backend: gcs-backend
           directory: /dep
           encryptionSecret:
-            name: encryption-secret # some addon may not support encryption
+            name: encrypt-secret # some addon may not support encryption
             namespace: demo
           deletionPolicy: WipeOut
       addon:

@@ -24,7 +24,7 @@ This guide will show you how to use KubeStash to populate volume of a Stand-alon
     - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
     - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
     - [BackupSession](/docs/concepts/crds/backupsession/index.md)
-    - [SnapShot](/docs/concepts/crds/snapshot/index.md)
+    - [Snapshot](/docs/concepts/crds/snapshot/index.md)
     - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
     - [RetentionPolicy](/docs/concepts/crds/retentionpolicy/index.md)
 
@@ -53,13 +53,11 @@ metadata:
   namespace: demo
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
 ```
-
-Notice the `spec.accessModes` section. We are using `ReadWriteMany` access mode so that multiple pods can use this PVC simultaneously. Without this access mode, KubeStash will fail to backup the volume if any other pod mount it during backup.
 
 Let's create the PVC we have shown above,
 
@@ -71,7 +69,7 @@ persistentvolumeclaim/target-pvc created
 
 **Deploy Workload:**
 
-Now, we are going to deploy a sample pod `demo-pod` that will mount `/sample/data` path of the `target-pvc`. This pod will generate a sample file named `hello.txt` with some demo data. We are going to backup the entire PVC using KubeStash that contains the sample files.
+Now, we are going to deploy a sample pod `demo-pod` that will mount `/sample/data` path of the `target-pvc`. This pod will generate a sample file named `hello.txt` with some demo data inside that file.
 
 Below, is the YAML of the pod that we are going to deploy,
 
@@ -109,9 +107,9 @@ $ kubectl exec -n demo demo-pod -- cat /sample/data/hello.txt
 hello from pod.
 ```
 
-## Backup
+## Prepare Backend
 
-Now, we are going to backup the PVC `target-pvc` in a GCS bucket using KubeStash. We have to create a `Secret` with  necessary credentials and a `BackupStorage` object to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+Now, we are going to backup the PVC `target-pvc` to a GCS bucket using KubeStash. For this, we have to create a `Secret` with  necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
@@ -134,7 +132,6 @@ Now, create a `BackupStorage` custom resource specifying the desired bucket, and
 
 Below is the YAML of `BackupStorage` object that we are going to create,
 
-
 ```yaml
 apiVersion: storage.kubestash.com/v1alpha1
 kind: BackupStorage
@@ -147,7 +144,7 @@ spec:
     gcs:
       bucket: kubestash-qa
       prefix: demo
-      secret: gcs-secret
+      secretName: gcs-secret
   usagePolicy:
     allowedNamespaces:
       from: All
@@ -162,13 +159,14 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
-Now, we are ready to backup our target volume into this backend.
+Now, we are ready to backup our target volume to this backend.
 
 **Create RetentionPolicy:**
 
 Now, we have to create a `RetentionPolicy` object to specify how the old `Snapshots` should be cleaned up.
 
 Below is the YAML of the `RetentionPolicy` object that we are going to create,
+
 ```yaml
 apiVersion: storage.kubestash.com/v1alpha1
 kind: RetentionPolicy
@@ -187,7 +185,7 @@ spec:
       from: Same
 ```
 
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy]().
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -198,21 +196,20 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ## Backup
 
-We are ready to start taking backup. Now, we have to create a `BackupConfiguration` custom resource targeting the `target-pvc` PVC that we have created earlier.
+Now, we have to create a `BackupConfiguration` custom resource targeting the `target-pvc` PVC that we have created earlier.
 
 We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
 **Create Secret:**
 
-Let's create a secret named `encry-secret` with the Restic password.
+Let's create a secret named `encrypt-secret` with the Restic password.
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encryption-secret \
+$ kubectl create secret generic -n demo encrypt-secret \
     --from-file=./RESTIC_PASSWORD 
-secret/encryption-secret created
+secret/encrypt-secret created
 ```
-
 
 **Create BackupConfiguration:**
 
@@ -250,7 +247,7 @@ spec:
           backend: gcs-backend
           directory: /pvc-backup-demo
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:
@@ -268,7 +265,9 @@ backupconfiguration.core.kubestash.com/pvc-backup created
 
 **Verify Backup Setup Successful**
 
-If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful. Let's check the `Phase` of the BackupConfiguration,
+If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful.
+
+Let's check the `Phase` of the BackupConfiguration
 
 ```bash
 $ kubectl get backupconfiguration -n demo
@@ -276,19 +275,11 @@ NAME             PHASE   PAUSED   AGE
 pvc-backup       Ready            19s
 ```
 
-**Verify Repository:**
-
-Verify that KubeStash has created `Repositories` that holds the `BackupStorage` information by the following command,
-
-```bash
-$ kubectl get repositories -n demo
-NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repository                                       Ready                            28s
-```
-
 **Verify CronJob:**
 
-Verify that KubeStash has created a CronJob to trigger a periodic backup of the targeted PVC by the following command,
+Verify that KubeStash has created a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
+
+Check that the `CronJob` has been created using the following command,
 
 ```bash
 $ kubectl get cronjob -n demo
@@ -298,7 +289,7 @@ trigger-pvc-backup-frequent-backup       */5 * * * *   False     0        5s    
 
 **Wait for BackupSession:**
 
-Now, wait for the next backup schedule. You can watch for `BackupSession` crd using the following command,
+Now, wait for the next backup schedule. You can watch for `BackupSession` CR using the following command,
 
 ```bash
 $ watch -n 1 kubectl get backupsession -n demo -l=kubestash.com/invoker-name=pvc-backup
@@ -306,7 +297,7 @@ $ watch -n 1 kubectl get backupsession -n demo -l=kubestash.com/invoker-name=pvc
 Every 1.0s: kubectl get backupsession -n demo -l=kubestash.com/invoker-name=pvc-backup                                                                                           workstation: Wed Jan  3 17:26:00 2024
 
 NAME                                        INVOKER-TYPE          INVOKER-NAME     PHASE       DURATION   AGE
-pvc-backup-frequent-backup-1704281100       BackupConfiguration   nfs-pvc-backup   Succeeded              60s
+pvc-backup-frequent-backup-1704281100       BackupConfiguration   pvc-backup       Succeeded              60s
 
 ```
 
@@ -320,25 +311,64 @@ NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFU
 gcs-repository   true        1                2.262 KiB   Ready   103s                     8m
 
 ```
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot`.
 
 Verify created `Snapshot` object by the following command,
 
 ```bash
 $ kubectl get snapshots -n demo
-NAME                                                       REPOSITORY       SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       VERIFICATION-STATUS   AGE
-gcs-repository-pvc-backup-frequent-backup-1704281100       gcs-repository   frequent-backup   2024-01-03T11:25:13Z   Delete            Succeeded                         2m14s
+NAME                                                       REPOSITORY       SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE          AGE
+gcs-repository-pvc-backup-frequent-backup-1704281100       gcs-repository   frequent-backup   2024-01-03T11:25:13Z   Delete            Succeeded      2m14s
 ```
 
-> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: PersistentVolumeClaim`, `kubestash.com/app-ref-name: <volume-name>`, `kubestash.com/app-ref-namespace: <volume-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: PersistentVolumeClaim`, `kubestash.com/app-ref-name: <pvc-name>`, `kubestash.com/app-ref-namespace: <pvc-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+
+If we check the YAML of the `Snapshot`, we can find the information about the backed up components.
+
+```bash
+$ kubectl get snapshots -n demo gcs-repository-pvc-backup-frequent-backup-1704281100 -oyaml
+```
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: Snapshot
+metadata:
+  labels:
+    kubestash.com/app-ref-kind: PersistentVolumeClaim
+    kubestash.com/app-ref-name: target-pvc
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: gcs-repository
+  name: gcs-repository-pvc-backup-frequent-backup-1704281100
+  namespace: demo
+spec:
+  ...
+status:
+  components:
+    dump:
+      driver: Restic
+      duration: 7.534461497s
+      integrity: true
+      path: repository/v1/frequent-backup/dump
+      phase: Succeeded
+      resticStats:
+      - hostPath: /kubestash-data
+        id: f28441a36b2167d64597d66d1046573181cad81aa8ff5b0998b64b31ce16f077
+        size: 11 B
+        uploaded: 1.049 KiB
+      size: 806 B
+  ...
+```
+
+> For stand-alone PVC, KubeStash takes backup from a stand-alone PVC. So, only one component has been taken backup. We use `dump` as the component name for a stand-alone PVC.
 
 ## Populate Volume
 
-This section will show you through the process of populating a volume by restoring the previously backed-up data using KubeStash.
+This section will show you how to populate a volume with data from the `Snapshot` of the previous backup using KubeStash.
 
 **Create a Stand-alone PVC:**
 
-Now, we are going to create a stand-alone `PVC` with `spec.dataSourceRef` set and refers our `snapshot` object.
+Now, we are going to create a stand-alone `PVC` with `spec.dataSourceRef` pointing to our `Snapshot` object.
 
 ```yaml
 kind: PersistentVolumeClaim
@@ -348,18 +378,18 @@ metadata:
   namespace: demo
 spec:
   accessModes:
-  - ReadWriteMany
+  - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
   dataSourceRef:
     apiGroup: storage.kubestash.com
     kind: Snapshot
-    name: gcs-repository-nfs-pvc-backup-frequent-backup-1704281100
+    name: gcs-repository-pvc-backup-frequent-backup-1704281100
 ```
 Here,
-  - `spec.dataSourceRef` specifies that which `snapshot` we want to restore into our populate volume.
-  - we are referencing a `snapshot` object that we have backed up in the previous section.
+  - `spec.dataSourceRef` specifies that which `Snapshot` we want to use for restoring and populating the volume.
+  - We have referenced the `Snapshot` object that was backed up in the previous section.
 
 Let's create the `PVC` object that we have shown above,
 
@@ -370,7 +400,7 @@ persistentvolumeclaim/populate-pv created
 
 **Wait for Populate Volume:**
 
-When you create a `PVC` with `spec.dataSourceRef` set and refers our `snapshot` object, KubeStash will create a restore Job. Now, wait for the volume populate process to complete. 
+When you create a `PVC` with `spec.dataSourceRef` that refers our `Snapshot` object, KubeStash automatically creates a populator Job. Now, just wait for the volume population process to finish. 
 
 You can watch the `PVC` status using the following command,
 
@@ -382,11 +412,12 @@ Every 1.0s: kubectl get pvc -n demo populate-pv                                w
 NAME                STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 populate-pv         Bound    pvc-8d509c47-c26e-4039-8c03-49b25d126429   2Gi        RWO            standard       5d1
 ```
-From the output of the above command, we can see that `PVC` status is `Bound` that means populate volume has been completed successfully.
+
+The output of the command shows the `PVC` status as Bound, indicating successful completion of the volume population.
 
 **Verify Restored Data :**
 
-We are going to create a new `Pod` with mounting our previously created PVC `populate-pv` to verify whether the volume population has been restored successfully or not.
+We are going to create a new `Pod` with mounting our previously created PVC `populate-pv` to verify whether the restored data.
 
 Below, the YAML of the `Pod` that we are going to create,
 
@@ -443,7 +474,7 @@ kubectl delete backupconfiguration -n demo pvc-backup
 kubectl delete backupstorage -n demo gcs-storage
 kubectl delete retentionPolicy -n demo demo-retention
 kubectl delete secret -n demo gcs-secret
-kubectl delete secret -n demo encry-secret
+kubectl delete secret -n demo encrypt-secret
 kubectl delete pod -n demo demo-pod
 kubectl delete -n demo pod restored-pod
 kubectl delete pvc -n demo target-pvc

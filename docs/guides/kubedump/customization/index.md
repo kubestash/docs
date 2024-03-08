@@ -51,7 +51,7 @@ spec:
           backend: gcs-backend
           directory: /kube-system-manifests
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:
@@ -68,7 +68,7 @@ spec:
 The above backup process will backup only the resources that has `k8s-app: kube-dns` label. Here, is a sample of the resources backed up by the above BackupConfiguration.
 
 ```bash
-❯ tree /home/anisur/Downloads/kubestash/label-selector
+$ tree /home/anisur/Downloads/kubestash/label-selector
 /home/anisur/Downloads/kubestash/label-selector
 └── gcs-repository-kube-system-backup-frequent-backup-1708926900
     └── manifest
@@ -131,7 +131,7 @@ spec:
           backend: gcs-backend
           directory: /deployment-manifests
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:
@@ -176,7 +176,7 @@ spec:
           backend: gcs-backend
           directory: /kube-system-manifests
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:
@@ -222,7 +222,7 @@ spec:
           backend: gcs-backend
           directory: /kube-system-manifests
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:

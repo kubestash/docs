@@ -22,7 +22,7 @@ This guide will show you how to use KubeStash to take backup of a stand-alone Pe
 
 - Install `KubeStash` in your cluster following the steps [here](/docs/setup/README.md).
 
-- You will need to have a PVC with `ReadWriteMany` access mode. Here, we are going to use an `NFS` server to provision a PVC with `ReadWriteMany` access mode. If you don't have an NFS server running, deploy one by following the guide [here](https://github.com/kubernetes-csi/csi-driver-nfs).
+- Here, we are going to use an `NFS` server to provision a PVC with `ReadWriteOnce` access mode. If you don't have an NFS server running, deploy one by following the guide [here](https://github.com/kubernetes-csi/csi-driver-nfs).
 
 - You should be familiar with the following `KubeStash` concepts:
   - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
@@ -59,7 +59,7 @@ spec:
   capacity:
     storage: 1Gi
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   csi:
     driver: nfs.csi.k8s.io
     volumeHandle: nfs-server.storage.svc.cluster.local/share##
@@ -89,16 +89,14 @@ metadata:
   namespace: demo
 spec:
   accessModes:
-  - ReadWriteMany
+  - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
   volumeName: nfs-pv
 ```
 
-Notice the `spec.accessModes` section. We are using `ReadWriteMany` access mode so that multiple pods can use this PVC simultaneously. Without this access mode, KubeStash will fail to backup the volume if any other pod mount it during backup.
-
-Also, notice the `spec.volumeName` section. We have specified `nfs-pv` as the PV that we have created earlier, which will be claimed by above PVC.
+Notice the `spec.volumeName` section. We have specified `nfs-pv` as the PV that we have created earlier, which will be claimed by above PVC.
 
 Let's create the PVC we have shown above,
 
@@ -119,7 +117,7 @@ Here, we can see that the PVC `nfs-pvc` has been bounded with PV `nfs-pv`.
 
 **Deploy Workload:**
 
-Now, we are going to deploy two sample pods `demo-pod-1` and `demo-pod-2` that will mount `pod-1/data` and `pod-2/data` [subPath](https://kubernetes.io/docs/concepts/storage/volumes/#using-subpath) of the `nfs-pvc` respectively. Each of the pods will generate a sample file named `hello.txt` with some demo data. We are going to backup the entire PVC using KubeStash that contains the sample files.
+Now, we are going to deploy two sample pods `demo-pod-1` and `demo-pod-2` that will mount `pod-1/data` and `pod-2/data` [subPath](https://kubernetes.io/docs/concepts/storage/volumes/#using-subpath) of the `nfs-pvc` respectively. Each of the pods will generate a sample file named `hello.txt` with some demo data.
 
 Below, is the YAML of the first `Pod` that we are going to deploy,
 
@@ -201,7 +199,7 @@ hello from pod 2.
 
 ## Prepare Backend
 
-Now, we are going to backup the `nfs-pvc` PVC  in a GCS bucket using KubeStash. We have to create a `Secret` with  necessary credentials and a `BackupStorage` object to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+Now, we are going to backup the PVC `nfs-pvc` to a GCS bucket using KubeStash. For this, we have to create a `Secret` with  necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
@@ -220,7 +218,7 @@ secret/gcs-secret created
 
 **Create BackupStorage:**
 
-Now, create a `BackupStorage` custom resource specifying the desired bucket, and directory inside the bucket where the backed up data will be stored. 
+Now, create a `BackupStorage` custom resource specifying the desired bucket, and directory inside the bucket where the backed up data will be stored.
 
 Below is the YAML of `BackupStorage` object that we are going to create,
 
@@ -251,7 +249,7 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-repo created
 ```
 
-Now, we are ready to backup our target volume into this backend.
+Now, we are ready to backup our target volume to this backend.
 
 **Create RetentionPolicy:**
 
@@ -277,7 +275,7 @@ spec:
       from: Same
 ```
 
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -288,19 +286,19 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ## Backup
 
-We have to create a `BackupConfiguration` object targeting the `nfs-pvc` PVC that we have created earlier.
+Now, we have to create a `BackupConfiguration` custom resource targeting the `nfs-pvc` PVC that we have created earlier.
 
-we also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
+We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
 **Create Secret:**
 
-Let's create a secret named `encry-secret` with the Restic password.
+Let's create a secret named `encrypt-secret` with the Restic password.
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encryption-secret \
+$ kubectl create secret generic -n demo encrypt-secret \
     --from-file=./RESTIC_PASSWORD 
-secret/encryption-secret created
+secret/encrypt-secret created
 ```
 
 **Create BackupConfiguration:**
@@ -339,7 +337,7 @@ spec:
           backend: gcs-backend
           directory: /pvc-backup-demo
           encryptionSecret:
-            name: encry-secret
+            name: encrypt-secret
             namespace: demo
           deletionPolicy: WipeOut
       addon:
@@ -357,9 +355,9 @@ backupconfiguration.core.kubestash.com/nfs-pvc-backup created
 
 **Verify Backup Setup Successful**
 
-If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful. 
+If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful.
 
-Let's check the `Phase` of the BackupConfiguration,
+Let's check the `Phase` of the BackupConfiguration
 
 ```bash
 $ kubectl get backupconfiguration -n demo
@@ -369,7 +367,9 @@ nfs-pvc-backup   Ready            19s
 
 **Verify CronJob:**
 
-Verify that KubeStash has created a CronJob to trigger a periodic backup of the targeted PVC by the following command,
+Verify that KubeStash has created a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
+
+Check that the `CronJob` has been created using the following command,
 
 ```bash
 $ kubectl get cronjob -n demo
@@ -379,7 +379,7 @@ trigger-nfs-pvc-backup-frequent-backup   */5 * * * *   False     0        5s    
 
 **Wait for BackupSession:**
 
-Now, wait for the next backup schedule. You can watch for `BackupSession` object using the following command,
+Now, wait for the next backup schedule. You can watch for `BackupSession` CR using the following command,
 
 ```bash
 $ watch -n 1 kubectl get backupsession -n demo -l=kubestash.com/invoker-name=nfs-pvc-backup
@@ -393,7 +393,7 @@ nfs-pvc-backup-frequent-backup-1704281100   BackupConfiguration   nfs-pvc-backup
 
 **Verify Backup:**
 
-When backup session is complete, KubeStash will update the respective `Repository` object to reflect the backup. Check that the repository `gcs-repository` has been updated by the following command,
+When backup session is complete, KubeStash will update the respective `Repository` to reflect the latest state of backed up data.
 
 ```bash
 $ kubectl get repositories -n demo
@@ -402,7 +402,7 @@ gcs-repository   true        1                2.262 KiB   Ready   103s          
 
 ```
 
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot`.
 
 Verify created `Snapshot` object by the following command,
 
@@ -513,7 +513,7 @@ spec:
     repository: gcs-repository
     snapshot: latest
     encryptionSecret:
-      name: encryption-secret
+      name: encrypt-secret
       namespace: demo
   addon:
     name: pvc-addon
@@ -583,7 +583,7 @@ kubectl delete backupstorage -n demo gcs-storage
 kubectl delete retentionPolicy -n demo demo-retention
 
 kubectl delete secret -n demo gcs-secret
-kubectl delete secret -n demo encryption-secret
+kubectl delete secret -n demo encrypt-secret
 
 kubectl delete pod -n demo demo-pod-1
 kubectl delete pod -n demo demo-pod-2

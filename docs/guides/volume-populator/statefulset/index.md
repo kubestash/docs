@@ -23,7 +23,7 @@ This guide will show you how to use KubeStash to populate the volumes of a `Stat
     - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
     - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
     - [BackupSession](/docs/concepts/crds/backupsession/index.md)
-    - [SnapShot](/docs/concepts/crds/snapshot/index.md)
+    - [Snapshot](/docs/concepts/crds/snapshot/index.md)
     - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
     - [RetentionPolicy](/docs/concepts/crds/retentionpolicy/index.md)
 
@@ -98,7 +98,7 @@ spec:
             storage: 256Mi
 ```
 
-Let's create the StatefulSet we have shown above.
+Let's create the `StatefulSet` we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volume-populator/statefulset/examples/statefulset.yaml
@@ -129,13 +129,14 @@ sample-sts-2
 
 ### Prepare Backend
 
-Now, we are going to backup the `sample-sts` StatefulSet in a GCS bucket using KubeStash. We have to create a `Secret` with  necessary credentials and a `BackupStorage` object to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+Now, we are going to backup the StatefulSet `sample-sts` to a GCS bucket using KubeStash. For this, we have to create a `Secret` with  necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
 **Create Secret:**
 
 Let's create a Secret named `gcs-secret` with access credentials of our desired GCS backend,
+
 ```bash
 $ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
 $ cat /path/to/downloaded/sa_key_file.json > GOOGLE_SERVICE_ACCOUNT_JSON_KEY
@@ -178,9 +179,12 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
-Now, we have to create a `RetentionPolicy` custom resource which specifies how the old `Snapshots` should be cleaned up.
+Now, we are ready to backup our target volume to this backend.
+
 
 **Create RetentionPolicy:**
+
+Now, we have to create a `RetentionPolicy` object to specify how the old `Snapshots` should be cleaned up.
 
 Below is the YAML of the `RetentionPolicy` object that we are going to create,
 
@@ -201,7 +205,8 @@ spec:
     allowedNamespaces:
       from: Same
 ```
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
+
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -212,19 +217,19 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ### Backup
 
-We have to create a `BackupConfiguration` object targeting the `sample-sts` StatefulSet that we have deployed earlier.
+Now, we have to create a `BackupConfiguration` custom resource targeting the `sample-tst` StatefulSet that we have created earlier.
 
-At first, we need to create a secret with a Restic password for backup data encryption.
+We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
 **Create Secret:**
 
-Let's create a secret called `encry-secret` with the Restic password,
+Let's create a secret called `encrypt-secret` with the Restic password,
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encryption-secret \
+$ kubectl create secret generic -n demo encrypt-secret \
     --from-file=./RESTIC_PASSWORD \
-secret "encryption-secret" created
+secret "encrypt-secret" created
 ```
 
 **Create BackupConfiguration:**
@@ -262,7 +267,7 @@ spec:
           backend: gcs-backend
           directory: /demo/sample-sts
           encryptionSecret:
-            name: encryption-secret
+            name: encrypt-secret
             namespace: demo
       addon:
         name: workload-addon
@@ -276,7 +281,7 @@ spec:
         delay: 1m
 ```
 
-Let's create the `BackupConfiguration` crd we have shown above,
+Let's create the `BackupConfiguration` object we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/volume-populator/statefulset/examples/backupconfiguration.yaml
@@ -287,7 +292,7 @@ backupconfiguration.core.kubestash.com/sample-backup-sts created
 
 If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful.
 
-Let's check the `Phase` of the BackupConfiguration,
+Let's check the `Phase` of the BackupConfiguration
 
 ```bash
 $ kubectl get backupconfiguration -n demo
@@ -297,7 +302,7 @@ sample-backup-sts   Ready            2m50s
 
 **Verify CronJob:**
 
-It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
+Verify that KubeStash has created a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
 
 Check that the `CronJob` has been created using the following command,
 
@@ -309,12 +314,16 @@ trigger-sample-backup-sts-demo-session   */5 * * * *             0        2m45s 
 
 **Wait for BackupSession:**
 
-Now, wait for the next backup schedule. You can watch for `BackupSession` object using the following command,
+Now, wait for the next backup schedule. You can watch for `BackupSession` CR using the following command,
 
 ```bash
-$ kubectl get backupsession -n demo -w
-NAME                                        INVOKER-TYPE          INVOKER-NAME        PHASE       DURATION   AGE
-sample-backup-sts-demo-session-1706015400   BackupConfiguration   sample-backup-sts   Succeeded              7m22s
+$ watch -n 1 kubectl get backupsession -n demo -l=kubestash.com/invoker-name=sample-backup-sts
+
+Every 1.0s: kubectl get backupsession -n demo -l=kubestash.com/invoker-name=sample-backup-sts                                                                                           workstation: Wed Jan  3 17:26:00 2024
+
+NAME                                            INVOKER-TYPE          INVOKER-NAME     PHASE       DURATION   AGE
+sample-backup-sts-demo-session-1706015400       BackupConfiguration   pvc-backup       Succeeded              60s
+
 ```
 
 **Verify Backup:**
@@ -327,11 +336,10 @@ NAME              INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-B
 gcs-repository    true        1                806 B   Ready   8m27s                    9m18s
 ```
 
-Once a backup is complete, KubeStash will update the respective `Repository` crd to reflect the backup. Check that the repository `gcs-repository` has been updated by the following command,
-
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot`.
 
 Verify created `Snapshot` object by the following command,
+
 
 ```bash
 $ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-repository
@@ -339,9 +347,83 @@ NAME                                                          REPOSITORY      SE
 gcs-repository-sample-backup-sts-frequent-backup-1706015400   gcs-demo-repo   demo-session   2024-01-23T13:10:54Z   Delete            Succeeded   16h
 ```
 
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot`.
+
+```bash
+$ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-demo-repo
+NAME                                                      REPOSITORY      SESSION        SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
+gcs-demo-repo-sample-backup-sts-demo-session-1706015400   gcs-demo-repo   demo-session   2024-01-23T13:10:54Z   Delete            Succeeded   16h
+```
+
+> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+
+If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the StatefulSet.
+
+```bash
+$ kubectl get snapshots -n demo gcs-demo-repo-sample-backup-sts-demo-session-1706015400 -oyaml
+```
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: Snapshot
+metadata:
+  labels:
+    kubestash.com/app-ref-kind: StatefulSet
+    kubestash.com/app-ref-name: sample-sts
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: gcs-demo-repo
+  name: gcs-demo-repo-sample-backup-sts-demo-session-1706015400
+  namespace: demo
+spec:
+  ...
+status:
+  components:
+    dump-pod-0:
+      driver: Restic
+      duration: 1.61162906s
+      integrity: true
+      path: repository/v1/demo-session/dump-pod-0
+      phase: Succeeded
+      resticStats:
+      - hostPath: /source/data
+        id: 4e881fdd20afb49e1baab37654cc18d440dc2f90ad61c9077956ea4561bd41dd
+        size: 13 B
+        uploaded: 1.046 KiB
+      size: 803 B
+    dump-pod-1:
+      driver: Restic
+      duration: 1.597963671s
+      integrity: true
+      path: repository/v1/demo-session/dump-pod-1
+      phase: Succeeded
+      resticStats:
+      - hostPath: /source/data
+        id: 16a414187d554e1713c0a6363d904837998dc7f7d600d7c635a04c61dc1b5467
+        size: 13 B
+        uploaded: 1.046 KiB
+      size: 803 B
+    dump-pod-2:
+      driver: Restic
+      duration: 1.52695046s
+      integrity: true
+      path: repository/v1/demo-session/dump-pod-2
+      phase: Succeeded
+      resticStats:
+      - hostPath: /source/data
+        id: 9dc9efd5e9adfd0154eca48433cc57aa09bca018d970e9530769326c9783905c
+        size: 13 B
+        uploaded: 1.046 KiB
+      size: 798 B
+  ...
+```
+
+> For StatefulSet, KubeStash takes backup from every pod of the StatefulSet. Since we are using three replicas, three components have been taken backup. The component name is `dump-pod-<ordinal-value>`. The ordinal value in the component's name represents the ordinal value of the StatefulSet pod ordinal.
+
 ## Populate Volumes
 
-This section will guide you through the process of populating volumes of a `StatefulSet` by restoring previously backed up data using KubeStash.
+This section will show you how to populate the volumes of a `StatefulSet` with data from the `Snapshot` of the previous backup using KubeStash.
+
+**Deploy StatefulSet :**
 
 Now, we need to create a new `StatefulSet` along with a PersistentVolumeClaim (PVC) using `VolumeClaimTemplates`. This PVC configure with `spec.dataSourceRef` pointing to our `Snapshot` object. KubeStash will populate volume with the restored data from pointing snapshot and attach it to corresponding PVCs. As a result, this PVCs will contain the data that has been restored.
 
@@ -390,7 +472,7 @@ spec:
           name: gcs-demo-repo-sample-backup-sts-demo-session-1707900900
 ```
 Here,
-- `spec.dataSourceRef` specifies that which `snapshot` we want to restore into our populate volume. we are referencing a `snapshot` object that we have backed up in the previous section.
+- `spec.dataSourceRef` specifies that which `snapshot` we want to use for restoring and populating the volume. We have referenced the `Snapshot` object that was backed up in the previous section.
 - `metadata.annotations.populator.kubestash.com/app-name` field is mandatory for any volume population of a StatefulSet through KubeStash.
   - This field denotes the StatefulSet that will be attached those volumes via mount paths. The volume population will only be successful if the mount path of this volume matches the mount paths of the backup StatefulSet.
 
@@ -403,7 +485,7 @@ statefulset.apps/sample-restored-sts created
 
 **Wait for Populate Volume:**
 
-When `StatefulSet` create `PVC` with `spec.dataSourceRef` set and refers our `Snapshot` object for each replica, KubeStash will create a restore Job each of them. Now, wait for the volume populate process to complete. 
+When `StatefulSet` create `PVC` with `spec.dataSourceRef` that refers our `Snapshot` object for each replica, KubeStash automatically creates a populator Job. Now, just wait for the volume population process to finish.
 
 You can watch the `PVCs` status using the following command,
 
@@ -418,7 +500,7 @@ restored-source-data-sample-restored-sts-1   Bound    pvc-4726726d-7f9d-4c67-8aa
 restored-source-data-sample-restored-sts-2   Bound    pvc-df60d50f-9697-4d2f-a6e2-9e9c7ea89524   1Gi        RWO            standard-rwo   2m3s
 ```
 
-From the output of the above command, we can see that `PVCs` status is `Bound` that means populate volumes has been completed successfully.
+The output of the command shows the `PVCs` status as Bound, indicating successful completion of the volume population.
 
 **Verify Restored Data :**
 
@@ -456,7 +538,7 @@ kubectl delete backupconfiguration -n demo sample-backup-sts
 kubectl delete backupstorage -n demo gcs-storage
 kubectl delete retentionPolicy -n demo demo-retention
 kubectl delete secret -n demo gcs-secret
-kubectl delete secret -n demo encryption-secret
+kubectl delete secret -n demo encrypt-secret
 kubectl delete statefulset -n demo sample-sts
 kubectl delete statefulset -n demo sample-restored-sts
 kubectl delete pvc -n demo --all

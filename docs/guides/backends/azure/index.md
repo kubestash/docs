@@ -76,7 +76,7 @@ Create the `BackupStorage` we have shown above using the following command,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/backends/azure/examples/azure.yaml
-backupstorage.storage.kubestash.com/azure-storaqge created
+backupstorage.storage.kubestash.com/azure-storage created
 ```
 
 Now, we are ready to use this backend to backup our desired data using KubeStash.

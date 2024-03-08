@@ -23,7 +23,7 @@ This guide will show you how to use KubeStash to populate the volumes of a `Depl
   - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
   - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
   - [BackupSession](/docs/concepts/crds/backupsession/index.md)
-  - [SnapShot](/docs/concepts/crds/snapshot/index.md)
+  - [Snapshot](/docs/concepts/crds/snapshot/index.md)
   - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
   - [RetentionPolicy](/docs/concepts/crds/retentionpolicy/index.md)
 
@@ -38,7 +38,7 @@ namespace/demo created
 
 ## Prepare Workload
 
-Here, we are going to deploy a `Deployment` with two PVCs and generate some sample data in it. Then, we are going to backup of these PVCs using KubeStash.
+At first, we are going to deploy a `Deployment` with two PVCs and generate some sample data in it.
 
 **Create PersistentVolumeClaim :**
 
@@ -153,7 +153,7 @@ config_data
 
 ### Prepare Backend
 
-Now, we are going to backup the `kubestash-deployment` Deployment in a GCS bucket using KubeStash. We have to create a `Secret` with  necessary credentials and a `BackupStorage` object to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+Now, we are going to backup the Deployment `kubestash-deployment` to a GCS bucket using KubeStash. For this, we have to create a `Secret` with  necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
@@ -203,9 +203,11 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
-Now, we have to create a `RetentionPolicy` custom resource which specifies how the old `Snapshots` should be cleaned up.
+Now, we are ready to backup our target volume to this backend.
 
 **Create RetentionPolicy:**
+
+Now, we have to create a `RetentionPolicy` object to specify how the old `Snapshots` should be cleaned up.
 
 Below is the YAML of the `RetentionPolicy` object that we are going to create,
 
@@ -226,7 +228,8 @@ spec:
     allowedNamespaces:
       from: Same
 ```
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces. To allow specific namespaces, we can configure it accordingly by following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md#retentionpolicy-spec).
+
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -237,19 +240,19 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ### Backup
 
-We have to create a `BackupConfiguration` object targeting the `kubestash-demo` Deployment that we have deployed earlier.
+We have to create a `BackupConfiguration` custom resource targeting the `kubestash-demo` Deployment that we have created earlier.
 
-we also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
+We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
 **Create Secret:**
 
-Let's create a secret called `encry-secret` with the Restic password,
+Let's create a secret named `encrypt-secret` with the Restic password.
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
-$ kubectl create secret generic -n demo encryption-secret \
-    --from-file=./RESTIC_PASSWORD \
-secret "encryption-secret" created
+$ kubectl create secret generic -n demo encrypt-secret \
+    --from-file=./RESTIC_PASSWORD 
+secret/encrypt-secret created
 ```
 
 **Create BackupConfiguration :**
@@ -288,7 +291,7 @@ spec:
           backend: gcs-backend
           directory: /dep
           encryptionSecret:
-            name: encryption-secret # some addon may not support encryption
+            name: encrypt-secret # some addon may not support encryption
             namespace: demo
           deletionPolicy: WipeOut
       addon:
@@ -309,7 +312,7 @@ backupconfiguration.core.kubestash.com/sample-backup-dep created
 
 **Verify Backup Setup Successful**:
 
-If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful. 
+If everything goes well, the phase of the `BackupConfiguration` should be in `Ready` state. The `Ready` phase indicates that the backup setup is successful.
 
 Let's check the `Phase` of the BackupConfiguration,
 
@@ -318,9 +321,10 @@ $ kubectl get backupconfiguration -n demo
 NAME                PHASE   PAUSED   AGE
 sample-backup-dep   Ready            2m50s
 ```
+
 **Verify CronJob:**
 
-It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
+Verify that KubeStash has created a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
 
 Check that the `CronJob` has been created using the following command,
 
@@ -332,7 +336,7 @@ trigger-sample-backup-dep-frequent-backup               */5 * * * *   False     
 
 **Wait for BackupSession:**
 
-Now, wait for the next backup schedule. You can watch for `BackupSession` object using the following command,
+Now, wait for the next backup schedule. You can watch for `BackupSession` CR using the following command,
 
 ```bash
 $ watch -n 1 kubectl get backupsession -n demo -l=kubestash.com/invoker-name=sample-backup-dep
@@ -353,7 +357,7 @@ NAME              INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-B
 gcs-repository    true        1                806 B   Ready   8m27s                    9m18s
 ```
 
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run to a particular `Repository`.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot`.
 
 Verify created `Snapshot` object by the following command,
 
@@ -363,13 +367,59 @@ NAME                                                          REPOSITORY      SE
 gcs-repository-sample-backup-dep-frequent-backup-1706015400   gcs-demo-repo   demo-session   2024-01-23T13:10:54Z   Delete            Succeeded   16h
 ```
 
+> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: PersistentVolumeClaim`, `kubestash.com/app-ref-name: <pvc-name>`, `kubestash.com/app-ref-namespace: <pvc-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+
+If we check the YAML of the `Snapshot`, we can find the information about the backed up components.
+
+```bash
+$ kubectl get snapshots -n demo gcs-repository-sample-backup-dep-frequent-backup-1706015400 -oyaml
+```
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: Snapshot
+metadata:
+  labels:
+    kubestash.com/app-ref-kind: Deployment
+    kubestash.com/app-ref-name: kubestash-deployment
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: gcs-repository
+  name: gcs-repository-sample-backup-dep-frequent-backup-1706015400
+  namespace: demo
+spec:
+  ...
+status:
+  components:
+    dump:
+      driver: Restic
+      duration: 7.534461497s
+      integrity: true
+      path: repository/v1/frequent-backup/dump
+      phase: Succeeded
+      resticStats:
+      - hostPath: /source/data
+        id: f28441a36b2167d64597d66d1046573181cad81aa8ff5b0998b64b31ce16f077
+        size: 11 B
+        uploaded: 1.049 KiB
+      - hostPath: /source/config
+        id: f28441a36b2167d64597d66d1046573181cad81aa8ff5b0998b64b31ce16f077
+        size: 11 B
+        uploaded: 1.049 KiB
+      size: 806 B
+  ...
+```
+
+> For Deployment, KubeStash takes backup from only one pod of the Deployment. So, only one component has been taken backup. The component name is `dump`.
+
 ## Populate Volumes
 
-This section will guide you through the process of populating volumes of a `Deployment` by restoring previously backed up data using KubeStash.
+This section will show you how to populate the volumes of a `Deployment` with data from the `Snapshot` of the previous backup using KubeStash.
 
-Now, we need to create new Persistent Volume Claims (PVCs) with the `spec.dataSourceRef` set to reference our `Snapshot` object. These PVCs will contain the restored data.
+**Create PersistentVolumeClaim :**
 
-Below is the YAML of the restored PVCs,
+Now, we need to create two new Persistent Volume Claims (PVCs) with the `spec.dataSourceRef` set to reference our `Snapshot` object.
+
+Below is the YAML of the PVCs,
 
 ```yaml
 kind: PersistentVolumeClaim
@@ -408,8 +458,9 @@ spec:
     kind: Snapshot
     name: gcs-repository-sample-backup-dep-frequent-backup-1706015400
 ```
+
 Here,
-- `spec.dataSourceRef` specifies that which `snapshot` we want to restore into our populate volume. we are referencing a `snapshot` object that we have backed up in the previous section.
+- `spec.dataSourceRef` specifies that which `snapshot` we want to use for restoring and populating the volume. We have referenced the `Snapshot` object that was backed up in the previous section
 - `metadata.annotations.populator.kubestash.com/app-name` field is mandatory  for any volume population of a deployment through KubeStash.
   - This field denotes the deployment that will be attached those volumes via mount paths. The volume population will only be successful if the mount path of this volume matches the mount paths of the backup deployment.
   - For example, you backed up a deployment with volumes named `source-data` and `source-config`, each with corresponding mount paths `/source/data` and `/source/config`. Now you wish to populate volumes named `restore-source-data` and `restore-source-config` attached to a deployment named `restored-kubestash-deployment`, then this deployment must have mount paths set to `/source/data` and `/source/config`, respectively.
@@ -476,7 +527,7 @@ deployment.apps/restored-kubestash-deployment created
 
 **Wait for Populate Volume:**
 
-When you create two `PVCs` with `spec.dataSourceRef` set and refers our `Snapshot` object, KubeStash will create a restore Job. Now, wait for the volume populate process to complete. 
+When you create two `PVCs` with `spec.dataSourceRef` that refers our `Snapshot` object, KubeStash automatically creates a populator Job. Now, just wait for the volume population process to finish.
 
 You can watch the `PVCs` status using the following command,
 
@@ -491,11 +542,11 @@ restored-source-data     Bound    pvc-d210787e-5137-40b7-89e7-73d982716b40   1Gi
 
 ```
 
-From the output of the above command, we can see that `PVCs` status is `Bound` that means populate volumes has been completed successfully.
+The output of the command shows the `PVCs` status as Bound, indicating successful completion of the volume population.
 
 **Verify Restored Data :**
 
-We are going to exec a pod of `restored-dep` deployment to verify whether the volume population with the backed up data has been restored successfully or not.
+We are going to exec a pod of `restored-dep` deployment to verify whether the restored data.
 
 Now, wait for the deployment pod to go into the `Running` state.
 
@@ -525,7 +576,7 @@ kubectl delete backupconfiguration -n demo sample-backup-dep
 kubectl delete backupstorage -n demo gcs-storage
 kubectl delete retentionPolicy -n demo demo-retention
 kubectl delete secret -n demo gcs-secret
-kubectl delete secret -n demo encryption-secret
+kubectl delete secret -n demo encrypt-secret
 kubectl delete deploy -n demo kubestash-deployment restored-kubestash-deployment
 kubectl delete pvc -n demo --all
 ```
