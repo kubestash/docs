@@ -1,5 +1,5 @@
 ---
-title: Hooks Examples | Stash
+title: Hooks Examples | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: configuring-hooks
@@ -13,15 +13,19 @@ section_menu_id: guides
 
 # Configuring Different Types of Hooks
 
-In this guide, we are going to discuss how to configure different types of hooks. Here, we will give some examples of different configurations.
+In this guide, we are going to discuss how to configure different types of hooks in `HookTemplate`. Here, we will give some examples of different configurations.
 
-## HTTPGet
+## Based on Action
+
+Based on action of a hook, we can configure them for the following use cases.
+
+### HTTPGet
 
 `httpGet` hook allows sending an HTTP GET request to an HTTP server before and after the backup/restore process. The following configurable fields are available for `httpGet` hook.
 
 | Field         | Field Type | Data Type             | Usage                                                                                                                                                                                                                                                                                    |
-| ------------- | ---------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `host`        | `Optional` | `String`              | Specify the name of the host where the GET request will be sent.  If you don't specify this field, Stash will use the hook executor Pod IP as host.                                                                                                                                      |
+|---------------|------------|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `host`        | `Optional` | `String`              | Specify the name of the host where the GET request will be sent. If you don't specify this field, KubeStash will use the hook executor Pod IP as host.                                                                                                                                   |
 | `port`        | `Required` | `Integer` or `String` | Specify the port where the HTTP server is listening. You can specify a numeric port or the name of the port in case of the HTTP server is running in the same pod where the hook will be executed. If you specify the port name, you must specify the `containerName` field of the hook. |
 | `path`        | `Required` | `String`              | Specify the path to access on the HTTP server.                                                                                                                                                                                                                                           |
 | `scheme`      | `Required` | `String`              | Specify the scheme to use to connect with the host.                                                                                                                                                                                                                                      |
@@ -32,7 +36,7 @@ In this guide, we are going to discuss how to configure different types of hooks
 - Hook with `host` and `port` are specified:
 
 ```yaml
-preBackup:
+action:
   httpGet:
     host: my-host.demo.svc
     port: 8080
@@ -43,7 +47,7 @@ preBackup:
 - Hook to extract `host` and `port` from the hook executor pod:
 
 ```yaml
-preBackup:
+action:
   httpGet:
     port: my-port
     path: "/"
@@ -54,7 +58,7 @@ preBackup:
 - Hook for sending custom header in the HTTP request:
 
 ```yaml
-preBackup:
+action:
   httpGet:
     host: my-host.demo.svc
     port: 8080
@@ -62,16 +66,16 @@ preBackup:
     scheme: HTTP
     httpHeaders:
     - name: "User-Agent"
-      value: "stash/0.9.x"
+      value: "kubestash/0.5.x"
 ```
 
-## HTTPPost
+### HTTPPost
 
 `httpPost` hook allows sending an HTTP POST request to an HTTP server before and after the backup/restore process. The following configurable fields are available for `httpPost` hook.
 
 | Field         | Field Type | Data Type             | Usage                                                                                                                                                                                                                                                                             |
-| ------------- | ---------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `host`        | `Optional` | `String`              | Specify the name of the host where the POST request will be sent. If you don't specify this field, Stash will use the hook executor Pod IP as host.                                                                                                                               |
+|---------------|------------|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `host`        | `Optional` | `String`              | Specify the name of the host where the POST request will be sent. If you don't specify this field, KubeStash will use the hook executor Pod IP as host.                                                                                                                           |
 | `port`        | `Required` | `Integer` or `String` | Specify the port where the HTTP server is listening. You can specify a numeric port or the name of the port if your HTTP server is running in the same pod where the hook will be executed. If you specify the port name, you must specify the `containerName` field of the hook. |
 | `path`        | `Required` | `String`              | Specify the path to access on the HTTP server.                                                                                                                                                                                                                                    |
 | `scheme`      | `Required` | `String`              | Specify the scheme to use to connect with the host.                                                                                                                                                                                                                               |
@@ -84,7 +88,7 @@ preBackup:
 - Send JSON data in the request body:
 
 ```yaml
-preBackup:
+action:
   httpPost:
     host: my-service.mynamespace.svc
     path: /demo
@@ -102,7 +106,7 @@ preBackup:
 - Send URL encoded form in the request:
 
 ```yaml
-preBackup:
+action:
   httpPost:
     host: my-service.mynamespace.svc
     path: /demo
@@ -115,13 +119,13 @@ preBackup:
       values: ["28"]
 ```
 
-## TCPSocket
+### TCPSocket
 
 `tcpSocket` hook allows running a check against a TCP port to verify whether it is open or not. The following configurable fields are available for `tcpSocket` hook.
 
 | Field  | Field Type | Data Type             | Usage                                                                                                                                                                                                                                                |
-| ------ | ---------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `host` | `Optional` | `String`              | Specify the name of the host where the server is running. If you don't specify this field, Stash will use the hook executor Pod IP as host.                                                                                                          |
+|--------|------------|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `host` | `Optional` | `String`              | Specify the name of the host where the server is running. If you don't specify this field, KubeStash will use the hook executor Pod IP as host.                                                                                                      |
 | `port` | `Required` | `Integer` or `String` | Specify the port to check. You can specify a numeric port or the name of the port when your server is running in the same pod where the hook will be executed. If you specify the port name, you must specify the `containerName` field of the hook. |
 
 **Examples:**
@@ -129,7 +133,7 @@ preBackup:
 - Hook with `host` and `port` field specified.
 
 ```yaml
-preBackup:
+action:
   tcpSocket:
     host: my-host.demo.svc
     port: 8080
@@ -138,37 +142,37 @@ preBackup:
 - Hook to extract `host` and `port` from the hook executor pod.
 
 ```yaml
-preBackup:
+action:
   tcpSocket:
     port: my-port
   containerName: my-container
 ```
 
-## Exec
+### Exec
 
 `exec` hook allows running commands inside a container before or after the backup/restore process. The following configurable fields are available for `exec` hook.
 
 | Field     | Field Type | Data Type        | Usage                                  |
-| --------- | ---------- | ---------------- | -------------------------------------- |
+|-----------|------------|------------------|----------------------------------------|
 | `command` | `Required` | Array of Strings | Specify a list of commands to execute. |
 
 > If you don't specify `containerName` for `exec` hook, the command will be executed into the 0th container of the respective pod.
 
 **Examples:**
 
-- Hook to remove old corrupted data before restore:
+- Hook to remove old corrupted data:
 
 ```yaml
-preRestore:
+action:
   exec:
     command: ["/bin/sh","-c","rm -rf /corrupted/data/directory"]
   containerName: my-container
 ```
 
-- Hook to make a MySQL database read-only before backup:
+- Hook to make a MySQL database read-only:
 
 ```yaml
-preBackup:
+action:
   exec:
     command:
       - /bin/sh
@@ -177,10 +181,10 @@ preBackup:
   containerName: mysql
 ```
 
-- Hook to make a MySQL database writable after backup:
+- Hook to make a MySQL database writable:
 
 ```yaml
-postBackup:
+action:
   exec:
     command:
       - /bin/sh
@@ -189,10 +193,10 @@ postBackup:
   containerName: mysql
 ```
 
-- Hook to remove corrupted MySQL database before restoring:
+- Hook to remove corrupted MySQL database:
 
 ```yaml
-preRestore:
+action:
   exec:
     command:
       - /bin/sh
@@ -204,7 +208,7 @@ preRestore:
 - Hook to apply some migration after restoring a MySQL database:
 
 ```yaml
-postRestore:
+action:
   exec:
     command:
       - /bin/sh
@@ -213,4 +217,73 @@ postRestore:
   containerName: mysql
 ```
 
-If the above hooks do not cover your use cases or you have any questions regarding the hooks, please feel free to open an issue [here](https://github.com/kubestash/stash/issues).
+## Based on Executor
+
+Based on executor of a hook, we can configure them in the following ways.
+
+### Pod Executor
+
+Provide list of key value pair that will be used as label selector to select the desired pods. You can use comma to separate multiple labels (i.e. `"app=my-app,env=prod"`).
+
+**Examples:**
+
+- Execute hook on all the selected pods (only filtered by `selector`):
+
+```yaml
+executor:
+  type: Pod
+  pod:
+    selector: env=dev, app=web
+    strategy: ExecuteOnAll
+```
+
+- Execute hook on only one of the selected pods (only filtered by `selector`). This is default behavior:
+
+```yaml
+executor:
+  type: Pod
+  pod:
+    selector: env=dev, app=web
+```
+
+- Execute hook on all the selected pods (filtered by `selector` and `owner`):
+
+```yaml
+executor:
+  type: Pod
+  pod:
+    selector: env=dev, app=web
+    owner:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: kubestash-op
+    strategy: ExecuteOnAll
+```
+
+### Operator Executor
+
+KubeStash operator itself will execute the hook. 
+
+**Example:**
+
+```yaml
+executor:
+  type: Operator
+```
+
+### Function Executor
+
+Hook is executed by a Job. We need to create a [Function](/docs/concepts/crds/function/index.md) and refer it in [FunctionHookExecutorSpec](/docs/concepts/crds/hooktemplate/index.md#specexecutor). This Function will be used to create the hook executor job.
+
+**Example:**
+
+```yaml
+executor:
+  type: Function
+  function:
+    name: hook-function
+```
+
+Here we can provide a list of environment variables that will be passed to the executor container. We can also provide volumes and the volumes mounts for the executor container.
+
+If the above hooks do not cover your use cases, or you have any questions regarding the hooks, please feel free to open an issue [here](https://github.com/kubestash/).

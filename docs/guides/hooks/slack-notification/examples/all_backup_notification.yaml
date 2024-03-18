@@ -1,44 +1,50 @@
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: deployment-backup
+  name: sample-backup
   namespace: demo
 spec:
-  repository:
-    name: gcs-repo
-  schedule: "*/5 * * * *"
   target:
-    ref:
-      apiVersion: apps/v1
-      kind: Deployment
-      name: stash-demo
-    volumeMounts:
-    - name: source-data
-      mountPath: /source/data
-    paths:
-    - /source/data
-  hooks:
-    postBackup:
-      executionPolicy: Always
-      httpPost:
-        host: hooks.slack.com
-        path: /services/XX/XXX/XXXX
-        port: 443
-        scheme: HTTPS
-        httpHeaders:
-          - name: Content-Type
-            value: application/json
-        body: |
-          {{- $msg := dict  "type" "mrkdwn" "text" (printf "Backup completed for %s/%s Status: %s." .Namespace .Target.Name .Status.Phase) -}}
-          {
-            "blocks": [
-                {
-                  "type": "section",
-                  "text": {{ toJson $msg }}
-                }
-              ]
-          }
-  retentionPolicy:
-    name: 'keep-last-5'
-    keepLast: 5
-    prune: true
+    apiGroup: apps
+    kind: DaemonSet
+    name: ks-demo
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        namespace: demo
+        name: gcs-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 3
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      hooks:
+        postBackup:
+          - name: slack-notification
+            hookTemplate:
+              name: slack-hook
+              namespace: demo
+            maxRetry: 3
+            timeout: 30s
+      repositories:
+        - name: daemon-repo
+          backend: gcs-backend
+          directory: /demo/daemon
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            params:
+              paths: /source/data
+      retryConfig:
+        maxRetry: 2
+        delay: 1m

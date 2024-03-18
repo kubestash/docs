@@ -1,0 +1,21 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: HookTemplate
+metadata:
+  name: drop-db-hook
+  namespace: demo
+spec:
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  action:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "DROP DATABASE companyRecord;"
+    containerName: mysql # KubeDB uses "mysql" name for MySQL database container. If you haven't used KubeDB, change this according to your setup.
+  executor:
+    type: Pod
+    pod:
+      selector: app.kubernetes.io/instance=sample-mysql, app.kubernetes.io/managed-by=kubedb.com, app.kubernetes.io/name=mysqls.kubedb.com
+      strategy: ExecuteOnAll

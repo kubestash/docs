@@ -1,5 +1,5 @@
 ---
-title: Security | Stash
+title: Security | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: security

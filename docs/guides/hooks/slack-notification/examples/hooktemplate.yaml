@@ -1,0 +1,30 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: HookTemplate
+metadata:
+  name: slack-hook
+  namespace: demo
+spec:
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  action:
+    httpPost:
+      host: hooks.slack.com
+      path: /services/XX/XX/XX
+      port: 443
+      scheme: HTTPS
+      httpHeaders:
+        - name: Content-Type
+          value: application/json
+      body: |
+        {{$msg := dict "type" "mrkdwn" "text" "ooo"}}{{if eq .Status.Phase "Succeeded"}}{{- $msg = dict  "type" "mrkdwn" "text" (printf "Backup completed for %s/%s Status: %s." .Namespace .Target.Name .Status.Phase) -}}{{else}}{{- $msg = dict  "type" "mrkdwn" "text" (printf "Backup failed for %s/%s Status: %s." .Namespace .Target.Name .Status.Error) -}}{{end}}
+          {
+            "blocks": [
+                {
+                  "type": "section",
+                  "text": {{ toJson $msg }}
+                }
+              ]
+          }
+  executor:
+    type: Operator

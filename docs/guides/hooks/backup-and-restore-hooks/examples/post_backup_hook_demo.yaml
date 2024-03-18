@@ -1,35 +1,52 @@
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: backup-hook-demo
+  name: sample-backup
   namespace: demo
 spec:
-  schedule: "*/5 * * * *"
-  task:
-    name: mysql-backup-8.0.14
-  repository:
-    name: gcs-repo
-  hooks:
-    preBackup:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL super_read_only = ON;"
-      containerName: mysql # KubeDB uses "mysql" name for MySQL database container. If you haven't used KubeDB, change this according to your setup.
-    postBackup:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - mysql -u root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL super_read_only = OFF;"
-      containerName: mysql
   target:
-    ref:
-      apiVersion: appcatalog.appscode.com/v1alpha1
-      kind: AppBinding
-      name: sample-mysql
-  retentionPolicy:
-    name: keep-last-5
-    keepLast: 5
-    prune: true
+    apiGroup: kubedb.com
+    kind: MySQL
+    name: sample-mysql
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 5
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      hooks:
+        preBackup:
+          - name: pre-hook
+            hookTemplate:
+              name: readonly-hook
+              namespace: demo
+            maxRetry: 3
+            timeout: 30s
+        postBackup:
+          - name: post-hook
+            hookTemplate:
+              name: readonly-off-hook
+              namespace: demo
+            maxRetry: 3
+            timeout: 30s
+      repositories:
+        - name: demo-repo
+          backend: gcs-backend
+          directory: /demo/hook
+          encryptionSecret:
+            name: encrypt-secret # some addon may not support encryption
+            namespace: demo
+      addon:
+        name: mysql-addon
+        tasks:
+          - name: logical-backup

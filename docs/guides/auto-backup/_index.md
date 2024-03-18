@@ -1,5 +1,5 @@
 ---
-title: Auto Backup | Stash
+title: Auto Backup | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: auto-backup

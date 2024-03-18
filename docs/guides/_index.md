@@ -1,5 +1,5 @@
 ---
-title: Guides | Stash
+title: Guides | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: guides

@@ -1,5 +1,5 @@
 ---
-title: Backup and Restore Volumes of a DaemonSet | Stash
+title: Backup and Restore Volumes of a DaemonSet | KubeStash
 description: A step by step guide showing how to backup and restore volumes of a DaemonSet.
 menu:
   docs_{{ .version }}:
@@ -14,19 +14,20 @@ section_menu_id: guides
 
 # Backup and Restore Volumes of a DaemonSet
 
-This guide will show you how to use Stash to backup and restore volumes of a DaemonSet.
+This guide will show you how to use KubeStash to backup and restore volumes of a DaemonSet.
 
 ## Before You Begin
 
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
 
-- Install `Stash` in your cluster following the steps [here](/docs/setup/README.md).
+- Install `KubeStash` in your cluster following the steps [here](/docs/setup/README.md).
 
-- You should be familiar with the following `Stash` concepts:
+- You should be familiar with the following `KubeStash` concepts:
   - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
   - [BackupSession](/docs/concepts/crds/backupsession/index.md)
   - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
-  - [Repository](/docs/concepts/crds/repository/index.md)
+  - [BackupStorage](/docs/concepts/crds/backupstorage/index.md)
+  - [Snapshot](/docs/concepts/crds/snapshot/index.md)
 
 To keep everything isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
 
@@ -39,7 +40,7 @@ namespace/demo created
 
 ## Backup Volumes of a DaemonSet
 
-This section will show you how to use Stash to backup volumes of a DaemonSet. Here, we are going to deploy a DaemonSet and generate some sample data in it. Then, we are going to backup this sample data using Stash.
+This section will show you how to use KubeStash to backup volumes of a DaemonSet. Here, we are going to deploy a DaemonSet and generate some sample data in it. Then, we are going to backup this sample data using KubeStash.
 
 **Deploy DaemonSet:**
 
@@ -52,152 +53,208 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: stash-demo
-  name: stash-demo
+    app: ks-demo
+  name: ks-demo
   namespace: demo
 spec:
   selector:
     matchLabels:
-      app: stash-demo
+      app: ks-demo
   template:
     metadata:
       labels:
-        app: stash-demo
+        app: ks-demo
       name: busybox
     spec:
       containers:
-      - args: ["echo sample_data > /source/data/data.txt && sleep 3000"]
-        command: ["/bin/sh", "-c"]
-        image: busybox
-        imagePullPolicy: IfNotPresent
-        name: busybox
-        volumeMounts:
-        - mountPath: /source/data
-          name: source-data
+        - args: ["echo sample_data > /source/data/data.txt && sleep 3000"]
+          command: ["/bin/sh", "-c"]
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          name: busybox
+          volumeMounts:
+            - mountPath: /source/data
+              name: source-data
       restartPolicy: Always
       volumes:
-      - name: source-data
-        hostPath:
-          path: /stash/source/data
+        - name: source-data
+          hostPath:
+            path: /kubestash/source/data
 ```
 
 Let's create the DaemonSet we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/daemonset/examples/daemon.yaml
-daemonset.apps/stash-demo created
+daemonset.apps/ks-demo created
 ```
 
 Now, wait for the pod of the DaemonSet to go into the `Running` state.
 
 ```bash
 $ kubectl get pod -n demo
-NAME                READY   STATUS    RESTARTS   AGE
-stash-demo-c4nqw    1/1     Running   0          39s
+NAME             READY   STATUS    RESTARTS   AGE
+ks-demo-xrbfg    1/1     Running   0          39s
 ```
 
 Verify that the sample data has been created in `/source/data` directory using the following command,
 
 ```bash
-$ kubectl exec -n demo stash-demo-c4nqw -- cat /source/data/data.txt
+$ kubectl exec -n demo ks-demo-xrbfg -- cat /source/data/data.txt
 sample_data
 ```
 
 ### Prepare Backend
 
-We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a Repository crd to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
-
-> For GCS backend, if the bucket does not exist, Stash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
+We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a `BackupStorage` CR to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 **Create Secret:**
 
 Let's create a secret called `gcs-secret` with access credentials to our desired GCS bucket,
 
 ```bash
-$ echo -n 'changeit' > RESTIC_PASSWORD
 $ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
 $ cat /path/to/downloaded-sa-key.json > GOOGLE_SERVICE_ACCOUNT_JSON_KEY
 $ kubectl create secret generic -n demo gcs-secret \
-    --from-file=./RESTIC_PASSWORD \
     --from-file=./GOOGLE_PROJECT_ID \
     --from-file=./GOOGLE_SERVICE_ACCOUNT_JSON_KEY
 secret/gcs-secret created
 ```
 
-**Create Repository:**
+**Create BackupStorage:**
 
-Now, create a `Repository` using this secret. Below is the YAML of `Repository` crd we are going to create,
+Now, create a `BackupStorage` using this secret. Below is the YAML of `BackupStorage` CR we are going to create,
 
 ```yaml
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: gcs-repo
+  name: gcs-storage
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: gcs
     gcs:
-      bucket: appscode-qa
-      prefix: /source/data/sample-daemonset
-    storageSecretName: gcs-secret
+      bucket: kubestash-qa
+      prefix: demo
+      secretName: gcs-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut
 ```
 
-Let's create the Repository we have shown above,
+Let's create the BackupStorage we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/daemonset/examples/repository.yaml
-repository.stash.appscode.com/gcs-repo created
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/daemonset/examples/backupstorage.yaml
+backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
 Now, we are ready to backup our sample data into this backend.
 
+**Create RetentionPolicy:**
+
+Now, let's create a `RetentionPolicy` to specify how the old Snapshots should be cleaned up.
+
+Below is the YAML of the `RetentionPolicy` object that we are going to create,
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: RetentionPolicy
+metadata:
+  name: demo-retention
+  namespace: demo
+spec:
+  default: true
+  failedSnapshots:
+    last: 2
+  maxRetentionPeriod: 2mo
+  successfulSnapshots:
+    last: 5
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+```
+
+Let’s create the above `RetentionPolicy`,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/daemonset/examples/retentionpolicy.yaml
+retentionpolicy.storage.kubestash.com/demo-retention created
+```
+
 ### Backup
 
-We have to create a `BackupConfiguration` crd targeting the `stash-demo` DaemonSet that we have deployed earlier. Stash will inject a sidecar container into the target. It will also create a `CronJob` to take periodic backup of `/source/data` directory of the target.
+We have to create a `BackupConfiguration` CR targeting the `ks-demo` DaemonSet that we have deployed earlier. KubeStash will create a `CronJob` for each session to take periodic backup of `/source/data` directory of the target.
+
+At first, we need to create a secret with a Restic password for backup data encryption.
+
+**Create Secret:**
+
+Let's create a secret called `encrypt-secret` with the Restic password,
+
+```bash
+$ echo -n 'changeit' > RESTIC_PASSWORD
+$ kubectl create secret generic -n demo encrypt-secret \
+    --from-file=./RESTIC_PASSWORD \
+secret "encrypt-secret" created
+```
 
 **Create BackupConfiguration:**
 
-Below is the YAML of the `BackupConfiguration` crd that we are going to create,
+Below is the YAML of the `BackupConfiguration` CR that we are going to create,
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: dmn-backup
+  name: sample-backup-daemon
   namespace: demo
 spec:
-  repository:
-    name: gcs-repo
-  schedule: "*/5 * * * *"
   target:
-    ref:
-      apiVersion: apps/v1
-      kind: DaemonSet
-      name: stash-demo
-    volumeMounts:
-    - name: source-data
-      mountPath: /source/data
-    paths:
-    - /source/data
-  retentionPolicy:
-    name: 'keep-last-5'
-    keepLast: 5
-    prune: true
+    apiGroup: apps
+    kind: DaemonSet
+    name: ks-demo
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: demo-session
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: gcs-demo-repo
+          backend: gcs-backend
+          directory: /data/ks-demo
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            params:
+              paths: /source/data
+      retryConfig:
+        maxRetry: 2
+        delay: 1m
 ```
 
-Here,
-
-- `spec.repository` refers to the `Repository` object `gcs-repo` that holds backend information.
-- `spec.schedule` is a cron expression that indicates `BackupSession` will be created at 5 minute interval.
-- `spec.target.ref` refers to the `stash-demo` DaemonSet.
-- `spec.target.volumeMounts` specifies a list of volumes and their mountPath that contain the target paths.
-- `spec.target.paths` specifies list of file paths to backup.
-
-Let's create the `BackupConfiguration` crd we have shown above,
+Let's create the `BackupConfiguration` CR we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/daemonset/examples/backupconfiguration.yaml
-backupconfiguration.stash.appscode.com/dmn-backup created
+backupconfiguration.core.kubestash.com/sample-backup-daemon created
 ```
 
 **Verify Backup Setup Successful**
@@ -206,188 +263,118 @@ If everything goes well, the phase of the `BackupConfiguration` should be `Ready
 
 ```bash
 $ kubectl get backupconfiguration -n demo
-NAME                TASK    SCHEDULE      PAUSED   PHASE      AGE
-dmn-backup                  */5 * * * *            Ready      11s
+NAME                   PHASE   PAUSED   AGE
+sample-backup-daemon   Ready            2m50s
 ```
 
-**Verify Sidecar:**
-
-Stash will inject a sidecar container into the `stash-demo` DaemonSet to take backup of `/source/data` directory. Let’s check that the sidecar has been injected successfully,
+Additionally, we can verify that the `Repository` specified in the `BackupConfiguration` has been created using the following command,
 
 ```bash
-$ kubectl get pod -n demo
-NAME                READY   STATUS    RESTARTS   AGE
-stash-demo-6lnbp    2/2     Running   0          10s
+kubectl get repo -n demo
+NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE     PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-demo-repo                  0                0 B      Ready                            3m
 ```
 
-Look at the pod. It now has 2 containers. If you view the resource definition of this pod, you will see that there is a container named `stash` which is running `run-backup` command.
-
-```yaml
-$ kubectl get pod -n demo stash-demo-6lnbp -o yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: stash-demo-6lnbp
-  namespace: demo
-  ...
-spec:
-  containers:
-  - args:
-    - echo sample_data > /source/data/data.txt && sleep 3000
-    command:
-    - /bin/sh
-    - -c
-    image: busybox
-    imagePullPolicy: IfNotPresent
-    name: busybox
-    resources: {}
-    terminationMessagePath: /dev/termination-log
-    terminationMessagePolicy: File
-    volumeMounts:
-    - mountPath: /source/data
-      name: source-data
-    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-      name: default-token-4tzgg
-      readOnly: true
-  - args:
-    - run-backup
-    - --backup-configuration=dmn-backup
-    - --secret-dir=/etc/stash/repository/secret
-    - --enable-cache=true
-    - --max-connections=0
-    - --metrics-enabled=true
-    - --pushgateway-url=http://stash-operator.kube-system.svc:56789
-    - --enable-status-subresource=true
-    - --use-kubeapiserver-fqdn-for-aks=true
-    - --logtostderr=true
-    - --alsologtostderr=false
-    - --v=3
-    - --stderrthreshold=0
-    env:
-    - name: NODE_NAME
-      valueFrom:
-        fieldRef:
-          apiVersion: v1
-          fieldPath: spec.nodeName
-    - name: POD_NAME
-      valueFrom:
-        fieldRef:
-          apiVersion: v1
-          fieldPath: metadata.name
-    name: stash
-    volumeMounts:
-    - mountPath: /etc/stash
-      name: stash-podinfo
-    - mountPath: /etc/stash/repository/secret
-      name: stash-secret-volume
-    - mountPath: /tmp
-      name: tmp-dir
-    - mountPath: /source/data
-      name: source-data
-    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-      name: default-token-4tzgg
-      readOnly: true
-  volumes:
-  - name: source-data
-    persistentVolumeClaim:
-      claimName: stash-sample-data
-  - emptyDir: {}
-    name: tmp-dir
-  - downwardAPI:
-      defaultMode: 420
-      items:
-      - fieldRef:
-          apiVersion: v1
-          fieldPath: metadata.labels
-        path: labels
-    name: stash-podinfo
-  - name: stash-secret-volume
-    secret:
-      defaultMode: 420
-      secretName: gcs-secret
-  - name: default-token-4tzgg
-    secret:
-      defaultMode: 420
-      secretName: default-token-4tzgg
-  ...
-...
-```
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the `Repository` YAML stored in the `demo/data/ks-demo` directory.
 
 **Verify CronJob:**
 
-It will also create a `CronJob` with the schedule specified in `spec.schedule` field of `BackupConfiguration` crd.
+It will also create a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` CR.
 
 Verify that the `CronJob` has been created using the following command,
 
 ```bash
-$ kubectl get backupconfiguration -n  demo
-NAME         TASK   SCHEDULE      PAUSED   AGE
-dmn-backup          */5 * * * *            3m
+$ kubectl get cronjob -n demo
+NAME                                        SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+trigger-sample-backup-daemon-demo-session   */2 * * * *             0        2m45s           3m25s
 ```
 
 **Wait for BackupSession:**
 
-The `dmn-backup` CronJob will trigger a backup on each schedule by creating a `BackupSession` crd. The sidecar container watches for the `BackupSession` crd. When it finds one, it will take backup immediately.
-
-Wait for the next schedule for backup. Run the following command to watch `BackupSession` crd,
+Wait for the next schedule for backup. Run the following command to watch `BackupSession` CR,
 
 ```bash
-$ watch -n 3 kubectl get backupsession -n demo
-Every 3.0s: kubectl get backupsession -n demo                suaas-appscode: Wed Jun 26 16:05:26 2019
-
-NAME                    INVOKER-TYPE          INVOKER-NAME   PHASE       AGE
-dmn-backup-1561543509   BackupConfiguration   dmn-backup     Succeeded   2m20s
+$ kubectl get backupsession -n demo -w
+NAME                                           INVOKER-TYPE          INVOKER-NAME           PHASE       DURATION   AGE
+sample-backup-daemon-demo-session-1706852520   BackupConfiguration   sample-backup-daemon   Succeeded              7m22s
 ```
 
 We can see from the above output that the backup session has succeeded. Now, we are going to verify whether the backed up data has been stored in the backend.
 
 **Verify Backup:**
 
-Once a backup is complete, Stash will update the respective `Repository` crd to reflect the backup. Check that the repository `gcs-repo` has been updated by the following command,
+Once a backup is complete, KubeStash will update the respective `Repository` CR to reflect the backup. Check that the repository `gcs-demo-repo` has been updated by the following command,
 
 ```bash
-$ kubectl get repository -n demo
-NAME       INTEGRITY   SIZE   SNAPSHOT-COUNT   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repo   true        0 B    3                47s                      4m
+$ kubectl get repository -n demo gcs-demo-repo
+NAME              INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-demo-repo     true        1                806 B   Ready   8m27s                    9m18s
 ```
 
-Now, if we navigate to the GCS bucket, we are going to see backed up data has been stored in `source/data/sample-daemonset` directory as specified by `spec.backend.gcs.prefix` field of Repository crd.
+At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
-<figure align="center">
-  <img alt="Backup data in GCS Bucket" src="images/gcs_bucket_dmn.png">
-  <figcaption align="center">Fig: Backup data in GCS Bucket</figcaption>
-</figure>
+```bash
+$ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-demo-repo
+NAME                                                         REPOSITORY      SESSION        SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
+gcs-demo-repo-sample-backup-daemon-demo-session-1706852520   gcs-demo-repo   demo-session   2024-01-23T13:10:54Z   Delete            Succeeded   16h
+```
 
-> **Note:** Stash keeps all the backed up data encrypted. So, data in the backend will not make any sense until they are decrypted.
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <workload-kind>`
+> - `kubestash.com/app-ref-name: <workload-name>`
+> - `kubestash.com/app-ref-namespace: <workload-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
-## Restore the Backed up Data
+If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the DaemonSet.
+
+```bash
+$ kubectl get snapshots -n demo gcs-demo-repo-sample-backup-daemon-demo-session-1706852520 -oyaml
+```
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: Snapshot
+metadata:
+  labels:
+    kubestash.com/app-ref-kind: DaemonSet
+    kubestash.com/app-ref-name: ks-demo
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: gcs-demo-repo
+  name: gcs-demo-repo-sample-backup-daemon-demo-session-1706852520
+  namespace: demo
+spec:
+  ...
+status:
+  components:
+    dump-kind-control-plane:
+      driver: Restic
+      duration: 5.831892988s
+      integrity: true
+      path: repository/v1/demo-session/dump-kind-control-plane
+      phase: Succeeded
+      resticStats:
+        - hostPath: /source/data
+          id: 7f0d8dee7e27e869ffa3f4e2b4cf095d8e485d9c12dbceb5d8f5933e034cce0e
+          size: 12 B
+          uploaded: 1.043 KiB
+      size: 805 B
+  ...
+```
+> For DaemonSet, KubeStash takes backup from every pod of the DaemonSet. Since we have one node in our cluster, only one component has been backed up. For logical backup, KubeStash uses `dump-<node-name>` as the component name, with `<node-name>` representing the name of the node where DaemonSet's pod is deployed.
+
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/data/ks-demo/repository/v1/demo-session/dump-<node-name>` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/data/ks-demo/snapshots` directory. 
+
+> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+
+## Restore
 
 This section will show you how to restore the backed up data from the backend we have taken in the earlier section.
 
-**Stop Taking Backup of the Old DaemonSet:**
-
-At first, let's stop taking any further backup of the old DaemonSet so that no backup is taken during the restore process. We are going to pause the `BackupConfiguration` that we created to backup the `stash-demo` DaemonSet. Then, Stash will stop taking any further backup for this DaemonSet. You can learn more how to pause a scheduled backup [here](/docs/guides/use-cases/pause-backup/index.md)
-
-Let's pause the `dmn-backup` BackupConfiguration,
-
-```bash
-$ kubectl patch backupconfiguration -n demo dmn-backup --type="merge" --patch='{"spec": {"paused": true}}'
-backupconfiguration.stash.appscode.com/dmn-backup patched
-```
-
-Now, wait for a moment. Stash will pause the BackupConfiguration. Verify that the BackupConfiguration  has been paused,
-
-```bash
-$ kubectl get backupconfiguration -n demo
-NAME                TASK   SCHEDULE      PAUSED   PHASE   AGE
-dmn-backup                 */5 * * * *   true     Ready   26m
-```
-
-Notice the `PAUSED` column. Value `true` for this field means that the BackupConfiguration has been paused.
-
 **Deploy DaemonSet:**
 
-We are going to create a new DaemonSet named `stash-recovered` and restore the backed up data inside it.
+We are going to create a new DaemonSet named `ks-recovered` and restore the backed up data inside it.
 
 Below is the YAML of the DaemonSet that we are going to create,
 
@@ -396,205 +383,111 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: stash-recovered
-  name: stash-recovered
+    app: rs-demo
+  name: rs-demo
   namespace: demo
 spec:
   selector:
     matchLabels:
-      app: stash-recovered
+      app: rs-demo
   template:
     metadata:
       labels:
-        app: stash-recovered
+        app: rs-demo
       name: busybox
     spec:
       containers:
-      - args:
-        - sleep
-        - "3600"
-        image: busybox
-        imagePullPolicy: IfNotPresent
-        name: busybox
-        volumeMounts:
-        - mountPath: /source/data
-          name: source-data
+        - image: busybox
+          args:
+            - sleep
+            - "3600"
+          imagePullPolicy: IfNotPresent
+          name: busybox
+          volumeMounts:
+            - mountPath: /source/data
+              name: source-data
       restartPolicy: Always
       volumes:
-      - name: source-data
-        hostPath:
-          path: /stash/recovered/data
+        - name: source-data
+          hostPath:
+            path: /kubestash/recovered/data
 ```
 
 Let's create the DaemonSet we have shown above.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/daemonset/examples/recovered_daemon.yaml
-daemonset.apps/stash-recovered configured
+daemonset.apps/rs-demo created
 ```
 
 **Create RestoreSession:**
 
-Now, we need to create a `RestoreSession` crd targeting the `stash-recovered` DaemonSet to restore the backed up data inside it.
+Now, we need to create a `RestoreSession` CR targeting the `rs-demo` DaemonSet to restore the backed up data inside it.
 
-Below is the YAML of the `RestoreSesion` crd that we are going to create,
+Below is the YAML of the `RestoreSesion` CR that we are going to create,
 
 ```yaml
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: dmn-restore
+  name: sample-restore
   namespace: demo
 spec:
-  repository:
-    name: gcs-repo
-  target: # target indicates where the recovered data will be stored
-    ref:
-      apiVersion: apps/v1
-      kind: DaemonSet
-      name: stash-recovered
-    volumeMounts:
-    - name:  source-data
-      mountPath:  /source/data
-    rules:
-    - paths:
-      - /source/data
+  target:
+    apiGroup: apps
+    kind: DaemonSet
+    name: rs-demo
+    namespace: demo
+  dataSource:
+    repository: gcs-demo-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret
+      namespace: demo
+  addon:
+    name: workload-addon
+    tasks:
+      - name: logical-backup-restore
 ```
 
-Here,
-
-- `spec.repository.name` specifies the `Repository` crd that holds the backend information where our backed up data has been stored.
-- `spec.target.ref` refers to the target workload where the recovered data will be stored.
-- `spec.target.volumeMounts` specifies a list of volumes and their mountPath where the data will be restored.
-  - `mountPath` must be same `mountPath` as the original volume because Stash stores absolute path of the backed up files. If you use different `mountPath` for the restored volume the backed up files will not be restored into your desired volume.
-
-Let's create the `RestoreSession` crd we have shown above,
+Let's create the `RestoreSession` CR we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/daemonset/examples/restoresession.yaml
-restoresession.stash.appscode.com/dmn-restore created
+restoresession.core.kubestash.com/sample-restore created
 ```
 
-Once, you have created the `RestoreSession` crd, Stash will inject `init-container` into `stash-recovered` DaemonSet. The pods of this DaemonSet will restart and the `init-container` will restore the desired data on start-up.
-
-**Verify Init-Container:**
-
-Wait until the `init-container` has been injected into the `stash-recovered` DaemonSet. Let's describe the DaemonSet to verify that the `init-container` has been injected successfully.
-
-```yaml
- $ kubectl describe daemonset -n demo stash-recovered
-Name:           stash-recovered
-Selector:       app=stash-recovered
-Node-Selector:  <none>
-Labels:         app=stash-recovered
-Pods Status:  1 Running / 0 Waiting / 0 Succeeded / 0 Failed
-...
-Pod Template:
-  Labels:       app=stash-recovered
-  Annotations:  stash.appscode.com/last-applied-restoresession-hash: 4703201294184533055
-  Init Containers:
-   stash-init:
-    Image:      suaas21/stash:vs_linux_amd64
-    Port:       <none>
-    Host Port:  <none>
-    Args:
-      restore
-      --restore-session=dmn-restore
-      --secret-dir=/etc/stash/repository/secret
-      --enable-cache=true
-      --max-connections=0
-      --metrics-enabled=true
-      --pushgateway-url=http://stash-operator.kube-system.svc:56789
-      --enable-status-subresource=true
-      --use-kubeapiserver-fqdn-for-aks=true
-      --logtostderr=true
-      --alsologtostderr=false
-      --v=3
-      --stderrthreshold=0
-    Environment:
-      NODE_NAME:   (v1:spec.nodeName)
-      POD_NAME:    (v1:metadata.name)
-    Mounts:
-      /etc/stash/repository/secret from stash-secret-volume (rw)
-      /source/data from source-data (rw)
-      /tmp from tmp-dir (rw)
-  Containers:
-   busybox:
-    Image:      busybox
-    Port:       <none>
-    Host Port:  <none>
-    Args:
-      sleep
-      3600
-    Environment:  <none>
-    Mounts:
-      /source/data from source-data (rw)
-  Volumes:
-   source-data:
-    Type:          HostPath (bare host directory volume)
-    Path:          /stash/recovered/data
-    HostPathType:
-   tmp-dir:
-    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
-    Medium:
-    SizeLimit:  <unset>
-   stash-podinfo:
-    Type:  DownwardAPI (a volume populated by information about the pod)
-    Items:
-      metadata.labels -> labels
-   stash-secret-volume:
-    Type:        Secret (a volume populated by a Secret)
-    SecretName:  gcs-secret
-    Optional:    false
-...
-```
-
-Notice the `Init-Containers` section. We can see that the init-container `stash-init` has been injected which is running `restore` command.
-
-**Wait for RestoreSession to Succeeded:**
-
-Run the following command to watch RestoreSession phase,
+Once, you have created the `RestoreSession` object, KubeStash will create restore Job(s). Run the following command to watch the phase of the `RestoreSession` object,
 
 ```bash
-$ watch -n 3 kubectl get restoresession -n demo
-Every 3.0s: kubectl get restoresession -n demo               suaas-appscode: Wed Jun 26 14:28:29 2019
+$ watch kubectl get restoresession -n demo
+Every 2.0s: kubectl get restores... AppsCode-PC-03: Wed Jan 10 17:13:18 2024
 
-NAME          REPOSITORY-NAME   PHASE       AGE
-dmn-restore   gcs-repo          Succeeded   3m29s
+NAME             REPOSITORY      FAILURE-POLICY   PHASE       DURATION   AGE
+sample-restore   gcs-demo-repo                    Succeeded   3s         53s
 ```
 
-So, we can see from the output of the above command that the restore process succeeded.
-
-> **Note:** If you want to restore the backed up data inside the same DaemonSet whose volumes were backed up, you have to remove the corrupted data from the DaemonSet. Then, you have to create a RestoreSession targeting the DaemonSet.
+The `Succeeded` phase means that the restore process has been completed successfully.
 
 **Verify Restored Data:**
 
-In this section, we are going to verify that the desired data has been restored successfully.
-
-At first, check if the `stash-recovered` pods of a DaemonSet has gone into `running` state by the following command,
+Now, lets exec into the DaemonSet pod and verify whether actual data was restored or not,
 
 ```bash
-$ kubectl get pod -n demo
-NAME                    READY   STATUS    RESTARTS   AGE
-stash-recovered-dqlrb   1/1     Running   0          4m4s
-```
-
-Verify that the backed up data has been restored in `/source/data` directory of the `stash-recovered` pods of a DaemonSet using the following command,
-
-```bash
-$ kubectl exec -n demo stash-recovered-dqlrb -- cat /source/data/data.txt
+$ kubectl exec -it -n demo rs-demo-hkxcd -- cat /source/data/data.txt
 sample_data
 ```
+
+Hence, we can see from the above output that the data has been restored successfully from the backup.
 
 ## Cleaning Up
 
 To clean up the Kubernetes resources created by this tutorial, run:
 
 ```bash
-kubectl delete -n demo daemonset stash-demo
-kubectl delete -n demo daemonset stash-recovered
-kubectl delete -n demo backupconfiguration dmn-backup
-kubectl delete -n demo restoresession dmn-restore
-kubectl delete -n demo repository gcs-repo
-kubectl delete -n demo pvc --all
+kubectl delete -n demo daemonset ks-demo
+kubectl delete -n demo daemonset rs-demo
+kubectl delete -n demo backupconfiguration sample-backup-daemon
+kubectl delete -n demo restoresession sample-restore
+kubectl delete -n demo backupstorage gcs-storage
 ```

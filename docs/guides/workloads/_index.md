@@ -1,5 +1,5 @@
 ---
-title: Backup & Restore Volumes of Workloads | Stash
+title: Backup & Restore Volumes of Workloads | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: workload

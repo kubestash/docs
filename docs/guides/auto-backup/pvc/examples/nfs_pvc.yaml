@@ -5,11 +5,9 @@ metadata:
   namespace: demo
 spec:
   accessModes:
-  - ReadWriteMany
-  storageClassName: ""
+    - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
-  selector:
-    matchLabels:
-      app: nfs-demo
+  volumeName: nfs-pv
+  storageClassName: ""

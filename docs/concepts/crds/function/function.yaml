@@ -1,74 +1,29 @@
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: addons.kubestash.com/v1alpha1
 kind: Function
 metadata:
-  name: postgres-backup-11.2
+  annotations:
+    meta.helm.sh/release-name: kubedb
+    meta.helm.sh/release-namespace: kubedb
+  creationTimestamp: "2023-12-12T12:55:59Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/instance: kubedb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kubedb-kubestash-catalog
+    app.kubernetes.io/version: v2023.12.11
+    helm.sh/chart: kubedb-kubestash-catalog-v2023.12.11
+  name: postgres-backup
+  resourceVersion: "277644"
+  uid: f64449f8-1111-4a4d-8c6e-96c5b877aef6
 spec:
-  image: stashed/postgres-stash:11.2
   args:
-  - backup-pg
-  # setup information
-  - --provider=${REPOSITORY_PROVIDER:=}
-  - --bucket=${REPOSITORY_BUCKET:=}
-  - --endpoint=${REPOSITORY_ENDPOINT:=}
-  - --region=${REPOSITORY_REGION:=}
-  - --path=${REPOSITORY_PREFIX:=}
-  - --secret-dir=/etc/repository/secret
-  - --scratch-dir=/tmp
-  - --enable-cache=${ENABLE_CACHE:=true}
-  - --max-connections=${MAX_CONNECTIONS:=0} # 0 indicates use default connection limit
-  - --hostname=${HOSTNAME:=}
-  - --backup-cmd=${backupCMD:=} # can specify dump command with either pg_dump or pg_dumpall
-  - --pg-args=${args:=} # optional arguments pass to pgdump command
-  - --wait-timeout=${waitTimeout:=}
-  # target information
-  - --namespace=${NAMESPACE:=default}
-  - --appbinding=${TARGET_NAME:=}
-  - --backupsession=${BACKUP_SESSION:=}
-  # cleanup information
-  - --retention-keep-last=${RETENTION_KEEP_LAST:=0}
-  - --retention-prune=${RETENTION_PRUNE:=false}
-  # output & metric information
-  - --output-dir=${outputDir:=}
-  volumeMounts:
-  - name: ${secretVolume}
-    mountPath: /etc/repository/secret
-  runtimeSettings:
-    resources:
-      requests:
-        memory: 256M
-      limits:
-        memory: 256M
-    securityContext:
-      runAsUser: 5000
-      runAsGroup: 5000
----
-apiVersion: stash.appscode.com/v1beta1
-kind: Function
-metadata:
-  name: update-status
-spec:
-  image: appscode/stash:0.10.0
-  args:
-  - update-status
-  - --provider=${REPOSITORY_PROVIDER:=}
-  - --bucket=${REPOSITORY_BUCKET:=}
-  - --endpoint=${REPOSITORY_ENDPOINT:=}
-  - --path=${REPOSITORY_PREFIX:=}
-  - --secret-dir=/etc/repository/secret
-  - --scratch-dir=/tmp
-  - --enable-cache=${ENABLE_CACHE:=true}
-  - --max-connections=${MAX_CONNECTIONS:=0}
-  - --namespace=${NAMESPACE:=default}
-  - --backupsession=${BACKUP_SESSION:=}
-  - --repository=${REPOSITORY_NAME:=}
-  - --invoker-kind=${INVOKER_KIND:=}
-  - --invoker-name=${INVOKER_NAME:=}
-  - --target-kind=${TARGET_KIND:=}
-  - --target-name=${TARGET_NAME:=}
-  - --output-dir=${outputDir:=}
-  - --metrics-enabled=true
-  - --metrics-pushgateway-url=http://stash.kube-system.svc:56789
-  - --prom-job-name=${PROMETHEUS_JOB_NAME:=}
-  volumeMounts:
-  - mountPath: /etc/repository/secret
-    name: ${secretVolume}
+    - backup
+    - --namespace=${namespace:=default}
+    - --backupsession=${backupSession:=}
+    - --enable-cache=${enableCache:=}
+    - --scratch-dir=${scratchDir:=}
+    - --wait-timeout=${waitTimeout:=300}
+    - --pg-args=${args:=}
+    - --backup-cmd=${backupCmd:=}
+    - --user=${user:=}
+  image: ghcr.io/kubedb/postgres-restic-plugin:v0.5.0

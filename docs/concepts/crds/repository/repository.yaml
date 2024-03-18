@@ -1,19 +1,41 @@
-apiVersion: stash.appscode.com/v1alpha1
+apiVersion: storage.kubestash.com/v1alpha1
 kind: Repository
 metadata:
   name: gcs-demo-repo
   namespace: demo
 spec:
-  backend:
-    gcs:
-      bucket: stash-demo-backup
-      prefix: demo
-    storageSecretName: gcs-secret
-  wipeOut: false
+  appRef:
+    apiGroup: apps
+    kind: StatefulSet
+    name: sample-sts
+    namespace: demo
+  deletionPolicy: Delete
+  encryptionSecret:
+    name: encrypt-secret
+    namespace: demo
+  path: /demo/data
+  storageRef:
+    name: gcs-storage
+    namespace: demo
 status:
-  firstBackupTime: "2019-04-15T06:08:16Z"
+  componentPaths:
+    - repository/v1/demo-session/pod-0
+    - repository/v1/demo-session/pod-1
+    - repository/v1/demo-session/pod-2
+  conditions:
+    - lastTransitionTime: "2023-12-07T06:37:40Z"
+      message: Successfully initialized repository
+      reason: RepositoryInitializationSucceeded
+      status: "True"
+      type: RepositoryInitialized
   integrity: true
-  lastBackupTime: "2019-04-15T06:14:15Z"
-  totalSize: 2.567 KiB
-  snapshotCount: 5
-  snapshotsRemovedOnLastCleanup: 1
+  lastBackupTime: "2023-12-07T06:38:00Z"
+  phase: Ready
+  recentSnapshots:
+    - name: gcs-demo-repo-sample-backup-sts-demo-session-1701940920
+      phase: Succeeded
+      session: demo-session
+      size: 12.222 MiB
+      snapshotTime: "2023-12-07T06:38:10Z"
+  size: 12.222 MiB
+  snapshotCount: 1

@@ -1,21 +1,44 @@
-apiVersion: stash.appscode.com/v1beta1
+apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: sample-mariadb-backup
+  name: sample-backup-daemon
   namespace: demo
 spec:
-  runtimeSettings:
-    pod:
-      serviceAccountName: bucket-user
-  schedule: "*/5 * * * *"
-  repository:
-    name: s3-repo
   target:
-    ref:
-      apiVersion: appcatalog.appscode.com/v1alpha1
-      kind: AppBinding
-      name: sample-mariadb
-  retentionPolicy:
-    name: keep-last-5
-    keepLast: 5
-    prune: true
+    apiGroup: apps
+    kind: DaemonSet
+    name: ks-demo
+    namespace: demo
+  backends:
+    - name: s3-backend
+      storageRef:
+        name: s3-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: demo-session
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: s3-demo-repo
+          backend: s3-backend
+          directory: /data/ks-demo
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            params:
+              paths: /source/data
+        jobTemplate:
+          spec:
+            serviceAccountName: bucket-user
+      retryConfig:
+        maxRetry: 2
+        delay: 1m

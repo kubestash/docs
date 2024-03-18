@@ -1,6 +1,6 @@
 ---
 title: Concepts
-description: Stash Concepts
+description: KubeStash Concepts
 menu:
   docs_{{ .version }}:
     identifier: concepts
