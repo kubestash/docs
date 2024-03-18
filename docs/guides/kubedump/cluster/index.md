@@ -97,7 +97,7 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-repo created
 ```
 
-Now, we are ready to backup our target volume to this backend.
+Now, we are ready to backup our cluster yaml resources.
 
 **Create RetentionPolicy:**
 
@@ -123,16 +123,14 @@ spec:
       from: Same
 ```
 
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](/docs/concepts/crds/retentionpolicy/index.md).
+
 Let's create the `RetentionPolicy` object that we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/cluster/examples/retentionpolicy.yaml
 retentionpolicy.storage.kubestash.com/demo-retention created
 ```
-
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md).
-
-Let's create the `RetentionPolicy` object that we have shown above,
 
 
 #### Create RBAC
@@ -186,10 +184,9 @@ Now, we are ready for backup. In the next section, we are going to schedule a ba
 
 To schedule a backup, we have to create a `BackupConfiguration` object.
 
-
 **Create Secret:**
 
-We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
+We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for encrypting the backup data.
 
 Let's create a secret named `encry-secret` with the Restic password.
 
@@ -244,8 +241,9 @@ spec:
 ```
 
 Here,
-- `spec.sessions[*].addon.name` specifies the name of the `Addon` object that specifies addon configuration that will be used to perform backup of a stand-alone PVC.
-- `spec.sessions[*].addon.tasks[*].name` specifies the name of the `Task` that holds the `Function` and their order of execution to perform backup of a stand-alone PVC.
+- `spec.sessions[*].addon.name` specifies the name of the `Addon`.
+- `spec.sessions[*].addon.tasks[*].name` specifies the name of the backup task.
+- `spec.sessions[*].addon.jobTemplate.spec.serviceAccountName`specifies the ServiceAccount name that we have created earlier with cluster-wide resource reading permission.
 
 Let's create the `BackupConfiguration` object we have shown above,
 
@@ -269,13 +267,15 @@ cluster-resources-backup                Ready            79s
 
 **Verify Repository:**
 
-Verify that KubeStash has created `Repositories` that holds the `BackupStorage` information by the following command,
+Verify that the Repository specified in the BackupConfiguration has been created using the following command,
 
 ```bash
 $ kubectl get repositories -n demo
 NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
 gcs-repository                                       Ready                            28s
 ```
+
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the Repository YAML stored in the `demo/cluster-manifests` directory.
 
 **Verify CronJob:**
 
@@ -302,17 +302,9 @@ cluster-resources-backup-frequent-backup-1708694700   BackupConfiguration   clus
 
 **Verify Backup:**
 
-When backup session is created, KubeStash operator creates `Snapshot` which represents the state of backup run for each `Repository` which are provided in `BackupConfiguration`.
+When `BackupSession` is created, KubeStash operator creates `Snapshot` for each `Repository` listed in the respective session of the `BackupConfiguration`. Since we have only specified one repository in the session, at this moment we should have one `Snapshot`. 
 
-```bash
-$ kubectl get repositories -n demo
-NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repository                                       Ready                            28s
-```
-
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot`.
-
-Verify created `Snapshot` object by the following command,
+Run the following command to check the respective `Snapshot`,
 
 ```bash
 $ kubectl get snapshots -n demo
@@ -320,14 +312,14 @@ NAME                                                              REPOSITORY    
 gcs-repository-cluster-resourcesckup-frequent-backup-1708694700   gcs-repository   frequent-backup   2024-02-23T13:25:00Z   Delete            Succeeded   22m
 ```
 
-Now, if we navigate to the GCS bucket, we will see the backed up data has been stored in `/manifest/cluster` directory as specified by `.spec.backend.gcs.prefix` field of the `Repository` object.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/cluster-manifests/repository/v1/frequent-backup/manifest` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the` demo/cluster-manifests/repository/snapshots` directory.
 
 <figure align="center">
   <img alt="Backup data in GCS Bucket" src="/docs/guides/kubedump/cluster/images/cluster_manifests_backup.png">
   <figcaption align="center">Fig: Backup data in GCS Bucket</figcaption>
 </figure>
 
-> Note: KubeStash keeps all the backed-up data encrypted. So, data in the backend will not make any sense until they are decrypted.
+> Note: KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
 
 ## Restore
 

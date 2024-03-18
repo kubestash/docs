@@ -31,15 +31,15 @@ The `VolumeSnapshot` process consists of the following steps:
 
 2. Then, she creates a `BackupStorage` custom resource that specifies the backend information, along with the `Secret` containing the credentials needed to access the backend. 
 
-3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file into the target storage. 
+3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file to the target storage. 
 
-4. Then, she creates a `BackupConfiguration` custom resource, targeting either a workload application or a standalone volume. The `BackupConfiguration` object specifies the `Repository` pointing to a `BackupStorage` that contains backend information, indicating where to upload backup data. It also defines the `Addon` information with a specified task and their configuration parameters to be used for backing up the volumes. 
+4. Then, she creates a `BackupConfiguration` custom resource that specifies the targeted workload/PVC, the Addon info with a specified task, etc. It also provides information about one or more repositories, each indicating a path and a `BackupStorage` for storing the metadata.
 
 5. KubeStash operator watches for `BackupConfiguration` custom resources. 
 
 6. Once the KubeStash operator finds a `BackupConfiguration` object, it creates `Repository` with the information specified in the BackupConfiguration. 
 
-7. KubeStash operator watches for `Repository` custom resources. When it finds the `Repository` object, it Initializes `Repository` by uploading `repository.yaml` file into the `spec.sessions[*].repositories[*].directory` path specified in `BackupConfiguration`. 
+7. KubeStash operator watches for `Repository` custom resources. When it finds the `Repository` object, it Initializes `Repository` by uploading `repository.yaml` file to the `spec.sessions[*].repositories[*].directory` path specified in the `BackupConfiguration`. 
 
 8. Then, it creates a `CronJob` with the schedule specified in `BackupConfiguration` to trigger backup periodically. 
 
@@ -47,24 +47,23 @@ The `VolumeSnapshot` process consists of the following steps:
 
 10. KubeStash operator watches for `BackupSession` custom resources. 
 
-11. When it finds a `BackupSession` object, it creates a `Snapshot` custom resource for each `Repository` specified in the `BackupConfiguration`. 
+11. When it finds a `BackupSession` object, it creates a `Snapshot` custom resource for each `Repository` specified in the respective session of the `BackupConfiguration`. 
 
 12. Then, it resolves the respective `Addon` and `Function` and prepares a volume snapshotter `Job` definition. 
 
 13. Then, It creates a volume snapshotter `Job` to capture snapshots of the targeted volumes. 
 
-14. The volume snapshotter `Job` creates a `VolumeSnapshot` object for each Persistent Volume Claim (PVC) of the target and waits for the Container Storage Interface (CSI) driver to complete snapshotting.
-
-    These `VolumeSnasphot` custom resources names follow the following format:
+14. The volume snapshotter `Job` creates a `VolumeSnapshot`(s) object for each Persistent Volume Claims (PVC) associated the target and waits for the Container Storage Interface (CSI) driver to complete snapshotting. The VolumeSnapshot(s) are created with the following naming format:
     ```bash
       <PVC name>-<BackupSession creation timestamp in Unix epoch seconds>
     ```
 
 15. Container Storage Interface (CSI) `external-snapshotter` controller watches for `VolumeSnapshot` resources.
 
-16. When it finds a `VolumeSnapshot` object, it backups `VolumeSnapshot` into the respective cloud storage. 
+16. When it finds a `VolumeSnapshot` object, it backups `VolumeSnapshot` to the respective cloud storage. 
 
-17. After the snapshotting process is completed, the volume snapshotter `Job` updates the `status.components[*]` field of the `Snapshot` resources with each target `PVC` and the corresponding created `VolumeSnapshot` information. It also updates the `status.phase` field of the `BackupSession` to reflect backup completion.
+17. After the snapshotting process is completed, the volume snapshotter `Job` updates the `status.components[*]` field of the `Snapshot` resources with`VolumeSnapshot` information.
+
 
 ## How Restore Process Works?
 
@@ -77,7 +76,7 @@ The following diagram shows how KubeStash restores PersistentVolumeClaims from s
 
 The restore process consists of the following steps:
 
-1. At first, a user creates a `RestoreSession` custom resource, specifying the `volumeClaimTemplates`, the `Repository` object that points to a `BackupStorage` that holds backend information, and the target `Snapshot`, which holds information about the `VolumeSnapshots` created during backup. It also specifies the `Addon` info with a task to use to restore the volume.
+1. At first, a user creates a `RestoreSession` custom resource that specifies the `volumeClaimTemplates`, Addon info with a specified task, and a `DataSource` that determines the `Snapshot` from which the data will be restored.
 
 2. KubeStash operator watches for `RestoreSession` custom resources.
 
@@ -85,7 +84,7 @@ The restore process consists of the following steps:
 
 4. Then, it creates a Restore `Job` to restore `PVC` from the `volumeSnapshot`.
 
-5. The restore `Job` gets VolumeSnapshot's information from Snapshot `status.phase` and creates `PVCs` with `spec.dataSourceRef` field set to the respective VolumeSnapshot name.
+5. The restore job retrieves `VolumeSnapshot` information from the Snapshot. It starts by creating PVCs based on `volumeClaimTemplates` and assigns the corresponding `VolumeSnapshot` name to the `spec.dataSourceRef` of each PVC.
 
 6. Container Storage Interface (CSI) `external-snapshotter` controller watches for `PVCs`.
 
@@ -93,7 +92,7 @@ The restore process consists of the following steps:
 
 8. The controller downloads the respective data from the cloud and populates the `PVC`.
 
-9. Once completed, the job updates the `status.phase` field of the `Restoresession` to reflect restore completion.
+9. Once completed, the job updates the `status.components[*]` field of the `Restoresession` to reflect restore completion.
 
 ## Next Steps
 1. See a step by step guide to snapshot a stand-alone PVC [here](/docs/guides/volumesnapshot/pvc/index.md).

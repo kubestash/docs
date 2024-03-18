@@ -199,7 +199,7 @@ hello from pod 2.
 
 ## Prepare Backend
 
-Now, we are going to backup the PVC `nfs-pvc` to a GCS bucket using KubeStash. For this, we have to create a `Secret` with  necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+Now, we are going to backup of the PVC `nfs-pvc` to a GCS bucket using KubeStash. For this, we have to create a `Secret` with  necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
@@ -286,7 +286,7 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ## Backup
 
-Now, we have to create a `BackupConfiguration` custom resource targeting the `nfs-pvc` PVC that we have created earlier.
+Now, we have to create a `BackupConfiguration` custom resource targeting the PVC that we have created earlier.
 
 We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
@@ -365,6 +365,18 @@ NAME             PHASE   PAUSED   AGE
 nfs-pvc-backup   Ready            19s
 ```
 
+**Verify Repository:**
+
+Verify that the Repository specified in the BackupConfiguration has been created using the following command,
+
+```bash
+$ kubectl get repositories -n demo
+NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-repository                                       Ready                            28s
+```
+
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the Repository YAML stored in the `kubestash-qa/demo/pvc-backup-demo` directory.
+
 **Verify CronJob:**
 
 Verify that KubeStash has created a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
@@ -391,6 +403,8 @@ nfs-pvc-backup-frequent-backup-1704281100   BackupConfiguration   nfs-pvc-backup
 
 ```
 
+Here, the phase `Succeeded` means that the backup process has been completed successfully.
+
 **Verify Backup:**
 
 When backup session is complete, KubeStash will update the respective `Repository` to reflect the latest state of backed up data.
@@ -414,7 +428,7 @@ gcs-repository-nfs-pvc-backup-frequent-backup-1704281100   gcs-repository   freq
 
 > When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: PersistentVolumeClaim`, `kubestash.com/app-ref-name: <volume-name>`, `kubestash.com/app-ref-namespace: <volume-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
 
-If we check the YAML of the `Snapshot`, we can find the information about the backed up components.
+Now, lets retrieve the YAML for the `Snapshot`, and inspect the `spec.status` section to see the backup up components of the PVC.
 
 ```bash
 $ kubectl get snapshots -n demo gcs-repository-nfs-pvc-backup-frequent-backup-1704281100 -oyaml
@@ -452,7 +466,7 @@ status:
 
 > For stand-alone PVC, KubeStash takes backup from a stand-alone PVC. So, only one component has been taken backup. We use `dump` as the component name for a stand-alone PVC. 
 
-If we navigate to `kubestash-qa/demo/pvc-backup-demo/repository/v1/frequent-backup/dump` directory of our GCS bucket, we are going to see that the snapshot has been stored there.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `kubestash-qa/demo/pvc-backup-demo/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `kubestash-qa/demo/pvc-backup-demo/repository/snapshots` directory.
 
 <figure align="center">
   <img alt="Backed up data of a stand-alone PVC in GCS backend" src="images/stand-alone-pvc-snapshot.png">

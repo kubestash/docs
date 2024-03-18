@@ -16,7 +16,9 @@ section_menu_id: guides
 
 ### What is Local Backend
 
-`Local` backend refers to a local path inside a container. KubeStash runs `Job` to handle various backend interactions for the local backend. These interactions include tasks such as initializing `BackupStorage`, initializing `Repository`, uploading `Snapshots`, cleanup `Repository`, and cleanup `BackupStorage`. Any Kubernetes supported [volumes](https://kubernetes.io/docs/concepts/storage/volumes/) such as [PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim), [HostPath](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath), [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) (for testing only), [NFS](https://kubernetes.io/docs/concepts/storage/volumes/#nfs),  [gcePersistentDisk](https://kubernetes.io/docs/concepts/storage/volumes/#gcepersistentdisk) etc. can be used as local backend.
+KubeStash supports any Kubernetes supported [volumes](https://kubernetes.io/docs/concepts/storage/volumes/) such as [PersistentVolumeClaim](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim), [HostPath](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath), [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) (for testing only), [NFS](https://kubernetes.io/docs/concepts/storage/volumes/#nfs),  [gcePersistentDisk](https://kubernetes.io/docs/concepts/storage/volumes/#gcepersistentdisk) etc. as local backend.
+
+> Unlike other backend options that allow the KubeStash operator to interact directly with storage, it cannot do so with the local backend because the backend volume is not mounted in the operator pod. Therefore, it needs to execute jobs to initialize the BackupStorage and Repository, as well as upload Snapshot metadata to the local backend.
 
 ### Create BackupStorage
 
@@ -30,9 +32,7 @@ Following parameters are available for `Local` backend.
 | `local.subPath`      | `Optional` | Sub-path inside the referenced volume where the backed up data will be stored instead of its root. |
 | `local.VolumeSource` | `Required` | Any Kubernetes volume. Can be specified inlined. Example: `hostPath`.                              |
 
-
-> Note that by default, KubeStash run an initializer job for the local backend, which doesn’t have file write permission. So, in order to achieve
-that you must give file system group permission, achieved by specifying `spec.runtimeSettings.pod.securityContext.fsGroup` in the `BackupStorage` configuration.
+> By default, KubeStash runs an initializer job with the user `65534` for the local backend. However, this user might lack write permissions to the backend. To address this, you can specify a different `fsGroup` or `runAsUser` in the `.spec.runtimeSettings.pod.securityContext` section of the BackupStorage. 
 
 Here, we are going to show some sample `BackupStorage` objects that uses different Kubernetes volume as a backend.
 
@@ -71,9 +71,7 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/local-storage-with-hostpath created
 ```
 
-> Note that by default, Kubestash run `BackupStorage` initializer job with a `non-root` user. `hostPath` volume is writable only for the `root` user.
-So, in order to use `hostPath` volume as a backend, you must either run initializer job as the `root` user, achieved by specifying 
-`spec.runtimeSettings.pod.securityContext.runAsUser` in the `BackupStorage` configuration, or adjust the permissions of the `hostPath` to allow write access for `non-root` users.
+> Since a `hostPath` volume is typically writable only by the root user, you'll need to either run the initializer job as the `root` user or modify permissions directly on the host filesystem to enable non-root write access.
 
 ### PersistentVolumeClaim as Backend
 
@@ -146,7 +144,7 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/local-storage-with-nfs created
 ```
 
->For NFS backend, KubeStash may have to run the network volume accessor deployments in privileged mode to provide KubeStash CLI facilities. In this case, please configure network volume accessors by following the instruction [here](/docs/setup/install/troubleshooting/index.md#configuring-network-volume-accessor).
+>For network volumes such as NFS, KubeStash needs to deploy a helper network volume accessor deployment in the same namespace as the BackupStorage. This deployment mounts the NFS volume, allowing the CLI to interact with the backend. You can configure the network volume accessor by following the instructions [here](/docs/setup/install/troubleshooting/index.md#configuring-network-volume-accessor).
 
 ## Next Steps
 

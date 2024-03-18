@@ -42,7 +42,7 @@ secret/gcs-secret created
 
 ### Create BackupStorage
 
-Now, you have to create a `BackupStorage` crd. You have to provide the storage secret that we have created earlier in `spec.storage.gcs.SecretName` field.
+Now, you have to create a `BackupStorage` cr. You have to specify the name of the storage secret that we have created earlier in the `spec.storage.gcs.SecretName` field.
 
 Following parameters are available for `gcs` backend.
 

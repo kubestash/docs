@@ -196,7 +196,7 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ## Backup
 
-Now, we have to create a `BackupConfiguration` custom resource targeting the `target-pvc` PVC that we have created earlier.
+Now, we have to create a `BackupConfiguration` custom resource targeting the PVC that we have created earlier.
 
 We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
 
@@ -275,6 +275,18 @@ NAME             PHASE   PAUSED   AGE
 pvc-backup       Ready            19s
 ```
 
+**Verify Repository:**
+
+Verify that the Repository specified in the BackupConfiguration has been created using the following command,
+
+```bash
+$ kubectl get repositories -n demo
+NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-repository                                       Ready                            28s
+```
+
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the Repository YAML stored in the `kubestash-qa/demo/pvc-backup-demo` directory.
+
 **Verify CronJob:**
 
 Verify that KubeStash has created a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
@@ -301,6 +313,8 @@ pvc-backup-frequent-backup-1704281100       BackupConfiguration   pvc-backup    
 
 ```
 
+Here, the phase `Succeeded` means that the backup process has been completed successfully.
+
 **Verify Backup:**
 
 When backup session is complete, KubeStash will update the respective `Repository` to reflect the latest state of backed up data.
@@ -324,7 +338,7 @@ gcs-repository-pvc-backup-frequent-backup-1704281100       gcs-repository   freq
 
 > When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: PersistentVolumeClaim`, `kubestash.com/app-ref-name: <pvc-name>`, `kubestash.com/app-ref-namespace: <pvc-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
 
-If we check the YAML of the `Snapshot`, we can find the information about the backed up components.
+Now, lets retrieve the YAML for the `Snapshot`, and inspect the `spec.status` section to see the backup up components of the PVC.
 
 ```bash
 $ kubectl get snapshots -n demo gcs-repository-pvc-backup-frequent-backup-1704281100 -oyaml

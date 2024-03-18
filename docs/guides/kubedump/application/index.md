@@ -94,6 +94,7 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 backupstorage.storage.kubestash.com/gcs-repo created
 ```
 
+Now, we are ready to backup our application yaml resources.
 
 **Create RetentionPolicy:**
 
@@ -119,7 +120,7 @@ spec:
       from: Same
 ```
 
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md).
+Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](/docs/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -194,9 +195,9 @@ Here, we are going to take backup YAMLs for `kubestash-kubestash-operator` Deplo
 
 **Create Secret:**
 
-We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for both encrypting and decrypting the backup data during backup & restore.
+We also have to create another `Secret` with an encryption key `RESTIC_PASSWORD` for `Restic`. This secret will be used by `Restic` for encrypting the backup data.
 
-Let's create a secret named `encry-secret` with the Restic password.
+Let's create a secret named `encrypt-secret` with the Restic password.
 
 ```bash
 $ echo -n 'changeit' > RESTIC_PASSWORD
@@ -256,9 +257,9 @@ spec:
 ```
 
 Here,
-- `spec.sessions[*].addon.name` specifies the name of the `Addon` object that specifies addon configuration that will be used to perform backup of a stand-alone PVC.
-- `spec.sessions[*].addon.tasks[*].name` specifies the name of the `Task` that holds the `Function` and their order of execution to perform backup of a stand-alone PVC.
-- `spec.sessions[*].addon.jobTemplate.runtimeSettings.pod.serviceAccountName` specifies the ServiceAccount name that we have created earlier with cluster-wide resource reading permission.
+- `spec.sessions[*].addon.name` specifies the name of the `Addon`.
+- `spec.sessions[*].addon.tasks[*].name` specifies the name of the backup task.
+- `spec.sessions[*].addon.jobTemplate.spec.serviceAccountName`specifies the ServiceAccount name that we have created earlier with cluster-wide resource reading permission.
 
 Let's create the `BackupConfiguration` object we have shown above,
 
@@ -278,6 +279,18 @@ $ kubectl get backupconfiguration -n demo
 NAME                              PHASE   PAUSED   AGE
 application-manifest-backup       Ready            19s
 ```
+
+**Verify Repository:**
+
+Verify that the Repository specified in the BackupConfiguration has been created using the following command,
+
+```bash
+$ kubectl get repositories -n demo
+NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-repository                                       Ready                            28s
+```
+
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the Repository YAML stored in the `demo/deployment-manifests` directory.
 
 **Verify CronJob:**
 
@@ -306,18 +319,9 @@ application-manifest-backup-frequent-backup-1708677300   BackupConfiguration   a
 
 **Verify Backup:**
 
-When backup session is created, KubeStash operator creates `Snapshot` which represents the state of backup run for each `Repository` which are provided in `BackupConfiguration`.
+When `BackupSession` is created, KubeStash operator creates `Snapshot` for each `Repository` listed in the respective session of the `BackupConfiguration`. Since we have only specified one repository in the session, at this moment we should have one `Snapshot`.
 
-```bash
-$ kubectl get repositories -n demo
-NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repository   true        1                2.262 KiB   Ready   103s                     8m
-
-```
-
-At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot`.
-
-Verify created `Snapshot` object by the following command,
+Run the following command to check the respective `Snapshot`,
 
 ```bash
 $ kubectl get snapshots -n demo
@@ -325,14 +329,14 @@ NAME                                                              REPOSITORY    
 gcs-repository-application-manifckup-frequent-backup-1708677300   gcs-repository   frequent-backup   2024-02-23T08:35:00Z   Delete            Succeeded   43s
 ```
 
-Now, If we navigate to `kubestash-qa/demo/deployment-manifests/repository/v1/frequent-backup/manifest` directory of our GCS bucket, we are going to see that the snapshot has been stored there.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/deployment-manifests/repository/v1/frequent-backup/manifest` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `kubestash-qa/demo/deployment-manifests/repository/snapshots` directory.
 
 <figure align="center">
   <img alt="Backup YAMLs data of an Application in GCS storage" src="/docs/guides/kubedump/application/images/application_manifest_backup.png">
   <figcaption align="center">Fig: Backup YAMLs data of an Application in GCS backend</figcaption>
 </figure>
 
-> KubeStash keeps all backup data encrypted. So, snapshot files in the bucket will not contain any meaningful data until they are decrypted.
+> Note: KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
 
 ## Restore
 
@@ -342,9 +346,9 @@ Therefore, it is the user's responsibility to download the backed-up YAMLs and t
 
 ### Download the YAMLs
 
-KubeStash provides a [kubectl plugin](https://stash.run/docs/v2022.05.12/guides/cli/cli/#download-snapshots) for making it easy to download a snapshot locally.
+KubeStash provides a [kubectl plugin](/docs/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
 
-Now, let's download the latest Snapshot from our backed-up data into the `$HOME/Downloads/stash/applications/kube-system/stash-enterprise` folder of our local machine.
+Now, let's download the latest Snapshot from our backed-up data into the `$HOME/Downloads/kubestash/applications/kubestash/kubestash-kubestash-operator` folder of our local machine.
 
 ```bash
 $ kubectl kubestash download gcs-repository-application-manifckup-frequent-backup-1708677300 --namespace=demo --destination=$HOME/Downloads/kubestash/applications/kubestash/kubestash-kubestash-operator

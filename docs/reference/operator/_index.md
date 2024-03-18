@@ -1,10 +1,10 @@
 ---
-title: Reference | Stash Operator
-description: Stash Operator Reference
+title: Reference | KubeStash Operator
+description: KubeStash Operator Reference
 menu:
   docs_{{ .version }}:
     identifier: reference-operator
-    name: Stash Operator
+    name: KubeStash Operator
     weight: 10
     parent: reference
 menu_name: docs_{{ .version }}

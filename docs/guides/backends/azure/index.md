@@ -37,7 +37,7 @@ secret/azure-secret created
 
 ### Create BackupStorage
 
-Now, you have to create a `BackupStorage` crd. You have to provide the storage secret that we have created earlier in `spec.storage.azure.secretName` field.
+Now, you have to create a `BackupStorage` cr. You have to specify the name of the storage secret that we have created earlier in the `spec.storage.azure.secretName` field.
 
 Following parameters are available for `azure` backend.
 

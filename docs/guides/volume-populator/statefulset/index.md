@@ -265,7 +265,7 @@ spec:
       repositories:
         - name: gcs-demo-repo
           backend: gcs-backend
-          directory: /demo/sample-sts
+          directory: /sample-sts
           encryptionSecret:
             name: encrypt-secret
             namespace: demo
@@ -300,6 +300,18 @@ NAME                PHASE   PAUSED   AGE
 sample-backup-sts   Ready            2m50s
 ```
 
+**Verify Repository:**
+
+Verify that the Repository specified in the BackupConfiguration has been created using the following command,
+
+```bash
+$ kubectl get repositories -n demo
+NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-repository                                       Ready                            28s
+```
+
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the Repository YAML stored in the `kubestash-qa/demo/sample-sts` directory.
+
 **Verify CronJob:**
 
 Verify that KubeStash has created a `CronJob` with the schedule specified in `spec.sessions[*].scheduler.schedule` field of `BackupConfiguration` object.
@@ -325,6 +337,7 @@ NAME                                            INVOKER-TYPE          INVOKER-NA
 sample-backup-sts-demo-session-1706015400       BackupConfiguration   pvc-backup       Succeeded              60s
 
 ```
+Here, the phase `Succeeded` means that the backup process has been completed successfully.
 
 **Verify Backup:**
 
@@ -357,7 +370,7 @@ gcs-demo-repo-sample-backup-sts-demo-session-1706015400   gcs-demo-repo   demo-s
 
 > When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
 
-If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the StatefulSet.
+Now, lets retrieve the YAML for the `Snapshot`, and inspect the `spec.status` section to see the backup up components of the StatefulSet.
 
 ```bash
 $ kubectl get snapshots -n demo gcs-demo-repo-sample-backup-sts-demo-session-1706015400 -oyaml

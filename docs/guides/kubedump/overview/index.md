@@ -7,14 +7,14 @@ menu:
     name: How does it work?
     parent: kubestash-kubedump
     weight: 10
-product_name: stash
+product_name: KubeStash
 menu_name: docs_{{ .version }}
 section_menu_id: guides
 ---
 
 # How KubeStash Backups Kubernetes Resources
 
-KubeStash `{{< param "info.version" >}}` supports taking backup of Kubernetes resource YAMLs. You can backup the YAML definition of the resources of entire cluster, a particular namespaces, or only an application etc. In this guide, we are going to show you how Kubernetes resource backup works in KubeStash.
+KubeStash `{{< param "info.version" >}}` supports taking backup of Kubernetes resource YAMLs. You can backup the YAML definition of the resources of entire cluster, a particular namespace, or only an application. In this guide, we are going to show you how Kubernetes resource backup works in KubeStash.
 
 ## How Backup Works
 
@@ -31,9 +31,9 @@ The backup process consists of the following steps:
 
 2. Then, she creates a `BackupStorage` custom resource that specifies the backend information, along with the `Secret` containing the credentials needed to access the backend.
 
-3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file into the target storage.
+3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file to the target storage.
 
-4. Then, she creates a `BackupConfiguration` custom resource which specifies the targeted standalone volume and also creates  an encryption `Secret` resource which will be used to encode/decode the backed up data. The `BackupConfiguration` object specifies the `Repository` pointing to a `BackupStorage` that contains backend information, indicating where to upload backup data. It also defines the `Addon` information with a specified tasks and their configuration parameters to be used for backing up the volume.
+4. Then, she creates a `BackupConfiguration` custom resource that specifies the target, the Addon info with a specified task, etc. It also provides information about one or more repositories, each indicating a path and a `BackupStorage` for storing the backed-up data.
 
 5. KubeStash operator watches for `BackupConfiguration` custom resources.
 
@@ -47,15 +47,15 @@ The backup process consists of the following steps:
 
 10. KubeStash operator watches for `BackupSession` custom resources.
 
-11. When it finds a `BackupSession` object, it creates a `Snapshot` custom resource for each `Repository` specified in the `BackupConfiguration`.
+11. When it finds a `BackupSession` object, it creates a `Snapshot` custom resource for each `Repository` specified in the respective session of the `BackupConfiguration`.
 
 12. Then, it resolves the respective `Addon` and `Function` and prepares a backup `Job` definition.
 
 13. Then, it creates the `Job` to backup the desired resource YAMLs.
 
-14. Then, the Job dumps the Kubernetes Resource YAML, and store them temporarily in a directory. Then, it uploads the content of the directory file into the target storage.
+14. Then, the Job dumps the Kubernetes Resource YAML, and store them temporarily in a directory. Then, it uploads the content of the directory file to the target storage.
 
-15. After the backup process is completed, the backup `Job` updates the `status.components[*]` field of the `Snapshot` resources with each target volume information. It also updates the `status.phase` field of the `BackupSession` to reflect backup completion.
+15. After the backup process is completed, the backup `Job` updates the `status.components[*]` field of the `Snapshot` resources.
 
 ## Next Steps
 

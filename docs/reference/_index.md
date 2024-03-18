@@ -1,6 +1,6 @@
 ---
 title: Reference
-description: Stash CLI Reference
+description: KubeStash CLI Reference
 menu:
   docs_{{ .version }}:
     identifier: reference
