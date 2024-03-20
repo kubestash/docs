@@ -444,7 +444,7 @@ status:
 
 Now, if we navigate to the S3 bucket, we will see the backed up data stored in the `demo/data/ks-demo/repository/v1/demo-session/dump-<node-name>` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/data/ks-demo/snapshots` directory.
 
-> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+> Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
 ## Restore
 

@@ -401,9 +401,9 @@ status:
 ```
 > For Deployment, KubeStash takes backup from only one pod of the Deployment. So, only one component has been backed up. For logical backup, KubeStash uses `dump` as the component name for Deployment.
 
-Now, if we navigate to the GCS bucket, we will see the backed up data has been stored in the `demo/dep/repository/v1/demo-session/dump` directory and the Snapshot metadata has been stored in the `demo/dep/snapshots` directory.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/dep/repository/v1/demo-session/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/dep/snapshots` directory.
 
-> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+> Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
 ## Restore
 

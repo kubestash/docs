@@ -34,7 +34,7 @@ jobs:
 
       - name: Check links
         run: |
-          liche -r docs -d $(pwd) -c 10 -p -h -l -x '^(.*/docs/{{<.*>}}/.*|.*github.com.*|.*api.slack.com.*|.*askapache.com.*|.*twitter.com.*)$'
+          liche -r docs -d $(pwd) -c 10 -p -h -l -x '^(.*/docs/{{<.*>}}/.*|.*github.com.*|.*api.slack.com.*|.*askapache.com.*|.*twitter.com.*|.*dev.mysql.com.*|.*linux.die.net.*)$'
 
       - name: Create Kubernetes cluster
         id: kind

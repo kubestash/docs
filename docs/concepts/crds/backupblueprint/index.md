@@ -125,11 +125,8 @@ spec:
     - **hooks :** specifies the backup hooks that should be executed before and/or after the backup. Hooks has two fields:
       - **preBackup :** specifies a list of hooks that will be executed before backup. To learn about the fields under `preBackup`, see [HookInfo](/docs/concepts/crds/backupconfiguration/index.md#hookinfo).
       - **postBackup :** specifies a list of hooks that will be executed after backup. To learn about the fields under `postBackup`, see [HookInfo](/docs/concepts/crds/backupconfiguration/index.md#hookinfo).
-    - **failurePolicy :** specifies what to do if the backup fail. Valid values are:
-      - **Fail :** KubeStash should mark the backup as failed if any component fail to complete its backup. This is the default behavior.
-      - **Retry :** KubeStash will retry to backup the failed component according to the `retryConfig`.
     - **retryConfig :** specifies the behavior of retry in case of a backup failure. RetryConfig has the following fields:
-      - **maxRetry :** specifies the maximum number of times Stash should retry the backup/restore process. By default, KubeStash will retry only 1 time.
+      - **maxRetry :** specifies the maximum number of times KubeStash should retry the backup/restore process. By default, KubeStash will retry only 1 time.
       - **delay :** The amount of time to wait before next retry. If you don't specify this field, KubeStash will retry immediately. Format: 30s, 2m, 1h etc.
     - **timeout :** specifies the maximum duration of backup. BackupSession will be considered Failed if backup does not complete within this time limit. By default, KubeStash don't set any timeout for backup.
     - **sessionHistoryLimit :** specifies how many backup Jobs and associate resources KubeStash should keep for debugging purpose. The default value is 1.

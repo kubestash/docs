@@ -24,7 +24,7 @@ Here, we are going to demonstrate how you can perform different actions before a
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
 - Install KubeStash in your cluster following the steps [here](/docs/setup/install/kubestash/index.md).
 - Install [KubeDB](https://kubedb.com) in your cluster following the steps [here](https://kubedb.com/docs/latest/setup/). This step is optional. You can deploy your database using any method you want. We are using KubeDB because KubeDB simplifies many of the difficult or tedious management tasks of running production-grade databases on private and public clouds.
-- If you are not familiar with how KubeStash backup and restore MySQL databases, please check the following guide [here](/docs/addons/mysql/overview/index.md).
+- If you are not familiar with how KubeStash backup and restore MySQL databases, please check the [KubeDB](https://kubedb.com/) documentation for MySQL backup and restore using KubeStash.
 - Also, if you haven't read about how hooks work in KubeStash, please check it from [here](/docs/guides/hooks/overview/index.md).
 
 You should be familiar with the following `KubeStash` concepts:
@@ -471,7 +471,7 @@ status:
 
 Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/demo/hook/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/sample-sts/snapshots` directory.
 
-> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+> Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
 **Verify PreBackup Hook Executed:**
 

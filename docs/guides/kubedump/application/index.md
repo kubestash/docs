@@ -336,7 +336,7 @@ Now, if we navigate to the GCS bucket, we will see the backed up data stored in 
   <figcaption align="center">Fig: Backup YAMLs data of an Application in GCS backend</figcaption>
 </figure>
 
-> Note: KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+> Note: KubeStash stores all dumped data encrypted in backup directory, meaning it remains unreadable until decrypted.
 
 ## Restore
 

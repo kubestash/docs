@@ -210,10 +210,10 @@ blueprint.kubestash.com/namespace: <BackupBlueprint namespace>
 
 Optional Annotations:
 
-- **Session Names:** Defines which sessions from the `BackupBlueprint` should be used for the `BackupConfiguration`. If you don’t specify this annotation, all sessions from the `BackupBlueprint` will be used. For multiple sessions, you can provide comma (,) seperated sessions name.
+- **Session Names:** Defines which sessions from the `BackupBlueprint` should be used for the `BackupConfiguration`. If you don’t specify this annotation, all sessions from the `BackupBlueprint` will be used. For multiple sessions, you can provide comma (,) seperated session names.
 
 ```yaml
- blueprint.kubestash.com/sessions: <Sessions name>
+ blueprint.kubestash.com/session-names: <Session names>
 ```
 
 - **Variables:** Allows you to customize the `BackupConfiguration` by providing values for variables defined within the `BackupBlueprint`. You can define as many annotations as needed for variables.
@@ -486,7 +486,7 @@ status:
 
 Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/demo/sample-sts/repository/v1/frequent-backup/dump-pod-<ordinal-value>` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/sample-sts/snapshots` directory.
 
-> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+> Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
 ## Backup Deployment
 
