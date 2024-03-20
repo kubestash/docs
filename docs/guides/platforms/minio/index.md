@@ -439,7 +439,7 @@ Now, if we navigate to the Minio Bucket, we are going to see backed up data has 
   <figcaption align="center">Fig: Backup data in Minio Bucket</figcaption>
 </figure>
 
-> KubeStash keeps all backup data encrypted. So, the files in the bucket will not contain any meaningful data until they are decrypted.
+> Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
 ## Restore the Backed up Data
 

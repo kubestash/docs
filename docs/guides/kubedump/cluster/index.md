@@ -319,7 +319,7 @@ Now, if we navigate to the GCS bucket, we will see the backed up data stored in 
   <figcaption align="center">Fig: Backup data in GCS Bucket</figcaption>
 </figure>
 
-> Note: KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+> Note: KubeStash stores all dumped data encrypted in backup directory, meaning it remains unreadable until decrypted.
 
 ## Restore
 
@@ -329,7 +329,7 @@ Therefore, it is the user's responsibility to download the backed-up YAMLs and t
 
 ### Download the YAMLs
 
-KubeStash provides a [kubectl plugin](/docs/guides/cli/cli/#download-snapshots) for making it easy to download a snapshot locally.
+KubeStash provides a [kubectl plugin](/docs/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
 
 Now, let's download the latest Snapshot from our backed-up data into the `$HOME/Downloads/kubestash` folder of our local machine.
 

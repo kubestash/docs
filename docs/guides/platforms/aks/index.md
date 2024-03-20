@@ -474,7 +474,7 @@ status:
 
 Now, if we navigate to the [Azure Blob Container](https://azure.microsoft.com/en-us/services/storage/blobs/), we will see the backed up data stored in the `demo/dep/repository/v1/demo-session/dump` directory. KubeStash also keeps backup for `Snapshot` YAMLs, which can be found in the `demo/dep/snapshots` directory.
 
-> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+> Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
 ## Restore
 

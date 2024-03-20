@@ -20,7 +20,7 @@ This tutorial will show you how to configure automatic backup for PersistentVolu
 
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
 - Install `KubeStash` in your cluster following the steps [here](/docs/setup/README.md).
-- You will need to have a PVC with `ReadWriteMany` access permission. Here, we are going to use an NFS server to provision a PVC with `ReadWriteMany` access. If you don't have an NFS server running, deploy one by following the guide [here](https://github.com/appscode/third-party-tools/blob/master/storage/nfs/README.md).
+- Here, we are going to use an NFS server to provision a PVC with `ReadWriteMany` access. If you don't have an NFS server running, deploy one by following the guide [here](https://github.com/appscode/third-party-tools/blob/master/storage/nfs/README.md).
 - You should be familiar with the following `KubeStash` concepts:
   - [BackupBlueprint](/docs/concepts/crds/backupblueprint/index.md)
   - [BackupConfiguration](/docs/concepts/crds/backupconfiguration/index.md)
@@ -147,6 +147,17 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 retentionpolicy.storage.kubestash.com/demo-retention created
 ```
 
+**Create Encryption Secret:**
+
+Let's create a secret called `encrypt-secret` with the Restic password,
+
+```bash
+$ echo -n 'changeit' > RESTIC_PASSWORD
+$ kubectl create secret generic -n demo encrypt-secret \
+    --from-file=./RESTIC_PASSWORD \
+secret "encrypt-secret" created
+```
+
 **Create BackupBlueprint:**
 
 Now, we have to create a `BackupBlueprint` CR with a blueprint for `BackupConfiguration` object.
@@ -211,25 +222,29 @@ Now, automatic backup is configured for PVC. We just have to add some annotation
 
 You have to add the auto-backup annotations to the pvc that you want to backup. The following auto-backup annotations are available:
 
-- **BackupBlueprint Name:** You have to specify the `BackupBlueprint` name that holds the template for `BackupConfiguration` in the following annotation:
+Required Annotations:
+
+- **BackupBlueprint Name:** Specifies the name of the `BackupBlueprint` to be used for this pvc's backup.
 
 ```yaml
 blueprint.kubestash.com/name: <BackupBlueprint name>
 ```
 
-- **BackupBlueprint Namespace:** You have to specify the `BackupBlueprint` namespace that holds the template for `BackupConfiguration` in the following annotation:
+- **BackupBlueprint Namespace:** Specifies the namespace where the `BackupBlueprint` resides.
 
 ```yaml
 blueprint.kubestash.com/namespace: <BackupBlueprint namespace>
 ```
 
-- **Sessions:** You can specify with which sessions you want to create the `BackupConfiguration`. If you don't specify this annotation, all sessions from the `BackupBlueprint` will be used. For multiple sessions, you can provide comma (,) seperated sessions name.
+Optional Annotations:
+
+- **Session Names:** Defines which sessions from the `BackupBlueprint` should be used for the `BackupConfiguration`. If you don’t specify this annotation, all sessions from the `BackupBlueprint` will be used. For multiple sessions, you can provide comma (,) seperated session names.
 
 ```yaml
- blueprint.kubestash.com/sessions: <Sessions name>
+ blueprint.kubestash.com/session-names: <Session names>
 ```
 
-- **Variables:** You can specify arbitrary number of annotations for variables. KubeStash will resolve the  variables and create `BackupConfiguration` accordingly.
+- **Variables:** Allows you to customize the `BackupConfiguration` by providing values for variables defined within the `BackupBlueprint`. You can define as many annotations as needed for variables.
 
 ```yaml
 variables.kubestash.com/<variable-name>: <Variable value>
@@ -237,7 +252,7 @@ variables.kubestash.com/<variable-name>: <Variable value>
 
 Example:
 
-Assume you are using a variable, named `schedule`, in `BackupBlueprint`. By this variable we can configure different backup schedule for different target. We will add this annotation in the target.
+Assuming you are using a variable named `schedule` for a session schedule in the `BackupBlueprint`, you can configure different backup schedules for each target application using annotations like this:
 ```yaml
 variables.kubestash.com/schedule: "*/5 * * * *"
 ```
@@ -407,7 +422,12 @@ Now, we are going to add auto backup specific annotation to the PVC. KubeStash w
 Let's add the auto backup specific annotation to the PVC,
 
 ```bash
-
+$ kubectl annotate pvc nfs-pvc -n demo --overwrite     \
+    blueprint.kubestash.com/name=pvc-backup-blueprint  \
+    blueprint.kubestash.com/namespace=demo             \
+    variables.kubestash.com/targetName=nfs-pvc         \
+    variables.kubestash.com/namespace=demo             \
+    variables.kubestash.com/repoName=pvc-repo
 ```
 
 Verify that the annotations has been added successfully,
@@ -579,7 +599,7 @@ status:
 
 Now, if we navigate to the GCS bucket, we will see the backed up data has been stored in the `demo/demo/nfs-pvc/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/nfs-pvc/snapshots` directory.
 
-> KubeStash keeps all the dumped data encrypted in the backup directory meaning the dumped files won't contain any readable data until decryption.
+> Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
 ## Cleanup
 

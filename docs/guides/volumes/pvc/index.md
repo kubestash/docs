@@ -473,7 +473,7 @@ Now, if we navigate to the GCS bucket, we will see the backed up data stored in 
   <figcaption align="center">Fig: Backed up data of a stand-alone PVC in GCS backend</figcaption>
 </figure>
 
-> KubeStash keeps all backup data encrypted. So, snapshot files in the bucket will not contain any meaningful data until they are decrypted.
+> Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
 ## Restore
 
