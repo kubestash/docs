@@ -1,0 +1,21 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: nfs-pvc-restore
+  namespace: demo
+spec:
+  target:
+    apiGroup:
+    kind: PersistentVolumeClaim
+    name: nfs-pvc
+    namespace: demo
+  dataSource:
+    repository: gcs-repository
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret
+      namespace: demo
+  addon:
+    name: pvc-addon
+    tasks:
+      - name: logical-backup-restore

@@ -1,11 +1,18 @@
-apiVersion: stash.appscode.com/v1alpha1
-kind: Repository
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
 metadata:
-  name: azure-repo
+  name: azure-storage
   namespace: demo
 spec:
-  backend:
+  storage:
+    provider: azure
     azure:
-      container: stash-backup
-      prefix: /demo/deployment/my-deploy
-    storageSecretName: azure-secret
+      storageAccount: kubestash
+      container: kubestash-demo
+      prefix: /backup/demo/deployment/kubestash-demo
+      secretName: azure-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: WipeOut

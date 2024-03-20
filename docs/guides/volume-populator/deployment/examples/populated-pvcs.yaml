@@ -1,0 +1,35 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: restored-source-data
+  namespace: demo
+  annotations:
+        populator.kubestash.com/app-name: restored-kubestash-deployment
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  dataSourceRef:
+    apiGroup: storage.kubestash.com
+    kind: Snapshot
+    name: gcs-repository-sample-backup-dep-frequent-backup-1707826500
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: restored-source-config
+  namespace: demo
+  annotations:
+        populator.kubestash.com/app-name: restored-kubestash-deployment
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  dataSourceRef:
+    apiGroup: storage.kubestash.com
+    kind: Snapshot
+    name: gcs-repository-sample-backup-dep-frequent-backup-1707826500

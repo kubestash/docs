@@ -98,9 +98,9 @@ retentionpolicies.storage.kubestash.com   2023-12-07T06:27:42Z
 snapshots.storage.kubestash.com           2023-12-07T06:40:37Z
 ```
 
-### Verify Addons
+### Verify Catalogs
 
-KubeStash automatically installs the necessary Addons for workload, pvc backup & restore. Verify that the Addons have been installed using the following command:
+KubeStash automatically installs the necessary Addon catalogs for workload, PVC and Kubernetes manifest backups. Verify that the Addon catalogs have been installed using the following command.
 
 ```bash
 $ kubectl get addons.addons.kubestash.com
@@ -111,24 +111,6 @@ workload-addon   7m1s
 ```
 
 As you can see from the above output that KubeStash has created `Addon` objects.
-
-### Verify Functions
-
-KubeStash also automatically installs the necessary functions for the corresponding installed addons. Verify that the functions have been installed using the following command:
-
-```bash
-$ kubectl get functions.addons.kubestash.com 
-NAME                     AGE
-kubedump-backup          7m25s
-pvc-backup               7m25s
-pvc-restore              7m25s
-volumesnapshot-backup    7m25s
-volumesnapshot-restore   7m25s
-workload-backup          7m25s
-workload-restore         7m25s
-```
-
-As you can see from the above output that KubeStash has created `Functions` objects.
 
 Now, you are ready to [take your first backup](/docs/guides/README.md) using KubeStash.
 

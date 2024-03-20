@@ -1,0 +1,15 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: populate-pv
+  namespace: demo
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  dataSourceRef:
+    apiGroup: storage.kubestash.com
+    kind: Snapshot
+    name: gcs-repository-nfs-pvc-backup-frequent-backup-1704281100

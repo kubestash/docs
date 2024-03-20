@@ -1,0 +1,62 @@
+apiVersion: storage.kubestash.com/v1alpha1
+kind: Snapshot
+metadata:
+  creationTimestamp: "2024-01-17T09:20:01Z"
+  finalizers:
+    - kubestash.com/cleanup
+  generation: 1
+  labels:
+    kubestash.com/app-ref-kind: Deployment
+    kubestash.com/app-ref-name: kubestash-demo
+    kubestash.com/app-ref-namespace: demo
+    kubestash.com/repo-name: gcs-repository
+  name: gcs-repository-deployment-volumeshot-frequent-backup-1705483201
+  namespace: demo
+  ownerReferences:
+    - apiVersion: storage.kubestash.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Repository
+      name: gcs-repository
+      uid: 067f9690-8cf0-498b-bc0e-7d21a0a407d4
+  resourceVersion: "8885"
+  uid: 4f4a5d2b-269b-4d44-ba91-f6188008ee92
+spec:
+  appRef:
+    apiGroup: apps
+    kind: Deployment
+    name: kubestash-demo
+    namespace: demo
+  backupSession: deployment-volume-snapshot-frequent-backup-1705483201
+  deletionPolicy: Delete
+  repository: gcs-repository
+  session: frequent-backup
+  snapshotID: 01HMBBGTJDZ0F6XRD8BWSXB9C0
+  type: FullBackup
+  version: v1
+status:
+  components:
+    volumesnapshot:
+      driver: VolumeSnapshotter
+      phase: Succeeded
+      volumeSnapshotterStats:
+        - hostPath: /source/data
+          pvcName: source-data
+          volumeSnapshotName: source-data-1705483201
+        - hostPath: /source/config
+          pvcName: source-config
+          volumeSnapshotName: source-config-1705483201
+  conditions:
+    - lastTransitionTime: "2024-01-17T09:20:01Z"
+      message: Recent snapshot list updated successfully
+      reason: SuccessfullyUpdatedRecentSnapshotList
+      status: "True"
+      type: RecentSnapshotListUpdated
+    - lastTransitionTime: "2024-01-17T09:20:26Z"
+      message: Metadata uploaded to backend successfully
+      reason: SuccessfullyUploadedSnapshotMetadata
+      status: "True"
+      type: SnapshotMetadataUploaded
+  phase: Succeeded
+  snapshotTime: "2024-01-17T09:20:04Z"
+  totalComponents: 1

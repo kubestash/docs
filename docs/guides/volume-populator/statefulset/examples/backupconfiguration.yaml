@@ -1,0 +1,42 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: sample-backup-sts
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: StatefulSet
+    name: sample-sts
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: demo-session
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: gcs-demo-repo
+          backend: gcs-backend
+          directory: /sample-sts
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            params:
+              paths: /source/data
+              exclude: /source/data/lost+found
+      retryConfig:
+        maxRetry: 2
+        delay: 1m

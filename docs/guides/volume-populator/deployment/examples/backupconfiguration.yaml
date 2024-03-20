@@ -1,0 +1,41 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: sample-backup-dep
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: Deployment
+    name:  kubestash-deployment
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        namespace: demo
+        name: gcs-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 3
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: gcs-repository
+          backend: gcs-backend
+          directory: /dep
+          encryptionSecret:
+            name: encrypt-secret # some addon may not support encryption
+            namespace: demo
+          deletionPolicy: WipeOut
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            params:
+              paths: /source/data,/source/config
+              exclude: /source/data/lost+found,/source/config/lost+found

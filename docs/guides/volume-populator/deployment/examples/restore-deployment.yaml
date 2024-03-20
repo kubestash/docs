@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kubestash-populator-demo
+  name: restored-kubestash-deployment
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubestash-populator-demo
+  template:
+    metadata:
+      labels:
+        app: kubestash-populator-demo
+      name: busybox
+    spec:
+      containers:
+      - command: ["/bin/sh", "-c", "sleep 3000"]
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        name: busybox
+        volumeMounts:
+        - mountPath: /source/data
+          name: source-data
+        - mountPath: /source/config
+          name: source-config
+      restartPolicy: Always
+      volumes:
+      - name: source-data
+        persistentVolumeClaim:
+         claimName: restored-source-data
+      - name: source-config
+        persistentVolumeClaim:
+          claimName: restored-source-config

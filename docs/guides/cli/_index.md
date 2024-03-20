@@ -1,5 +1,5 @@
 ---
-title: kubectl plugin | Stash
+title: kubectl plugin | KubeStash
 menu:
   docs_{{ .version }}:
     identifier: cli

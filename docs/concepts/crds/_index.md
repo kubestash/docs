@@ -1,5 +1,5 @@
 ---
-title: Declarative API | Stash
+title: Declarative API | KubeStash
 description: Declarative API
 menu:
   docs_{{ .version }}:
