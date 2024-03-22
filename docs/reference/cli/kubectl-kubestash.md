@@ -19,7 +19,7 @@ kubectl plugin for KubeStash
 
 ### Synopsis
 
-kubectl plugin for KubeStash. For more information, visit here: https://appscode.com/products/kubestash
+kubectl plugin for KubeStash. For more information, visit here: https://kubestash.com
 
 ### Options
 
