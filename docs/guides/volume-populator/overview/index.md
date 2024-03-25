@@ -17,8 +17,7 @@ section_menu_id: guides
 This guide will give you an overview of how volume populator process works in KubeStash.
 
 ## How Volume Populator Process Works?
-
-The following diagram shows how KubeStash restores backup data into a specific volume and attaching it to user-provided Persistent Volume Claims (PVCs) for usage of various workload applications.
+The following diagram shows how KubeStash populates a Persistent Volume Claim with data sourced from a KubeStash Snapshot.
 
 <figure align="center">
   <img alt="KubeStash Volume Populator Process Flow" src="/docs/guides/volume-populator/overview/images/volume-populator-overview.svg">
@@ -29,9 +28,9 @@ The `Volume Populator` process consists of the following steps:
 
 1. KubeStash operator watches for `PVCs`. 
 
-2. When the operator finds a `PVC` with `spec.dataSourceRef` set and refers to a KubeStash `Snapshot` object, it starts populating this `PVC` by creating a volume populator `Job` that mounts a temporary `PVC`.
+2. When the operator finds a `PVC` with `spec.dataSourceRef` set and refers to a KubeStash `Snapshot` object, it creates a volume populator `Job` that mounts a temporary `PVC`.
 
-3. Then the populator Job restores the referred `Snapshot` into this temporary PVC.
+3. Then the populator Job restores the referred `Snapshot` into the temporary PVC.
 
 4. Once the restoration process is complete, the KubeStash operator deletes this populator `Job` and temporary `PVC`, and binds the `PV` containing the restored data with the desired `PVC`.
 

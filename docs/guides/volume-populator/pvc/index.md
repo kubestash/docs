@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Populating a volume of a Standalone PVC
 
-This guide will show you how to use KubeStash to populate volume of a Stand-alone PersistentVolumeClaims (PVCs). Within this guide, we will demonstrate the process of backing up a Stand-alone `PVC` and subsequently restoring it using Kubernetes native approach, facilitated by KubeStash.
+This guide will show you how to use KubeStash to populate the volume of a Stand-alone PersistentVolumeClaim (PVC). We'll walk through backing up a Stand-alone PVC and then restoring the backed up data to a new PVC in a Kubernetes-native way with KubeStash.
 
 ## Before You Begin
 
