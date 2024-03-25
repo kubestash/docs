@@ -53,7 +53,7 @@ The `VolumeSnapshot` process consists of the following steps:
 
 13. Then, It creates a volume snapshotter `Job` to capture snapshots of the targeted volumes. 
 
-14. The volume snapshotter `Job` creates a `VolumeSnapshot`(s) object for each Persistent Volume Claims (PVC) associated the target and waits for the Container Storage Interface (CSI) driver to complete snapshotting. The VolumeSnapshot(s) are created with the following naming format:
+14. The volume snapshotter `Job` creates a `VolumeSnapshot` object for each Persistent Volume Claim (PVC) associated the target and waits for the Container Storage Interface (CSI) driver to complete snapshotting. The VolumeSnapshot(s) are created with the following naming format:
     ```bash
       <PVC name>-<BackupSession creation timestamp in Unix epoch seconds>
     ```
@@ -84,7 +84,7 @@ The restore process consists of the following steps:
 
 4. Then, it creates a Restore `Job` to restore `PVC` from the `volumeSnapshot`.
 
-5. The restore job retrieves `VolumeSnapshot` information from the Snapshot. It starts by creating PVCs based on `volumeClaimTemplates` and assigns the corresponding `VolumeSnapshot` name to the `spec.dataSourceRef` of each PVC.
+5. The restore job retrieves `VolumeSnapshot` information from the Snapshot. Then it creates PVCs based on the `volumeClaimTemplates` with `spec.dataSourceRef` field set to the respective `VolumeSnapshot` name.
 
 6. Container Storage Interface (CSI) `external-snapshotter` controller watches for `PVCs`.
 

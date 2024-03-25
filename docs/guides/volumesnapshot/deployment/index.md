@@ -462,7 +462,7 @@ Here,
 
 KubeStash keeps the backup for Snapshot YAMLs. If we navigate to the GCS bucket, we will see the Snapshot YAML stored in the `<kubestash-qa/demo/deployment-volume-snapshot-repo/snapshots>` directory.
 
-**Verify Volume Snapshot :**
+**Verify VolumeSnapshot:**
 
 Once a `BackupSession` CR is created, KubeStash operator creates a volume snapshotter `Job`. Then the `Job` creates a `VolumeSnapshot` CR for the targeted PVC.
 
@@ -506,7 +506,7 @@ status:
 
 ```
 
-Here, `spec.status.boundVolumeSnapshotContentName` field specifies the name of the `VolumeSnapshotContent` object. It also represents the actual snapshot name that has been saved in Google Cloud. If we navigate to the `Snapshots` tab in the GCP console, we are going to see snapshot `snapcontent-f4a199c2-eed5-4438-aa09-e9c9683556ef` has been stored successfully.
+Here, `status.boundVolumeSnapshotContentName` field specifies the name of the `VolumeSnapshotContent` object. It also represents the actual snapshot name that has been saved in Google Cloud. If we navigate to the `Snapshots` tab in the GCP console, we are going to see snapshot `snapcontent-f4a199c2-eed5-4438-aa09-e9c9683556ef` has been stored successfully.
 
 <figure align="center">
   <img alt="Snapshots in GCP" src="/docs/guides/volumesnapshot/statefulset/images/gcp.png">

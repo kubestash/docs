@@ -14,8 +14,7 @@ section_menu_id: guides
 
 # Populating volumes of a StatefulSet
 
-This guide will show you how to use KubeStash to populate the volumes of a `StatefulSet`. Within this guide, we will demonstrate the process of backing up volumes of a `StatefulSet` and subsequently restoring it using Kubernetes native approach, facilitated by KubeStash.
-
+This guide will show you how to use KubeStash to populate the volumes of a `StatefulSet`. We'll walk through backing up the volumes of a Statefulset and then restoring the backed up data to a new StatefulSet in a Kubernetes-native way with KubeStash.
 ## Before You Begin
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
 - Install `KubeStash` in your cluster following the steps [here](/docs/setup/README.md).

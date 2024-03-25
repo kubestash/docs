@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Populating volumes of a Deployment
 
-This guide will show you how to use KubeStash to populate the volumes of a `Deployment`. Within this guide, we will demonstrate the process of backing up volumes of a `Deployment` and subsequently restoring it using Kubernetes native approach, facilitated by KubeStash.
+This guide will show you how to use KubeStash to populate the volumes of a `Deployment`. We'll walk through backing up the volumes of a Deployment and then restoring the backed up data to new PVCs in a Kubernetes-native way with KubeStash.
 
 ## Before You Begin
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
