@@ -259,7 +259,7 @@ KubeDB ManifestOption consists of the following fields:
 
 #### status.phase
 
-`status.phase` represents the current state of the restore process for this `RestoreSession`. `status.phase` will be `Succeeded` only if the phase of all components are `Succeeded` and the post-restore actions are successful.
+`status.phase` represents the current state of the restore process for this `RestoreSession`. `status.phase` will be `Succeeded` only if the phase of all components are `Succeeded` and the post-restore actions are successful. If any of the components fail to complete restore, `status.phase` will be `Failed`.
 
 #### status.targetFound
 

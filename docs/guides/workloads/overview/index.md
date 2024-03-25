@@ -63,7 +63,7 @@ The backup process consists of the following steps:
 
 14. The `Job`(s) takes backup of the targeted workload.
 
-15. After the backup process is completed, the backup `Job` updates the `status.components[*]` field of the `Snapshot` resources with backup information of the target application components.
+15. After the backup process is completed, the backup `Job`(s) updates the `status.components[*]` field of the `Snapshot` resources with backup information of the target application components.
 
 ## How Restore Process Works
 
@@ -86,7 +86,7 @@ The restore process consists of the following steps:
 
 5. The restore `Job`(s) restores the backed-up data into the targeted workload volume(s).
 
-6. Finally, when the restore process is completed, the `Job`(s) updates the `status.components` field of the `RestoreSession` to reflect restore process.
+6. Finally, when the restore process is completed, the `Job`(s) updates the `status.components[*]` field of the `RestoreSession` with restore information of the target application components.
 
 ## Next Steps
 

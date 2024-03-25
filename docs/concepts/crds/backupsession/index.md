@@ -129,7 +129,7 @@ A `BackupSession` object has the following fields in the `spec` section:
 
 #### status.phase
 
-`status.phase` indicates the overall phase of the backup process for this BackupSession. It will be `Succeeded` only when all Snapshots are successfully completed and the post-backup actions are successful.
+`status.phase` indicates the overall phase of the backup process for this BackupSession. It will be `Succeeded` only when all Snapshots are successfully completed and the post-backup actions are successful. If any of the snapshots fail to complete backup, `status.phase` will be `Failed`.
 
 #### status.duration
 
