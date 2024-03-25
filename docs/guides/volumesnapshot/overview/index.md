@@ -92,7 +92,8 @@ The restore process consists of the following steps:
 
 8. The controller downloads the respective data from the cloud and populates the `PVC`.
 
-9. Once completed, the job updates the `status.components[*]` field of the `Restoresession` to reflect restore completion.
+9. Finally, when the restore process is completed, the restore `Job` updates the `status.components[*]` field of the `RestoreSession` with restore information of the target application components.
+
 
 ## Next Steps
 1. See a step by step guide to snapshot a stand-alone PVC [here](/docs/guides/volumesnapshot/pvc/index.md).

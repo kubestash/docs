@@ -167,9 +167,9 @@ A `Addon` object has the following fields in the `spec` section:
 Each task contains the following fields:
 - **name :** specifies the name of the task. The name of a task should indicate what this task does. For example, a name `logical-backup` indicate that this task performs a logical backup of a database.
 - **function :** specifies the name of a `Function` CR that defines a container definition which will execute the backup/restore logic for a particular application.
-- **driver :** specifies the underlying tool that will be used to upload the data to the backend storage. Valid values are:
+- **driver :** indicates the mechanism used to backup a target. Currently, KubeStash supports `Restic` and `VolumeSnapshotter` as drivers.
   - **Restic :** uses [restic](https://restic.net/) to upload backup data.
-  - **VolumeSnapshotter :** leverages Kubernetes [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) crd and CSI driver to snapshot the PVCs.
+  - **VolumeSnapshotter :** leverages Kubernetes [VolumeSnapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) CRD and CSI driver to snapshot the PVCs.
 - **executor :** specifies the type of entity that will execute the task. Valid values are:
   - **Job :** KubeStash will create Job(s) to execute the backup/restore task.
 - **singleton :** specifies whether this task will be executed on a single job or across multiple jobs.

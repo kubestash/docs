@@ -16,9 +16,9 @@ section_menu_id: concepts
 
 ## What is Snapshot
 
-A `Snapshot` is a Kubernetes `CustomResourceDefinition`(CRD) which represents the state of a backup run for one or more components of an application. For every `BackupSession`, it creates `Snapshot` CRs. If a `BackupSession` involves multiple repositories, a `Snapshot` is created for each repository. 
+A `Snapshot` is a Kubernetes `CustomResourceDefinition`(CRD) which represents the state of a backup run for one or more components of an application. For every `BackupSession`, KubeStash operator creates `Snapshot` CRs. If a `BackupSession` involves multiple repositories, a `Snapshot` is created for each repository. 
 
-KubeStash operator is responsible for creating `Snapshot` CR. `Snapshot` CR is not supposed to be created/edited by the end user.
+> End users are not meant to create or edit Snapshot CRs.
 
 ## Snapshot CRD Specification
 
