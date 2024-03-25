@@ -354,9 +354,9 @@ gcs-demo-repo-sample-backup-sts-demo-session-1706015400   gcs-demo-repo   demo-s
 ```
 
 > Note: KubeStash creates a `Snapshot` with the following labels:
-> - `kubestash.com/app-ref-kind: <workload-kind>`
-> - `kubestash.com/app-ref-name: <workload-name>`
-> - `kubestash.com/app-ref-namespace: <workload-namespace>`
+> - `kubestash.com/app-ref-kind: <target-kind>`
+> - `kubestash.com/app-ref-name: <target-name>`
+> - `kubestash.com/app-ref-namespace: <target-namespace>`
 > - `kubestash.com/repo-name: <repository-name>`
 > 
 > These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`. 

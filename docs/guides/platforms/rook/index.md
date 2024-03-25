@@ -385,7 +385,13 @@ NAME                                                        REPOSITORY       SES
 rook-demo-repo-sample-backup-dep-demo-session-1706015400    rook-demo-repo   demo-session   2024-01-23T13:10:54Z   Delete            Succeeded   16h
 ```
 
-> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: <workload-kind>`, `kubestash.com/app-ref-name: <workload-name>`, `kubestash.com/app-ref-namespace: <workload-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <target-kind>`
+> - `kubestash.com/app-ref-name: <target-name>`
+> - `kubestash.com/app-ref-namespace: <target-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the Deployment.
 
