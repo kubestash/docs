@@ -422,7 +422,13 @@ NAME                                                              REPOSITORY    
 gcs-repository-statefulset-volumshot-frequent-backup-1705405201   gcs-repository   frequent-backup   2024-01-16T11:00:08Z   Delete            Succeeded                         3m6s
 ```
 
-> When a backup is triggered according to schedule, KubeStash will create a `Snapshot` with the following labels  `kubestash.com/app-ref-kind: StatefulSet`, `kubestash.com/app-ref-name: <volume-name>`, `kubestash.com/app-ref-namespace: <volume-namespace>` and `kubestash.com/repo-name: <repository-name>`. We can use these labels to watch only the `Snapshot` of our desired Workload or `Repository`.
+> Note: KubeStash creates a `Snapshot` with the following labels:
+> - `kubestash.com/app-ref-kind: <target-kind>`
+> - `kubestash.com/app-ref-name: <target-name>`
+> - `kubestash.com/app-ref-namespace: <target-namespace>`
+> - `kubestash.com/repo-name: <repository-name>`
+>
+> These labels can be used to watch only the `Snapshot`s related to our desired Workload or `Repository`.
 
 Now, lets retrieve the YAML for the `Snapshot`, and inspect the `spec.status` section to see the backup information of the targeted PVC.
 

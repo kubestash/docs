@@ -33,7 +33,7 @@ The backup process consists of the following steps:
 
 3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file to the target storage.
 
-4. Then, she creates a `BackupConfiguration` custom resource, targeting either a standalone `PVC`. The `BackupConfiguration` object specifies the `Repository` pointing to a `BackupStorage` that contains backend information, indicating where to upload backup data. It also defines the `Addon` information with a specified task and their configuration parameters to be used for backing up the volumes.
+4. Then, she creates a `BackupConfiguration` custom resource, targeting a standalone volume. The `BackupConfiguration` object specifies the `Repository` pointing to a `BackupStorage` that contains backend information, indicating where to upload backup data. It also defines the `Addon` information with a specified task and their configuration parameters to be used for backing up the volumes.
 
 5. KubeStash operator watches for `BackupConfiguration` custom resources.
 
@@ -55,7 +55,8 @@ The backup process consists of the following steps:
  
 14. The `Job` takes backup of the targeted stand-alone volume.
 
-15. After the backup process is completed, the backup `Job` updates the `status.components[*]` field of the `Snapshot` object with target volume information.
+15. After the backup process is completed, the backup `Job`(s) updates the `status.components[*]` field of the `Snapshot` resources with backup information of the target volume.
+
 
 ## How Restore Works
 
@@ -80,7 +81,8 @@ The restore process consists of the following steps:
 
 6. The restore `Job` restores the backed-up data into the targeted volume.
 
-7. Finally, when the restore process is completed, the job updates the `status.phase` field of the `Restoresession` to reflect restore completion.
+7. Finally, when the restore process is completed, the restore `Job`updates the `status.components[*]` field of the `RestoreSession` with restore information of the target volume.
+
 
 ## Next Steps
 

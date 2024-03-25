@@ -328,7 +328,7 @@ A `BackupConfiguration` object has the following fields in the `status` section.
 |--------------------|-----------------------------------------------------|
 | `SchedulerEnsured` | indicates whether the Scheduler was ensured or not. |
 
-- **phase :** represents the current state of the Backup Invoker.
+- **phase :** represents the current state of the `BackupConfiguration`.
 - **targetFound :** specifies whether the backup target exists or not.
 - **conditions :** represents list of conditions regarding this `BackupConfiguration`. The following condition is set by the KubeStash operator on a `BackupConfiguration`.
 
