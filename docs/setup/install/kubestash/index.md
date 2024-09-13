@@ -75,7 +75,7 @@ To check if KubeStash operator pods have started, run the following command:
 ```bash
 $ kubectl get pods --all-namespaces -l app.kubernetes.io/name=kubestash-operator --watch
 NAMESPACE     NAME                                           READY   STATUS    RESTARTS   AGE
-kubestash     kubestash-kubestash-operator-fcd8bf7c6-psjs6   2/2     Running   0          5m49s
+stash         kubestash-kubestash-operator-fcd8bf7c6-psjs6   2/2     Running   0          5m49s
 ```
 
 Once the operator pod is running, you can cancel the above command by typing `Ctrl+C`.
