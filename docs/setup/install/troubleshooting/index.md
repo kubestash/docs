@@ -87,7 +87,7 @@ $ helm upgrade -i kubestash oci://ghcr.io/appscode-charts/kubestash \
 To detect KubeStash version, exec into the operator pod and run `kubestash version` command.
 
 ```bash
-$ POD_NAMESPACE=kubestash
+$ POD_NAMESPACE=stash
 $ POD_NAME=$(kubectl get pods -n $POD_NAMESPACE -l app.kubernetes.io/name=kubestash-operator -o jsonpath={.items[0].metadata.name})
 $ kubectl exec $POD_NAME -c operator -n $POD_NAMESPACE -- /kubestash version
 
