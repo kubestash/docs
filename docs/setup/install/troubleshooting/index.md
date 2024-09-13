@@ -50,7 +50,7 @@ If you haven't installed KubeStash yet, run the following command to configure t
 ```bash
 $ helm install -i kubestash oci://ghcr.io/appscode-charts/kubestash \
 --version {{< param "info.version" >}} \
---namespace kubestash --create-namespace \
+--namespace stash --create-namespace \
 --set kubestash-operator.netVolAccessor.cpu=200m \
 --set kubestash-operator.netVolAccessor.memory=128Mi \
 --set kubestash-operator.netVolAccessor.runAsUser=0 \
@@ -69,7 +69,7 @@ If you have installed KubeStash already in your cluster but didn't configure the
 ```bash
 $ helm upgrade -i kubestash oci://ghcr.io/appscode-charts/kubestash \
 --version {{< param "info.version" >}} \
---namespace kubestash --create-namespace \
+--namespace stash --create-namespace \
 --set kubestash-operator.netVolAccessor.cpu=200m \
 --set kubestash-operator.netVolAccessor.memory=128Mi \
 --set kubestash-operator.netVolAccessor.runAsUser=0 \

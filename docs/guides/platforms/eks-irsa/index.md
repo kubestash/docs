@@ -72,7 +72,7 @@ We need a IAM role with the policy `bucket-accessor` attached and annotate the K
 ```yaml
 eksctl create iamserviceaccount \
       --name kubestash-kubestash-operator \
-      --namespace kubestash \
+      --namespace stash \
       --cluster irsa-demo \
       --attach-policy-arn arn:aws:iam::452618475015:policy/bucket-accessor \
       --approve \

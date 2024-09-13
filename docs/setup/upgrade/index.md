@@ -36,7 +36,7 @@ Now, upgrade the KubeStash helm chart using the following command. You can find 
 ```bash
 helm upgrade kubestash oci://ghcr.io/appscode-charts/kubestash \
     --version {{< param "info.version" >}} \
-    --namespace kubestash \
+    --namespace stash \
     --set-file global.license=/path/to/the/license.txt \
     --wait --burst-limit=10000 --debug
 ```
@@ -70,7 +70,7 @@ $ helm ls -A | grep kubestash
 # update license key keeping the current version
 $ helm upgrade kubestash oci://ghcr.io/appscode-charts/kubestash \
     --version=<cur_version> \
-    --namespace kubestash --create-namespace \
+    --namespace stash --create-namespace \
     --reuse-values \
     --set-file global.license=/path/to/new/license.txt
 ```
@@ -87,7 +87,7 @@ $ helm ls -A | grep kubestash
 # update license key keeping the current version
 $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash -n kubestash \
     --version=<cur_version> \
-    --namespace kubestash --create-namespace \
+    --namespace stash --create-namespace \
     --set global.skipCleaner=true \
     --show-only appscode/kubestash-operator/templates/license.yaml \
     --set-file global.license=/path/to/new/license.txt | kubectl apply -f -

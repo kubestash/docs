@@ -32,7 +32,7 @@ To uninstall KubeStash, run the following command:
 In Helm 3, release names are [scoped to a namespace](https://v3.helm.sh/docs/faq/#release-names-are-now-scoped-to-the-namespace). So, provide the namespace you used to install the operator when installing.
 
 ```bash
-$ helm uninstall kubestash --namespace kubestash
+$ helm uninstall kubestash --namespace stash
 ```
 
 </div>
@@ -45,7 +45,7 @@ If you prefer to not use Helm, you can generate YAMLs from KubeStash chart and u
 ```bash
 $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash \
         --version {{< param "info.version" >}} \
-        --namespace kubestash --create-namespace \
+        --namespace stash --create-namespace \
         --set-file global.license="nothing" | kubectl delete -f -
 ```
 
