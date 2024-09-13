@@ -42,7 +42,7 @@ KubeStash can be installed via [Helm](https://helm.sh/) using the [chart](https:
 ```bash
 $ helm install kubestash oci://ghcr.io/appscode-charts/kubestash \
         --version {{< param "info.version" >}} \
-        --namespace kubestash --create-namespace \
+        --namespace stash --create-namespace \
         --set-file global.license=/path/to/the/license.txt \
         --wait --burst-limit=10000 --debug
 ```
@@ -59,7 +59,7 @@ If you prefer to not use Helm, you can generate YAMLs from KubeStash chart and d
 ```bash
 $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash \
         --version {{< param "info.version" >}} \
-        --namespace kubestash --create-namespace \
+        --namespace stash --create-namespace \
         --set-file global.license=/path/to/the/license.txt | kubectl apply -f -
 ```
 
