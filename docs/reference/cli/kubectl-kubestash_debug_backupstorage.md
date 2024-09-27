@@ -1,21 +1,29 @@
 ---
-title: Debug
+title: Debug Backupstorage
 menu:
   docs_{{ .version }}:
-    identifier: kubectl-kubestash-debug
-    name: Debug
+    identifier: kubectl-kubestash-debug-backupstorage
+    name: Debug Backupstorage
     parent: reference-cli
 menu_name: docs_{{ .version }}
 section_menu_id: reference
 ---
-## kubectl-kubestash debug
+## kubectl-kubestash debug backupstorage
 
-Debug common KubeStash issues
+Debug BackupStorage connection
+
+### Synopsis
+
+Debug BackupStorage connection by uploading and deleting sample data
+
+```
+kubectl-kubestash debug backupstorage [flags]
+```
 
 ### Options
 
 ```
-  -h, --help   help for debug
+  -h, --help   help for backupstorage
 ```
 
 ### Options inherited from parent commands
@@ -44,9 +52,5 @@ Debug common KubeStash issues
 
 ### SEE ALSO
 
-* [kubectl-kubestash](/docs/reference/cli/kubectl-kubestash.md)	 - kubectl plugin for KubeStash
-* [kubectl-kubestash debug backup](/docs/reference/cli/kubectl-kubestash_debug_backup.md)	 - Debug backup
-* [kubectl-kubestash debug backupstorage](/docs/reference/cli/kubectl-kubestash_debug_backupstorage.md)	 - Debug BackupStorage connection
-* [kubectl-kubestash debug operator](/docs/reference/cli/kubectl-kubestash_debug_operator.md)	 - Debug KubeStash operator
-* [kubectl-kubestash debug restore](/docs/reference/cli/kubectl-kubestash_debug_restore.md)	 - Debug restore
+* [kubectl-kubestash debug](/docs/reference/cli/kubectl-kubestash_debug.md)	 - Debug common KubeStash issues
 
