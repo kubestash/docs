@@ -101,3 +101,20 @@ Panopticon watches the BackupConfiguration, BackupSession, BackupStorage, Reposi
 | `storage_kubestash_com_snapshot_time_seconds`          | The time when this Snapshot was taken            | 
 | `storage_kubestash_com_snapshot_component_count_total` | The number of total components for this Snapshot | 
 | `storage_kubestash_com_snapshot_conditions`            | Current conditions of this Snapshot              | 
+
+## How to Enable Monitoring
+
+During the installation of KubeStash, all the necessary `MetricsConfigurations` are created. You can find these `MetricsConfigurations` using the following command:
+
+```bash
+$ kubectl get metricsconfigurations
+NAME                                         APIVERSION                       KIND                  AGE
+kubestash-appscode-com-backupconfiguration   core.kubestash.com/v1alpha1      BackupConfiguration   113m
+kubestash-appscode-com-backupsession         core.kubestash.com/v1alpha1      BackupSession         113m
+kubestash-appscode-com-backupstorage         storage.kubestash.com/v1alpha1   BackupStorage         113m
+kubestash-appscode-com-repository            storage.kubestash.com/v1alpha1   Repository            113m
+kubestash-appscode-com-restoresession        core.kubestash.com/v1alpha1      RestoreSession        113m
+kubestash-appscode-com-snapshot              storage.kubestash.com/v1alpha1   Snapshot              113m
+```
+
+Next, you need to install `Panopticon`. You can monitor KubeStash by using either the built-in [Prometheus](https://github.com/prometheus/prometheus) scraper or [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator).
