@@ -16,7 +16,7 @@ spec:
     - addon:
         name: workload-addon
         tasks:
-          - name: LogicalBackup
+          - name: logical-backup
             params:
               exclude: /source/data/lost+found
               paths: /source/data

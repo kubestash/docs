@@ -44,7 +44,7 @@ spec:
     - addon:
         name: workload-addon
         tasks:
-          - name: LogicalBackup
+          - name: logical-backup
             params:
               exclude: /source/data/lost+found
               paths: /source/data
@@ -160,11 +160,87 @@ namespace. Each backend has the following fields:
 - **repositories :** specifies a list of repository information where the backed up data will be stored. KubeStash will create the respective `Repository` CRs using this information. Each repository consists of the following fields:
   - **name :** specifies the name of the `Repository`.
   - **backend :** specifies the name of the backend where this repository will be initialized. This should point to a backend name specified in `.spec.backends` section. For using a default backend, keep this field empty.
+  - **verificationStrategy :** specifies the name of the verification strategy which will be used to verify the backed up data in this repository.
   - **directory :** specifies the path inside the backend where the backed up data will be stored.
   - **encryptionSecret :** refers to the Secret containing the encryption key which will be used to encrypt the backed up data. You can refer to a Secret of a different namespace by providing `name` and `namespace` fields. This field is optional. No encryption secret is required for `VolumeSnapshot` backups.
   - **deletionPolicy :** specifies what to do when you delete a `Repository` CR. The valid values for this field are:
     - **Delete :** This will delete just the `Repository` CR from the cluster but keep the backed up data in the remote backend. This is the default behavior.
     - **WipeOut :** This will delete the `Repository` CR as well as the backed up data from the backend.
+
+**spec.verificationStrategies**
+
+`spec.verificationStrategies` specifies a list of backup verification configurations. Each verificationStrategies has the following fields:
+- **name :** indicates the name of this strategy.
+- **restoreOption :** specifies the restore target and addonInfo for backup verification.
+  - **target :** indicates the target application where the data will be restored for verification. This field consists of `apiGroup`, `kind`, `name` and `namespace`. The backup target can be in a different namespace than the `BackupConfiguration`.
+  - **addon :** specifies addon configuration that will be used to backup the target. Addon has the following fields:
+    - **name :** specifies the name of the addon that will be used for the backup purpose.
+    - **tasks :** specifies a list of backup tasks and their configuration parameters. To learn about the fields under `task`, see [Task Reference](#task-reference).
+    - **containerRuntimeSettings :** specifies runtime settings for the backup executor container. More information can be found [here](#container-level-runtime-settings).
+    - **jobTemplate :** specifies runtime configurations for the backup Job. More information can be found [here](#podtemplate-spec).
+- **verifySchedule :** specifies the schedule of backup verification in Cron format, see https://en.wikipedia.org/wiki/Cron.
+- **function :** specifies the name of a `Function` CR that defines a container definition which will execute the verification logic for a particular application.
+- **volumes :** indicates the list of volumes that should be mounted on the verification job.
+- **volumeMounts :** specifies the mount for the volumes specified in `Volumes` section.
+- **type :** indicate the types of verifier that will verify the backup. Valid types are:
+  - **RestoreOnly :** KubeStash will create a RestoreSession with the tasks provided in BackupConfiguration's verificationStrategies section.
+  - **File :** KubeStash will restore the data and then create a job to check if the files exist or not. This type is recommended for workload backup verification.
+  - **Query :** KubeStash operator will restore data and then create a job to run the queries. This type is recommended for database backup verification.
+  - **Script :** KubeStash operator will restore data and then create a job to run the script. This type is recommended for database backup verification.
+- **file :** specifies the file paths information whose existence will be checked for backup verification.
+  - **paths :** specifies the list of paths whose existence will be checked. These paths must be absolute paths.
+- **query :** specifies the queries to be run to verify backup.
+  - **mySQL :** specifies queries option for `MySQL` database. Each query has the following fields:
+    - **database :** refers to the database name being checked for existence.
+    - **table :** refers to the table name being checked for existence in specified Database.
+    - **rowCount :** represents the number of row to be checked in the specified Table. This has the following fields:
+      - **operator :** represents the operation that will be done on the given Value. The valid values for this field are `Equal`, `NotEqual`, `LessThan`, `LessThanOrEqual`, `GreaterThan` and `GreaterThanOrEqual`.
+      - **value :** represents the numerical value of the desired output.
+  - **mariaDB :** specifies queries option for `MariaDB` database. Each query has the following fields:
+    - **database :** refers to the database name being checked for existence.
+    - **table :** refers to the table name being checked for existence in specified Database.
+    - **rowCount :** represents the number of row to be checked in the specified Table. This has the following fields:
+      - **operator :** represents the operation that will be done on the given Value. The valid values for this field are `Equal`, `NotEqual`, `LessThan`, `LessThanOrEqual`, `GreaterThan` and `GreaterThanOrEqual`.
+      - **value :** represents the numerical value of the desired output.
+  - **postgres :** specifies queries option for `Postgres` database. Each query has the following fields:
+    - **database :** refers to the database name being checked for existence.
+    - **schema :** refers to the schema name being checked for existence in specified Database.
+    - **table :** refers to the table name being checked for existence in specified Database.
+    - **rowCount :** represents the number of row to be checked in the specified Table. This has the following fields:
+      - **operator :** represents the operation that will be done on the given Value. The valid values for this field are `Equal`, `NotEqual`, `LessThan`, `LessThanOrEqual`, `GreaterThan` and `GreaterThanOrEqual`.
+      - **value :** represents the numerical value of the desired output.
+  - **mongoDB :** specifies queries option for `MongoDB` database. Each query has the following fields:
+    - **database :** refers to the database name being checked for existence.
+    - **collection :** refers to the collection name being checked for existence in specified Database.
+    - **documentCount :** represents the number of document to be checked in the specified Collection. This has the following fields:
+      - **operator :** represents the operation that will be done on the given Value. The valid values for this field are `Equal`, `NotEqual`, `LessThan`, `LessThanOrEqual`, `GreaterThan` and `GreaterThanOrEqual`.
+      - **value :** represents the numerical value of the desired output.
+  - **elasticsearch :** specifies queries option for `Elasticsearch` database. Each query has the following fields:
+    - **index :** refers to the index name being checked for existence.
+  - **redis :** specifies queries option for `Redis` database. Each query has the following fields:
+    - **index :** refers to the database index being checked for existence.
+    - **dbSize :** specifies the number of keys in the specified Database.
+  - **singlestore :** specifies queries option for `Singlestore` database. Each query has the following fields:
+    - **database :** refers to the database name being checked for existence.
+    - **table :** refers to the table name being checked for existence in specified Database.
+    - **rowCount :** represents the number of row to be checked in the specified Table. This has the following fields:
+      - **operator :** represents the operation that will be done on the given Value. The valid values for this field are `Equal`, `NotEqual`, `LessThan`, `LessThanOrEqual`, `GreaterThan` and `GreaterThanOrEqual`.
+      - **value :** represents the numerical value of the desired output.
+  - **msSQLServer :** specifies queries option for `MSSQLServer` database. Each query has the following fields:
+    - **database :** refers to the database name being checked for existence.
+    - **schema :** refers to the schema name being checked for existence in specified Database.
+    - **table :** refers to the table name being checked for existence in specified Database.
+    - **rowCount :** represents the number of row to be checked in the specified Table. This has the following fields:
+      - **operator :** represents the operation that will be done on the given Value. The valid values for this field are `Equal`, `NotEqual`, `LessThan`, `LessThanOrEqual`, `GreaterThan` and `GreaterThanOrEqual`.
+      - **value :** represents the numerical value of the desired output.
+- **script :** specifies the script to be run to verify backup. This has the following fields:
+  - **location :** specifies the absolute path of the script file's location.
+  - **args :** specifies the arguments to be provided with the script.
+- **retryConfig :** specifies the behavior of the retry mechanism in case of a verification failure. This has the following fields:
+  - **maxRetry :** specifies the maximum number of times KubeStash should retry the backup/restore process. By default, KubeStash will retry only 1 time.
+  - **delay :** the amount of time to wait before next retry. If you don't specify this field, KubeStash will retry immediately. Format: 30s, 2m, 1h etc.
+- **sessionHistoryLimit :** specifies how many BackupVerificationSessions and associate resources KubeStash should keep for debugging purpose. The default value is 1.
+- **runtimeSettings :** allow to specify Resources, NodeSelector, Affinity, Toleration, ReadinessProbe etc. To know more about the fields in `runtimeSettings`, see [Runtime Settings](#runtime-settings)
 
 **spec.paused**
 
@@ -184,7 +260,7 @@ Scheduler Spec specifies the configuration for the backup triggering CronJob for
 - **jobTemplate :** Specifies the job that will be created when executing a CronJob. JobTemplate has the following fields:
 
   | Field                     | Usage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-    |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+  |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
   | `parallelism`             | Specifies the maximum desired number of pods the job should run at any given time. The actual number of pods running in steady state will be less than this number when ((`.spec.completions` - `.status.successful)` < `.spec.parallelism`), i.e. when the work left to do is less than max parallelism. More info can be found [here](https://kubernetes.io/docs/concepts/workloads/controllers/job/#parallel-jobs)                                                                                                                                                                                                                                     |
   | `completions`             | Specifies the desired number of successfully finished pods the job should be run with.  Setting to nil means that the success of any pod signals the success of all pods, and allows parallelism to have any positive value. Setting to 1 means that parallelism is limited to 1 and the success of that pod signals the success of the job. More info [here](https://kubernetes.io/docs/concepts/workloads/controllers/job/#parallel-jobs)                                                                                                                                                                                                               |
   | `activeDeadlineSeconds`   | Specifies the duration in seconds relative to the startTime that the job  may be continuously active before the system tries to terminate it; value must be positive integer. If a Job is suspended (at creation or through an update), this timer will effectively be stopped and reset when the Job is resumed again.                                                                                                                                                                                                                                                                                                                                   |
@@ -324,9 +400,10 @@ A `BackupConfiguration` object has the following fields in the `status` section.
   - **nextSchedule :** specifies when the next backup will execute for this session.
   - **conditions :** specifies a list of conditions related to this session. The following condition is set by the KubeStash operator on each `.status.sessions`.
   
-| Condition Type     | Usage                                               |
-|--------------------|-----------------------------------------------------|
-| `SchedulerEnsured` | indicates whether the Scheduler was ensured or not. |
+| Condition Type           | Usage                                                     |
+|--------------------------|-----------------------------------------------------------|
+| `SchedulerEnsured`       | indicates whether the Scheduler was ensured or not.       |
+| `InitialBackupTriggered` | indicates whether the initial backup is triggered or not. |
 
 - **phase :** represents the current state of the `BackupConfiguration`.
 - **targetFound :** specifies whether the backup target exists or not.

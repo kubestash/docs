@@ -1,0 +1,44 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupVerificationSession
+metadata:
+  creationTimestamp: "2024-10-29T09:30:00Z"
+  finalizers:
+    - kubestash.com/cleanup
+  generation: 1
+  labels:
+    kubestash.com/invoker-name: sample-backup
+  name: freq-backup-demo-storage-1730194200
+  namespace: demo
+  ownerReferences:
+    - apiVersion: core.kubestash.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: BackupConfiguration
+      name: sample-backup
+      uid: 645191bb-8e2e-4b04-96bd-3cea5f92231b
+  resourceVersion: "42197"
+  uid: f2bad4d8-b280-4d88-891c-62db1757ad33
+spec:
+  invoker:
+    apiGroup: core.kubestash.com
+    kind: BackupConfiguration
+    name: sample-backup
+  repository: demo-storage
+  session: freq-backup
+  snapshot: demo-storage-sample-backup-freq-backup-1730194080
+status:
+  conditions:
+    - lastTransitionTime: "2024-10-29T09:30:10Z"
+      reason: SuccessfullySucceedRestore
+      status: "True"
+      type: RestoreSucceeded
+    - lastTransitionTime: "2024-10-29T09:30:11Z"
+      reason: SuccessfullyVerifyBackup
+      status: "True"
+      type: BackupVerified
+    - lastTransitionTime: "2024-10-29T09:30:11Z"
+      reason: SuccessfullyCleanedVerificationSessionHistory
+      status: "True"
+      type: VerificationSessionHistoryCleaned
+  duration: 11s
+  phase: Succeeded
