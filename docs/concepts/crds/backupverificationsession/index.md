@@ -5,7 +5,7 @@ menu:
     identifier: backupverificationsession-overview
     name: BackupVerificationSession
     parent: crds
-    weight: 60
+    weight: 65
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: concepts
@@ -19,7 +19,7 @@ section_menu_id: concepts
 
 A `BackupVerificationSession` is a Kubernetes `CustomResourceDefinition`(CRD) which represents one backup verification run for the target pointed by the respective `BackupConfiguration`.
 
-KubeStash operator creates a Kubernetes `CronJob` according to the schedule for each backupverificationsession defined in a `BackupConfiguration`. On each backup verification schedule, this `CronJob` creates a `BackupVerificationSession` object that corresponds to the respective backupverificationsession specified in the `BackupConfiguration`. The `BackupVerificationSession` will create a `RestoreSession` and a verification executor job to initiate the verification process depending on the verification type.
+KubeStash operator creates a Kubernetes `CronJob` according to the schedule for each `BackupVerifier` referred in a `BackupConfiguration`. On each backup verification schedule, this `CronJob` creates a `BackupVerificationSession` object that corresponds to the respective `BackupVerifier` referred in the `BackupConfiguration`. The `BackupVerificationSession` will create a `RestoreSession` and a verification executor job to initiate the verification process depending on the verification type.
 
 You can also create a `BackupVerificationSession` object manually to run verification process at any time.
 
