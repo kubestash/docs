@@ -44,7 +44,7 @@ The backup process consists of the following steps:
 
 3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file into the target storage.
 
-4. Then, she creates a `BackupConfiguration` custom resource that specifies the targeted workload, the Addon info with a specified task, etc. It also provides information about one or more repositories, each indicating a path and a `BackupStorage` for storing the backed-up data.
+4. Then, she creates a `BackupConfiguration` custom resource that specifies the targeted application, the Addon info with a specified task, etc. It also provides information about one or more repositories, each indicating a path and a `BackupStorage` for storing the backed-up data. Each repository refers to `BackupVerifier` which contains the configuration for verification.
 
 5. KubeStash operator watches for `BackupConfiguration` objects.
 
@@ -52,18 +52,27 @@ The backup process consists of the following steps:
 
 7. KubeStash operator watches for `Repository` custom resources. When it finds the `Repository` object, it Initializes `Repository` by uploading `repository.yaml` file into the `spec.sessions[*].repositories[*].directory` path specified in `BackupConfiguration`.
 
-8. Then, it creates a `CronJob` for each session with the schedule specified in `BackupConfiguration` to trigger backup periodically.
+8. Then, it creates a `CronJob` for each repository referring to a `BackupVerifier` with the schedule specified in `BackupVerifier` to trigger backup verification periodically.
 
-9. On the next scheduled slot, the `CronJob` triggers a backup by creating a `BackupSession` custom resource.
+9. On the next scheduled slot, the `CronJob` triggers a backup verification by creating a `BackupVerificationSession` custom resource.
 
-10. KubeStash operator watches for `BackupSession` custom resources.
+10. KubeStash operator watches for `BackupVerificationSession` custom resources.
 
-11. When it finds a `BackupSession` object, it creates a `Snapshot` custom resource for each `Repository` specified in the `BackupConfiguration`.
+11. When it finds a `BackupVerificationSession` object, it creates a `RestoreSession` custom resource referring to the latest `Snapshot` as datasource.
 
-12. Then it resolves the respective `Addon` and `Function` and prepares backup `Job`(s) definition.
+12. Then it resolves the respective `Addon` and `Function` and prepares restore `Job`(s) definition.
 
-13. Then, it mounts the targeted workload volume(s) into the `Job`(s) and creates it/them.
+13. After a successful restore, it creates a verifier `Job` depending on the verification type. 
 
-14. The `Job`(s) takes backup of the targeted workload.
+14. The `Job` runs queries or script to verify backup.
 
-15. After the backup process is completed, the backup `Job`(s) updates the `status.components[*]` field of the `Snapshot` resources with backup information of the target application components.
+15. After the backup verification is completed, the backup verifier `Job` updates the status field of `BackupVerificationSession`.
+
+## Types of Verification Strategies
+
+Currently, we have the following types of backup verification strategies:
+
+- **RestoreOnly :** KubeStash operator will initiate a `RestoreSession` using the addon information specified in `BackupVerifier`. The verification of the backup will rely on the status of the `RestoreSession` phase; if the restore completes successfully, the backup is considered verified.
+- **Query :** At first, KubeStash operator will initiate a `RestoreSession` and after successful restore, it will create a verifier job to run the queries provided in `BackupVerifier`.
+- **Script :** At first, KubeStash operator will initiate a `RestoreSession` and after successful restore, it will create a verifier job to run the script provided in `BackupVerifier`.
+
