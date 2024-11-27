@@ -37,7 +37,7 @@ spec:
   addon:
     name: workload-addon
     tasks:
-    - name: LogicalBackupRestore
+    - name: logical-backup-restore
   dataSource:
     components:
     - pod-0
