@@ -54,7 +54,7 @@ metadata:
   name: mysql-query-verifier
   namespace: demo
 spec:
-  function: query-verification
+  function: kubedbverifier
   restoreOption:
     target:
       apiGroup: kubedb.com
@@ -252,7 +252,7 @@ metadata:
   name: mysql-script-verifier
   namespace: demo
 spec:
-  function: script-verification
+  function: kubedbverifier
   restoreOption:
     target:
       apiGroup: kubedb.com

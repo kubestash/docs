@@ -36,7 +36,7 @@ metadata:
   resourceVersion: "28771"
   uid: 052b6035-4e16-4864-a3ab-bc0aa2bf1825
 spec:
-  function: script-verification
+  function: kubedbverifier
   restoreOption:
     addonInfo:
       name: mysql-addon

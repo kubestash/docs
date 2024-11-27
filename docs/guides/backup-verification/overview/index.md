@@ -44,7 +44,7 @@ The backup process consists of the following steps:
 
 3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file into the target storage.
 
-4. Then, she creates a `BackupConfiguration` custom resource that specifies the targeted application, the Addon info with a specified task, etc. It also provides information about one or more repositories, each indicating a path and a `BackupStorage` for storing the backed-up data. Each repository refers to `BackupVerifier` which contains the configuration for verification.
+4. Then, she creates a `BackupConfiguration` custom resource that specifies the targeted application, the Addon info with a specified task, etc. It also provides information about one or more repositories, each indicating a path and a `BackupStorage` for storing the backed-up data. Then, she creates a `BackupVerifier` custom resource and each repository refers to `BackupVerifier` which contains the configuration for verification.
 
 5. KubeStash operator watches for `BackupConfiguration` objects.
 
