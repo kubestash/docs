@@ -199,6 +199,7 @@ A `Snapshot` object holds `repository` and target application `kind`, `name` and
 |-----------------------------|-----------------------------------------------------------------|
 | `SnapshotMetadataUploaded`  | Indicates whether the metadata of Snapshot was uploaded or not. |
 | `RecentSnapshotListUpdated` | Indicates whether the recent Snapshot list was updated or not.  |
+| `BackupIncomplete`          | Indicates whether the backup is incomplete or not.              |
 
 **status.totalComponents**
 
