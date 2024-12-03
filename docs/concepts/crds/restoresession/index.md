@@ -122,8 +122,8 @@ A `RestoreSession` object has the following fields in the `spec` section.
   - **preRestore :** specifies a list of hooks that will be executed before restore. To learn about the fields under `preRestore`, see [HookInfo](#hookinfo).
   - **postRestore :** specifies a list of hooks that will be executed after restore. To learn about the fields under `postRestore`, see [HookInfo](#hookinfo).
 
-#### spec.timeout 
-`spec.timeout` specifies a duration that KubeStash should wait for the session execution to be completed. If the session execution does not finish within this time period, KubeStash will consider this session as a failure.
+#### spec.restoreTimeout 
+`spec.restoreTimeout` specifies a duration that KubeStash should wait for the restore to be completed. If the restore tasks do not finish within this time period, KubeStash will consider this restore as a failure.
 
 #### spec.manifestOptions
 `spec.manifestOptions` provide options to select particular manifest object to restore. It consists of the following fields:
@@ -269,9 +269,9 @@ KubeDB ManifestOption consists of the following fields:
 
 `status.duration` specifies the total time taken to complete the restore process.
 
-#### status.deadline
+#### status.restoreDeadline
 
-`status.deadline` indicates the deadline of the restore process. `RestoreSession` will be considered `Failed` if the restore does not complete within this deadline.
+`status.restoreDeadline` indicates the deadline of the restore. Restore will be considered `Failed` if it does not complete within this deadline.
 
 #### status.totalComponents
 
@@ -313,7 +313,7 @@ Each `preHook` or `postHook` has the following fields:
 | `PostRestoreHooksExecutionSucceeded` | Indicates whether the postRestore hooks were successfully executed or not. |
 | `ValidationPassed`                   | Indicates whether the validation checks were passed or not.                |
 | `MetricsPushed`                      | Indicates whether the metrics were pushed or not.                          |
-| `DeadlineExceeded`                   | Indicates whether the session deadline was exceeded or not.                |
+| `RestoreIncomplete`                  | Indicates whether the restore is incomplete or not.                        |
 
 ## Next Steps
 
