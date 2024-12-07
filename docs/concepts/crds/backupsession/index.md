@@ -123,6 +123,10 @@ A `BackupSession` object has the following fields in the `spec` section:
 
 `spec.retryLeft` specifies the number of retry attempt left for this backup session. If this set to non-zero, KubeStash will create a new BackupSession if the current one fails.
 
+#### spec.backupTimeout
+
+`spec.backupTimeout` specifies the maximum duration of backup. Backup will be considered `Failed` if backup tasks do not complete within this time limit. By default, KubeStash don't set any timeout for backup.
+
 ### BackupSession `Status`
 
 `.status` section of `BackupSession` shows stats and progress of backup process in this session. `.status` section consists of the following fields:
@@ -135,9 +139,9 @@ A `BackupSession` object has the following fields in the `spec` section:
 
 `status.duration` specifies the time required to complete the backup process.
 
-#### status.sessionDeadline
+#### status.backupDeadline
 
-`status.sessionDeadline` indicates the deadline of the backup process. `BackupSession` will be considered `Failed` if the backup does not complete within this deadline.
+`status.backupDeadline` indicates the deadline of the backup process. Backup will be considered `Failed` if it does not complete within this deadline.
 
 #### status.snapshots
 `status.snapshots` specifies the `Snapshot`s status. It contains the following fields:
@@ -183,9 +187,8 @@ Each `preHook` or `postHook` contains the following fields:
 | `PostBackupHooksExecutionSucceeded` | indicates whether the post-backup hooks were executed successfully or not.                 |
 | `BackupExecutorEnsured`             | indicates whether the Backup Executor was ensured or not.                                  |
 | `SnapshotsEnsured`                  | indicates whether Snapshots were ensured for each Repository or not                        |
-| `DeadlineExceeded`                  | indicates whether the session deadline was exceeded or not.                                |
 | `MetricsPushed`                     | indicates whether Metrics were pushed or not                                               |
-
+| `SnapshotCleanupIncomplete`         | indicates whether Snapshot cleanup incomplete or not                                       |
 
 ## Next Steps
 
