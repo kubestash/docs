@@ -54,10 +54,15 @@ jobs:
           echo "install stash-crds chart"
           helm repo add appscode https://charts.appscode.com/stable/
           helm repo update
-          helm install stash-crds appscode/stash-crds
-          helm install kubedb-crds appscode/kubedb-crds
-          helm install kmodules-crds appscode/kmodules-crds
+#          helm install stash-crds appscode/stash-crds
+#          helm install kubedb-crds appscode/kubedb-crds
+#          helm install kmodules-crds appscode/kmodules-crds
+          kubectl create -f https://github.com/kubestash/installer/raw/master/crds/kubestash-crds.yaml
+          kubectl create -f https://github.com/kubedb/installer/raw/master/crds/kubedb-crds.yaml
 
       - name: Check codespan schema
         run: |
+          git clone https://github.com/kmodules/resource-metadata.git
+          mv resource-metadata/hub /tmp
+          rm -rf resource-metadata
           codespan-schema-checker --content=./docs
