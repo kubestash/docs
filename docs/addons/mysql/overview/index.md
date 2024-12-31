@@ -33,13 +33,13 @@ The backup process consists of the following steps:
 
 3. KubeStash operator watches for `BackupStorage` custom resources. When it finds a `BackupStorage` object, it initializes the `BackupStorage` by uploading the `metadata.yaml` file to the specified backend.
 
-4. Next, she creates a `BackupConfiguration` custom resource that specifies the `AppBinding` custom resource (Which contains the necessary information to connect with the target database), addon information (including backup tasks), backup schedules, storage backends for storing the backup data, and other additional settings.
+4. Next, she creates a `BackupConfiguration` custom resource that specifies the `AppBinding` custom resource (which contains the necessary information to connect with the target database), addon information (including backup tasks), backup schedules, storage backends for storing the backup data, and other additional settings.
 
 5. KubeStash operator watches for `BackupConfiguration` objects.
 
 6. Once the KubeStash operator finds a `BackupConfiguration` object, it creates `Repository` with the information specified in the `BackupConfiguration`.
 
-7. KubeStash operator watches for `Repository` custom resources. When it finds the `Repository` object, it Initializes `Repository` by uploading `repository.yaml` file into the `spec.sessions[*].repositories[*].directory` path specified in `BackupConfiguration`.
+7. KubeStash operator watches for `Repository` custom resources. When it finds the `Repository` object, it initializes `Repository` by uploading `repository.yaml` file into the `spec.sessions[*].repositories[*].directory` path specified in `BackupConfiguration`.
 
 8. Then, it creates a `CronJob` for each session with the schedule specified in `BackupConfiguration` to trigger backup periodically.
 
@@ -53,7 +53,7 @@ The backup process consists of the following steps:
 
 13. Then, it creates the `Job` to backup the targeted `MySQL` database.
 
-14. The backup `Job` reads necessary information (e.g. auth secret, port)  to connect with the database from the `AppBinding` CR. It also reads backend information and access credentials from `BackupStorage` CR, Storage `Secret` and `Repository` path respectively.
+14. The backup `Job` reads necessary information (e.g. auth secret, port)  to connect with the database from the `AppBinding` CR. It also reads backend information and access credentials from `BackupStorage` CR, storage `Secret` and `Repository` path respectively.
 
 15. Then, the `Job` dumps the targeted `MySQL` database and uploads the output to the backend. KubeStash pipes the output of dump command to uploading process. Hence, backup `Job` does not require a large volume to hold the entire dump output.
 
@@ -73,7 +73,7 @@ The restore process consists of the following steps:
 
 1. At first, a user creates a `MySQL` database where the data will be restored or the user can use the same `MySQL` database.
 
-2. Then, she creates a `RestoreSession` custom resource that specifies the `AppBinding` custom resource (Which contains the necessary information to connect with the target database) where the backed-up data will be restored, addon information (including restore tasks), the target snapshot to be restored, the `Repository` containing that snapshot, and other additional settings.
+2. Then, she creates a `RestoreSession` custom resource that specifies the `AppBinding` custom resource (which contains the necessary information to connect with the target database) where the backed-up data will be restored, addon information (including restore tasks), the target snapshot to be restored, the `Repository` containing that snapshot, and other additional settings.
 
 3. KubeStash operator watches for `RestoreSession` custom resources.
 
