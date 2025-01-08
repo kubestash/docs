@@ -70,7 +70,7 @@ $ helm ls -A | grep kubestash
 # update license key keeping the current version
 $ helm upgrade kubestash oci://ghcr.io/appscode-charts/kubestash \
     --version=<cur_version> \
-    --namespace stash --create-namespace \
+    --namespace=<cur_namespace> \
     --reuse-values \
     --set-file global.license=/path/to/new/license.txt
 ```
@@ -87,7 +87,7 @@ $ helm ls -A | grep kubestash
 # update license key keeping the current version
 $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash -n kubestash \
     --version=<cur_version> \
-    --namespace stash --create-namespace \
+    --namespace=<cur_namespace> \
     --set global.skipCleaner=true \
     --show-only appscode/kubestash-operator/templates/license.yaml \
     --set-file global.license=/path/to/new/license.txt | kubectl apply -f -
