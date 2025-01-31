@@ -14,7 +14,7 @@ section_menu_id: kubestash-addons
 
 # MySQL Backup & Restore Overview
 
-KubeStash by AppsCode is a cloud native data backup and recovery solution for Kubernetes workloads and databases. KubeStash utilizes [restic](https://github.com/restic/restic) to securely backup stateful applications to any cloud or on-prem storage backends (for example, S3, GCS, Azure Blob storage, Minio, NetApp, Dell EMC etc.).
+KubeStash by AppsCode is a cloud native data backup and recovery solution for Kubernetes workloads and databases. KubeStash utilizes [restic](https://github.com/restic/restic) to securely backup stateful applications and databases to any cloud or on-prem storage backends (for example, S3, GCS, Azure Blob storage, Minio, NetApp, Dell EMC etc.).
 
 ## How Backup Works
 

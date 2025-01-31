@@ -125,5 +125,5 @@ Any database version with a major version matching the supported MySQL versions 
 
 KubeStash MySQL documentations are organized as below:
 
-- [How does it work?](/docs/addons/mysql/overview/index.md) gives an overview of how backup and restore process for MySQL database works in Stash.
+- [How does it work?](/docs/addons/mysql/overview/index.md) gives an overview of how backup and restore process for MySQL database works in KubeStash.
 - [Standalone MySQL Database](/docs/addons/mysql/logical/index.md) shows how to backup and restore an externally managed MySQL database.
