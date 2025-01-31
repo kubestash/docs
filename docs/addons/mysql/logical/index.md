@@ -7,7 +7,7 @@ menu:
     name: MySQL Database Backup
     parent: kubestash-mysql
     weight: 20
-product_name: stash
+product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: kubestash-addons
 ---
@@ -46,7 +46,7 @@ $ kubectl create ns demo
 namespace/demo created
 ```
 
-> **Note:** YAML files used in this tutorial are stored in [docs/addons/mysql/logical/examples](/docs/addons/mysql/logical/examples) directory of [kubedb/docs](https://github.com/kubedb/docs) repository.
+> **Note:** YAML files used in this tutorial are stored in [docs/addons/mysql/logical/examples](/docs/addons/mysql/logical/examples) directory of [kubestash/docs](https://github.com/kubestash/docs) repository.
 
 ## Backup MySQL
 
