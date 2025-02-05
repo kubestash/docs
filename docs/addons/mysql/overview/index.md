@@ -1,24 +1,24 @@
 ---
-title: MySQL Backup & Restore Overview | KubeStash
-description: How MySQL Backup & Restore Works in KubeStash
+title: MariaDB Backup & Restore Overview | KubeStash
+description: How MariaDB Backup & Restore Works in KubeStash
 menu:
   docs_{{ .version }}:
-    identifier: kubestash-mysql-overview
+    identifier: kubestash-mariadb-overview
     name: How does it work?
-    parent: kubestash-mysql
+    parent: kubestash-mariadb
     weight: 10
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: kubestash-addons
 ---
 
-# MySQL Backup & Restore Overview
+# MariaDB Backup & Restore Overview
 
 KubeStash by AppsCode is a cloud native data backup and recovery solution for Kubernetes workloads and databases. KubeStash utilizes [restic](https://github.com/restic/restic) to securely backup stateful applications and databases to any cloud or on-prem storage backends (for example, S3, GCS, Azure Blob storage, Minio, NetApp, Dell EMC etc.).
 
 ## How Backup Works
 
-The following diagram shows how KubeStash takes backup of any externally managed `MySQL` database. Open the image in a new tab to see the enlarged version.
+The following diagram shows how KubeStash takes backup of any externally managed `MariaDB` database. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
   <img alt="MySQL Backup Overview" src="/docs/addons/mysql/overview/images/backup_overview.svg">
@@ -51,7 +51,7 @@ The backup process consists of the following steps:
 
 12. Then it resolves the respective `Addon` and `Function` and prepares backup `Job` definition.
 
-13. Then, it creates the `Job` to backup the targeted `MySQL` database.
+13. Then, it creates the `Job` to backup the targeted `MariaDB` database.
 
 14. The backup `Job` reads necessary information (e.g. auth secret, port)  to connect with the database from the `AppBinding` CR. It also reads backend information and access credentials from `BackupStorage` CR, storage `Secret` and `Repository` path respectively.
 
