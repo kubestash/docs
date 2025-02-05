@@ -1,10 +1,10 @@
 ---
 title: Backup & Restore  | KubeStash
-description: Backup an externally managed MySQL database using KubeStash
+description: Backup an externally managed MariaDB database using KubeStash
 menu:
   docs_{{ .version }}:
     identifier: kubestash-mysql-logical-backup
-    name: MySQL Database Backup
+    name: MariaDB Database Backup
     parent: kubestash-mysql
     weight: 20
 product_name: kubestash
@@ -12,13 +12,13 @@ menu_name: docs_{{ .version }}
 section_menu_id: kubestash-addons
 ---
 
-{{< notice type="warning" message="If you are using a KubeDB-managed MySQL database, please refer to the following [guide](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/overview/). This guide covers backup and restore procedures for externally managed MySQL databases." >}}
+{{< notice type="warning" message="If you are using a KubeDB-managed MariaDB database, please refer to the following [guide](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/overview/). This guide covers backup and restore procedures for externally managed MariaDB databases." >}}
 
-# Backup and Restore MySQL database using KubeStash
+# Backup and Restore MariaDB database using KubeStash
 
-KubeStash allows you to backup and restore `MySQL` databases. It supports backups for `MySQL` instances running in Standalone, Group Replication, and InnoDB cluster configurations. KubeStash makes managing your `MySQL` backups and restorations more straightforward and efficient.
+KubeStash allows you to backup and restore `MariaDB` databases. It supports backups for `MariaDB` instances running in Standalone, Group Replication, and InnoDB cluster configurations. KubeStash makes managing your `MariaDB` backups and restorations more straightforward and efficient.
 
-This guide will give you how you can take backup and restore your externally managed `MySQL` databases using `Kubestash`.
+This guide will give you how you can take backup and restore your externally managed `MariaDB` databases using `Kubestash`.
 
 ## Before You Begin
 
@@ -26,7 +26,7 @@ This guide will give you how you can take backup and restore your externally man
 - Install `kubedb-kubestash-catalog` in your cluster following the steps [here](https://github.com/kubedb/installer/tree/master/charts/kubedb-kubestash-catalog).
 - Install `KubeStash` in your cluster following the steps [here](https://kubestash.com/docs/latest/setup/install/kubestash).
 - Install KubeStash `kubectl` plugin following the steps [here](https://kubestash.com/docs/latest/setup/install/kubectl-plugin/).
-- If you are not familiar with how KubeStash backup and restore MySQL databases, please check the following guide [here](/docs/addons/mysql/overview/index.md).
+- If you are not familiar with how KubeStash backup and restore MariaDB databases, please check the following guide [here](/docs/addons/mysql/overview/index.md).
 
 You should be familiar with the following `KubeStash` concepts:
 
@@ -48,15 +48,16 @@ namespace/demo created
 
 > **Note:** YAML files used in this tutorial are stored in [docs/addons/mysql/logical/examples](/docs/addons/mysql/logical/examples) directory of [kubestash/docs](https://github.com/kubestash/docs) repository.
 
-## Backup MySQL
+## Backup MariaDB
 
-KubeStash supports backups for `MySQL` instances across different configurations, including Standalone, Group Replication, and InnoDB Cluster setups.
+KubeStash supports backups for `MariaDB` instances across different configurations, including Standalone, Group Replication, and InnoDB Cluster setups.
 
-In this demonstration, we’ll focus on a DigitalOcean-managed `MySQL` database configured in Standalone mode. The backup and restore process is similar for Group Replication and InnoDB Cluster configurations as well.
+In this demonstration, we will focus on a [Bitnami-managed](https://github.com/bitnami/charts/tree/main/bitnami/mariadb) MariaDB database configured in Standalone mode. The backup and restore process is similar for configurations using Group Replication and InnoDB Cluster as well.
 
-### Create a Sample MySQL Database
 
-Let's create a sample `MySQL` database in DigitalOcean and insert some data into it.
+### Create a Sample MariaDB Database
+
+Let's create a sample `MariaDB` database in DigitalOcean and insert some data into it.
 
 <figure align="center">
   <img alt="Sample database in DigitalOcean" src="/docs/addons/mysql/logical/images/sample-mysql-database.png">
@@ -64,7 +65,7 @@ Let's create a sample `MySQL` database in DigitalOcean and insert some data into
 </figure>
 
 Here’s what we’ve done so far:
-- Created a sample `MySQL` database named `kubestash-test`.
+- Created a sample `MariaDB` database named `kubestash-test`.
 - The image also displays the necessary connection details for this database.
 
 **Create Secret:**
@@ -97,20 +98,20 @@ spec:
   clientConfig:
     url: mariadb://mariadb.mariadb.svc.cluster.local:3306/mydb
   secret:
-    name: mariadb-credentials
+    name: mariadb-auth-secret
   type: mariadb
   version: "11.4.4"
 ```
 
 Here,
 - `.spec.clientConfig.url` Specifies the connection URL for the target database. You can construct the URL as follows:
-    - `mysql://<host>:<port>/<primary_database>?ssl-mode=<sslmode_value>`
+    - `mariadb://<host>:<port>/<primary_database>?ssl-mode=<sslmode_value>`
 - `.spec.secret` Specifies the name of the secret containing the authentication credentials. In this case, we’ll use the secret we created earlier.
 - `.spec.version` Specifies the version of targeted database.
 
 **Insert Sample Data:**
 
-Now, connect to the database using the `mysql` client. Once connected, create a new database and table, then insert some sample data into it.
+Now, connect to the database using the `mariadb` client. Once connected, create a new database and table, then insert some sample data into it.
 
 ```bash
 $ kubectl exec -it -n mariadb mariadb-0 -- bash
@@ -142,11 +143,16 @@ MariaDB [(none)]> SHOW DATABASES;
 +--------------------+
 7 rows in set (0.000 sec)
 
-MariaDB [(none)]> CREATE TABLE playground.equipment ( id INT NOT NULL AUTO_INCREMENT, type VARCHAR(50), quant INT, color VARCHAR(25), PRIMARY KEY(id));
+MariaDB [(none)]> USE playground;
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+MariaDB [playground]> CREATE TABLE playground.equipment ( id INT NOT NULL AUTO_INCREMENT, type VARCHAR(50), quant INT, color VARCHAR(25), PRIMARY KEY(id));
 
 Query OK, 0 rows affected (0.022 sec)
 
-MariaDB [(none)]> SHOW TABLES IN playground;
+MariaDB [playground]> SHOW TABLES IN playground;
 +----------------------+
 | Tables_in_playground |
 +----------------------+
@@ -155,10 +161,10 @@ MariaDB [(none)]> SHOW TABLES IN playground;
 1 row in set (0.000 sec)
 
 
-MariaDB [(none)]> INSERT INTO playground.equipment (type, quant, color) VALUES ('slide', 2, 'blue');
+MariaDB [playground]> INSERT INTO playground.equipment (type, quant, color) VALUES ('slide', 2, 'blue');
 Query OK, 1 row affected (0.006 sec)
 
-MariaDB [(none)]> SELECT * FROM playground.equipment;
+MariaDB [playground]> SELECT * FROM playground.equipment;
 +----+-------+-------+-------+
 | id | type  | quant | color |
 +----+-------+-------+-------+
@@ -166,7 +172,7 @@ MariaDB [(none)]> SELECT * FROM playground.equipment;
 +----+-------+-------+-------+
 1 row in set (0.000 sec)
 
-MariaDB [(none)]> exit
+MariaDB [playground]> exit
 Bye
 ```
 
@@ -217,7 +223,7 @@ spec:
 Let's create the BackupStorage we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/mysql/logical/examples/backupstorage.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/mariadb/logical/examples/backupstorage.yaml
 backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
@@ -250,13 +256,13 @@ spec:
 Let’s create the above `RetentionPolicy`,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/mysql/logical/examples/retentionpolicy.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/mariadb/logical/examples/retentionpolicy.yaml
 retentionpolicy.storage.kubestash.com/demo-retention created
 ```
 
 ### Backup
 
-We have to create a `BackupConfiguration` targeting the respective `mysql-appbinding` AppBinding custom resource. This AppBinding resource contains all necessary connection information for the target MySQL database. Then, KubeStash will create a `CronJob` for each session to take periodic backup of that database.
+We have to create a `BackupConfiguration` targeting the respective `mysql-appbinding` AppBinding custom resource. This AppBinding resource contains all necessary connection information for the target `MariaDB` database. Then, KubeStash will create a `CronJob` for each session to take periodic backup of that database.
 
 At first, we need to create a secret with a Restic password for backup data encryption.
 
@@ -271,7 +277,7 @@ secret "encrypt-secret" created
 
 **Create BackupConfiguration:**
 
-Below is the YAML for `BackupConfiguration` CR to backup the `kubestash-test` externally managed MySQL database that we have created earlier,
+Below is the YAML for `BackupConfiguration` CR to backup the `kubestash-test` externally managed MariaDB database that we have created earlier,
 
 ```yaml
 apiVersion: core.kubestash.com/v1alpha1
@@ -318,7 +324,7 @@ spec:
 ```
 
 - `.spec.sessions[*].schedule` specifies that we want to backup the database at `5 minutes` interval.
-- `.spec.target` refers to the `mysql-appbinding` AppBinding custom resource, Which contains all necessary connection information for the target MySQL database.
+- `.spec.target` refers to the `mariadb-appbinding` AppBinding custom resource, Which contains all necessary connection information for the target MariaDB database.
 - `.spec.sessions[].addon.tasks[].params.databases` refers the targeted backup database list.
 
 Let's create the `BackupConfiguration` CR that we have shown above,
@@ -330,7 +336,7 @@ backupconfiguration.core.kubestash.com/sample-mariadb-backup created
 
 **Verify Backup Setup Successful**
 
-If everything goes well, the phase of the `BackupConfiguration` should be `Ready`. The `Ready` phase indicates that the backup setup is successful. Let's verify the `Phase` of the BackupConfiguration,
+If everything goes well, the phase of the `BackupConfiguration` should be `Ready`. The `Ready` phase indicates that the backup setup is successful. Let's verify the `Phase` of the `BackupConfiguration`,
 
 ```bash
 $ kubectl get backupconfigurations.core.kubestash.com -n demo
@@ -347,7 +353,7 @@ NAME                     INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-S
 gcs-mariadb-repo         true        5                6.744 KiB   Ready   99s                      14s
 ```
 
-KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the `Repository` YAML stored in the `demo/mysql` directory.
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the `Repository` YAML stored in the `demo/mariadb` directory.
 
 **Verify CronJob:**
 
@@ -378,7 +384,7 @@ We can see from the above output that the backup session has succeeded. Now, we 
 
 **Verify Backup:**
 
-Once a backup is complete, KubeStash will update the respective `Repository` CR to reflect the backup. Check that the repository `sample-mysql-backup` has been updated by the following command,
+Once a backup is complete, KubeStash will update the respective `Repository` CR to reflect the backup. Check that the repository `sample-mariadb-backup` has been updated by the following command,
 
 ```bash
 $ kubectl get repository -n demo gcs-mariadb-repo
@@ -480,9 +486,9 @@ status:
   totalComponents: 1
 ```
 
-> KubeStash uses the `mysqldump` command to take backups of target MySQL databases. Therefore, the component name for logical backups is set as `dump`.
+> KubeStash uses the `mariadbdump` command to take backups of target MariaDB databases. Therefore, the component name for logical backups is set as `dump`.
 
-Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/mysql/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/dep/snapshots` directory.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/mariadb/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/dep/snapshots` directory.
 
 > Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
@@ -492,10 +498,10 @@ In this section, we are going to restore the database from the backup we have ta
 
 **Delete Backed-up Database:**
 
-Now, we have to delete the previously backed-up 'playground' database by connecting with the 'kubestash-test' MySQL database using the `mysql` client.
+Now, we have to delete the previously backed-up 'playground' database by connecting with the 'kubestash-test' MariaDB database using the `mariadb` client.
 
 ```bash
-➤ kubectl exec -it -n mariadb mariadb-0 -- bash
+$ kubectl exec -it -n mariadb mariadb-0 -- bash
 Defaulted container "mariadb" out of: mariadb, preserve-logs-symlinks (init)
 I have no name!@mariadb-0:/$ mariadb -u root -p
 Enter password: 
@@ -539,18 +545,15 @@ MariaDB [(none)]> SHOW DATABASES;
 
 MariaDB [(none)]> exit
 Bye
-I have no name!@mariadb-0:/$ 
-
-
 ```
 
 Above shows that 'playground' database are deleted successfully.
 
 #### Create RestoreSession:
 
-Now, we need to create a `RestoreSession` CR pointing to targeted `AppBinding` of any externally managed `MySQL` database.
+Now, we need to create a `RestoreSession` CR pointing to targeted `MariaDB` database.
 
-Below, is the contents of YAML file of the `RestoreSession` object,
+Below, is the contents of YAML file of the `RestoreSession` object that we are going to create to restore backed up data into the newly created database provisioned by MariaDB object named `restored-mysql`.
 
 ```yaml
 apiVersion: core.kubestash.com/v1alpha1
@@ -578,15 +581,15 @@ spec:
 
 Here,
 
-- `.spec.target` refers to the `mysql-appbinding` AppBinding custom resource, Which contains all necessary connection information for the target MySQL database.
+- `.spec.target` refers to the `mysql-appbinding` AppBinding custom resource, Which contains all necessary connection information for the target MariaDB database.
 - `.spec.dataSource.repository` specifies the Repository object that holds the backed up data.
 - `.spec.dataSource.snapshot` specifies to restore from latest `Snapshot`.
 
 Let's create the RestoreSession CRD object we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubedb/docs/raw/{{< param "info.version" >}}/docs/addons/mysql/logical/examples/restoresession.yaml
-restoresession.core.kubestash.com/sample-mysql-restore created
+$ kubectl apply -f https://github.com/kubedb/docs/raw/{{< param "info.version" >}}/docs/addons/mariadb/logical/examples/restoresession.yaml
+restoresession.core.kubestash.com/sample-mariadb-restore created
 ```
 
 Once, you have created the `RestoreSession` object, KubeStash will create restore Job. Run the following command to watch the phase of the `RestoreSession` object,
@@ -607,7 +610,7 @@ The `Succeeded` phase means that the restore process has been completed successf
 
 In this section, we are going to verify whether the desired data has been restored successfully. We are going to connect to the database server and check whether the database and the table we backed-up earlier are successfully restored or not.
 
-Now, connect to the database using the `mysql` client. Once connected, check the database, table, and sample data existence.
+Now, connect to the database using the `mariadb` client. Once connected, check the database, table, and sample data existence.
 
 ```bash
 $ kubectl exec -it -n mariadb mariadb-0 -- bash
@@ -637,8 +640,12 @@ MariaDB [(none)]> SHOW DATABASES;
 +--------------------+
 7 rows in set (0.000 sec)
 
+MariaDB [(none)]> USE playground;
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
 
-MariaDB [(none)]> SHOW TABLES IN playground; 
+Database changed
+MariaDB [playground]> SHOW TABLES IN playground; 
 +----------------------+
 | Tables_in_playground |
 +----------------------+
@@ -646,7 +653,7 @@ MariaDB [(none)]> SHOW TABLES IN playground;
 +----------------------+
 1 row in set (0.000 sec)
 
-MariaDB [(none)]> SELECT * FROM playground.equipment;  
+MariaDB [playground]> SELECT * FROM playground.equipment;  
 +----+-------+-------+-------+
 | id | type  | quant | color |
 +----+-------+-------+-------+
@@ -654,9 +661,8 @@ MariaDB [(none)]> SELECT * FROM playground.equipment;
 +----+-------+-------+-------+
 1 row in set (0.000 sec)
 
-MariaDB [(none)]> exit 
+MariaDB [playground]> exit 
 Bye
-
 ```
 
 So, from the above output, we can see that the `playground` database and the `equipment` table we have created earlier, they are restored successfully.
@@ -666,8 +672,8 @@ So, from the above output, we can see that the `playground` database and the `eq
 To cleanup the Kubernetes resources created by this tutorial, run:
 
 ```bash
-kubectl delete backupconfigurations.core.kubestash.com  -n demo sample-mysql-backup
-kubectl delete restoresessions.core.kubestash.com -n demo restore-sample-mysql
+kubectl delete backupconfigurations.core.kubestash.com  -n demo sample-mariadb-backup
+kubectl delete restoresessions.core.kubestash.com -n demo sample-mariadb-restore 
 kubectl delete retentionpolicies.storage.kubestash.com -n demo demo-retention
 kubectl delete backupstorage -n demo gcs-storage
 kubectl delete secret -n demo gcs-secret
