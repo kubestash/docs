@@ -1,13 +1,13 @@
 apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: sample-mysql-backup
+  name: sample-mariadb-backup
   namespace: demo
 spec:
   target:
     apiGroup: appcatalog.appscode.com
     kind: AppBinding
-    name: mysql-appbinding
+    name: mariadb-appbinding
     namespace: demo
   backends:
     - name: gcs-backend
@@ -19,20 +19,23 @@ spec:
         namespace: demo
   sessions:
     - name: frequent-backup
+      sessionHistoryLimit: 3
       scheduler:
         schedule: "*/5 * * * *"
+        successfulJobsHistoryLimit: 1
+        failedJobsHistoryLimit: 1
         jobTemplate:
           backoffLimit: 1
       repositories:
-        - name: gcs-mysql-repo
+        - name: gcs-mariadb-repo
           backend: gcs-backend
-          directory: /mysql
+          directory: /mariadb
           encryptionSecret:
-            name: encrypt-secret
-            namespace: demo
+           name: encrypt-secret
+           namespace: demo
       addon:
-        name: mysql-addon
+        name: mariadb-addon
         tasks:
           - name: logical-backup
             params:
-              databases: playground
+              args: --databases playground

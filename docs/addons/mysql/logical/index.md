@@ -1,5 +1,5 @@
 ---
-title: Backup & Restore MySQL | KubeStash
+title: Backup & Restore  | KubeStash
 description: Backup an externally managed MySQL database using KubeStash
 menu:
   docs_{{ .version }}:
@@ -75,11 +75,11 @@ Now, create a `Secret` that contains the authentication username and password.
 apiVersion: v1
 kind: Secret
 metadata:
-  name: mysql-auth-secret
+  name: mariadb-auth-secret
   namespace: demo
 type: Opaque
 stringData:
-  username: doadmin # replace with your authentication username
+  username: "doadmin" # replace with your authentication username
   password: "" # replace with your authentication password
 ```
 
@@ -91,15 +91,15 @@ Next, we need to manually create an `AppBinding` custom resource (CR) in the sam
 apiVersion: appcatalog.appscode.com/v1alpha1
 kind: AppBinding
 metadata:
-  name: mysql-appbinding
+  name: mariadb-appbinding
   namespace: demo
 spec:
   clientConfig:
-    url: mysql://kubestash-test-do-user-165729-0.m.db.ondigitalocean.com:25060/defaultdb?ssl-mode=REQUIRED
+    url: mariadb://mariadb.mariadb.svc.cluster.local:3306/mydb
   secret:
-    name: mysql-credentials-secret
-  type: mysql
-  version: "8.0.3"
+    name: mariadb-credentials
+  type: mariadb
+  version: "11.4.4"
 ```
 
 Here,
@@ -113,59 +113,61 @@ Here,
 Now, connect to the database using the `mysql` client. Once connected, create a new database and table, then insert some sample data into it.
 
 ```bash
-$ mysql -u doadmin -pAVNS_Z575naNC0QfA1usflEg -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -P 25060 -D defaultdb
-mysql: [Warning] Using a password on the command line interface can be insecure.
-Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 242
-Server version: 8.0.30 Source distribution
+$ kubectl exec -it -n mariadb mariadb-0 -- bash
+Defaulted container "mariadb" out of: mariadb, preserve-logs-symlinks (init)
+I have no name!@mariadb-0:/$ mariadb -u root -p
+Enter password: 
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 8193
+Server version: 11.4.4-MariaDB Source distribution
 
-Copyright (c) 2000, 2024, Oracle and/or its affiliates.
-
-Oracle is a registered trademark of Oracle Corporation and/or its
-affiliates. Other names may be trademarks of their respective
-owners.
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
 
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-mysql> CREATE DATABASE playground;
-Query OK, 1 row affected (0.30 sec)
+MariaDB [(none)]> CREATE DATABASE playground;
+Query OK, 1 row affected (0.000 sec)
 
-mysql> SHOW DATABASES;
+MariaDB [(none)]> SHOW DATABASES; 
 +--------------------+
 | Database           |
 +--------------------+
-| defaultdb          |
 | information_schema |
+| my_database        |
 | mysql              |
 | performance_schema |
 | playground         |
 | sys                |
+| test               |
 +--------------------+
-6 rows in set (0.22 sec)
+7 rows in set (0.000 sec)
 
-mysql> CREATE TABLE playground.equipment ( id INT NOT NULL AUTO_INCREMENT, type VARCHAR(50), quant INT, color VARCHAR(25), PRIMARY KEY(id));
-Query OK, 0 rows affected (0.01 sec)
+MariaDB [(none)]> CREATE TABLE playground.equipment ( id INT NOT NULL AUTO_INCREMENT, type VARCHAR(50), quant INT, color VARCHAR(25), PRIMARY KEY(id));
 
-mysql> SHOW TABLES IN playground;
+Query OK, 0 rows affected (0.022 sec)
+
+MariaDB [(none)]> SHOW TABLES IN playground;
 +----------------------+
 | Tables_in_playground |
 +----------------------+
 | equipment            |
 +----------------------+
-1 row in set (0.01 sec)
+1 row in set (0.000 sec)
 
-mysql> INSERT INTO playground.equipment (type, quant, color) VALUES ('slide', 2, 'blue');
-Query OK, 1 row affected (0.01 sec)
 
-mysql> SELECT * FROM playground.equipment;
+MariaDB [(none)]> INSERT INTO playground.equipment (type, quant, color) VALUES ('slide', 2, 'blue');
+Query OK, 1 row affected (0.006 sec)
+
+MariaDB [(none)]> SELECT * FROM playground.equipment;
 +----+-------+-------+-------+
 | id | type  | quant | color |
 +----+-------+-------+-------+
 |  1 | slide |     2 | blue  |
 +----+-------+-------+-------+
-1 row in set (0.00 sec)
+1 row in set (0.000 sec)
 
-mysql> exit
+MariaDB [(none)]> exit
+Bye
 ```
 
 Now, we are ready to backup the database.
@@ -275,13 +277,13 @@ Below is the YAML for `BackupConfiguration` CR to backup the `kubestash-test` ex
 apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: sample-mysql-backup
+  name: sample-mariadb-backup
   namespace: demo
 spec:
   target:
     apiGroup: appcatalog.appscode.com
     kind: AppBinding
-    name: mysql-appbinding
+    name: mariadb-appbinding
     namespace: demo
   backends:
     - name: gcs-backend
@@ -293,23 +295,26 @@ spec:
         namespace: demo
   sessions:
     - name: frequent-backup
+      sessionHistoryLimit: 3
       scheduler:
         schedule: "*/5 * * * *"
+        successfulJobsHistoryLimit: 1
+        failedJobsHistoryLimit: 1
         jobTemplate:
           backoffLimit: 1
       repositories:
-        - name: gcs-mysql-repo
+        - name: gcs-mariadb-repo
           backend: gcs-backend
-          directory: /mysql
+          directory: /mariadb
           encryptionSecret:
-            name: encrypt-secret
-            namespace: demo
+           name: encrypt-secret
+           namespace: demo
       addon:
-        name: mysql-addon
+        name: mariadb-addon
         tasks:
           - name: logical-backup
             params:
-              databases: playground
+              args: --databases playground
 ```
 
 - `.spec.sessions[*].schedule` specifies that we want to backup the database at `5 minutes` interval.
@@ -320,7 +325,7 @@ Let's create the `BackupConfiguration` CR that we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/mysql/logical/examples/backupconfiguration.yaml
-backupconfiguration.core.kubestash.com/sample-mysql-backup created
+backupconfiguration.core.kubestash.com/sample-mariadb-backup created
 ```
 
 **Verify Backup Setup Successful**
@@ -328,17 +333,18 @@ backupconfiguration.core.kubestash.com/sample-mysql-backup created
 If everything goes well, the phase of the `BackupConfiguration` should be `Ready`. The `Ready` phase indicates that the backup setup is successful. Let's verify the `Phase` of the BackupConfiguration,
 
 ```bash
-$ kubectl get backupconfiguration -n demo
-NAME                  PHASE   PAUSED   AGE
-sample-mysql-backup   Ready            2m50s
+$ kubectl get backupconfigurations.core.kubestash.com -n demo
+NAME                     PHASE   PAUSED   AGE
+sample-mariadb-backup    Ready            50s
+
 ```
 
 Additionally, we can verify that the `Repository` specified in the `BackupConfiguration` has been created using the following command,
 
 ```bash
 $ kubectl get repo -n demo
-NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE     PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-mysql-repo                 0                0 B      Ready                            3m
+NAME                     INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-mariadb-repo         true        5                6.744 KiB   Ready   99s                      14s
 ```
 
 KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the `Repository` YAML stored in the `demo/mysql` directory.
@@ -351,8 +357,10 @@ Verify that the `CronJob` has been created using the following command,
 
 ```bash
 $ kubectl get cronjob -n demo
-NAME                                          SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
-trigger-sample-mysql-backup-frequent-backup   */5 * * * *             0        2m45s           3m25s
+
+NAME                                             SCHEDULE      TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+trigger-sample-mariadb-backup-frequent-backup    */5 * * * *   <none>     False     0        2m40s           5m16s
+
 ```
 
 **Verify BackupSession:**
@@ -360,10 +368,10 @@ trigger-sample-mysql-backup-frequent-backup   */5 * * * *             0        2
 KubeStash triggers an instant backup as soon as the `BackupConfiguration` is ready. After that, backups are scheduled according to the specified schedule.
 
 ```bash
-$ kubectl get backupsession -n demo -w
+$ kubectl get backupsession -n demo
 
-NAME                                             INVOKER-TYPE          INVOKER-NAME           PHASE       DURATION   AGE
-sample-mysql-backup-frequent-backup-1731490567   BackupConfiguration   sample-mysql-backup    Succeeded              7m22s
+NAME                                                     INVOKER-TYPE          INVOKER-NAME                  PHASE       DURATION   AGE
+sample-mariadb-backup-frequent-backup-1738680600         BackupConfiguration   sample-mariadb-backup         Succeeded   32s        3m34s
 ```
 
 We can see from the above output that the backup session has succeeded. Now, we are going to verify whether the backed up data has been stored in the backend.
@@ -373,17 +381,20 @@ We can see from the above output that the backup session has succeeded. Now, we 
 Once a backup is complete, KubeStash will update the respective `Repository` CR to reflect the backup. Check that the repository `sample-mysql-backup` has been updated by the following command,
 
 ```bash
-$ kubectl get repository -n demo gcs-mysql-repo
-NAME                    INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-mysql-repo          true        1                806 B   Ready   8m27s                    9m18s
+$ kubectl get repository -n demo gcs-mariadb-repo
+
+NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-mariadb-repo   true        5                6.744 KiB   Ready   34s                      4m9s
 ```
 
 At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
 ```bash
-$ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-mysql-repo
-NAME                                                            REPOSITORY            SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
-gcs-mysql-repo-sample-mysql-backup-frequent-backup-1731490567   gcs-mysql-repo        frequent-backup   2024-01-23T13:10:54Z   Delete            Succeeded   16h
+$ kubectl get snapshots.storage.kubestash.com -n demo -l=kubestash.com/repo-name=gcs-mariadb-repo
+NAME                                                              REPOSITORY         SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
+gcs-mariadb-repo-sample-mariadb-ckup-frequent-backup-1738680444   gcs-mariadb-repo   frequent-backup   2025-02-04T14:47:24Z   Delete            Succeeded   5m18s
+gcs-mariadb-repo-sample-mariadb-ckup-frequent-backup-1738680600   gcs-mariadb-repo   frequent-backup   2025-02-04T14:50:00Z   Delete            Succeeded   5m18s
+gcs-mariadb-repo-sample-mariadb-ckup-frequent-backup-1738680900   gcs-mariadb-repo   frequent-backup   2025-02-04T14:55:00Z   Delete            Succeeded   106s
 ```
 
 > Note: KubeStash creates a `Snapshot` with the following labels:
@@ -397,75 +408,75 @@ gcs-mysql-repo-sample-mysql-backup-frequent-backup-1731490567   gcs-mysql-repo  
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the Database.
 
 ```bash
-$ kubectl get snapshots -n demo gcs-mysql-repo-sample-mysql-backup-frequent-backup-1731490567 -oyaml
+$ kubectl get snapshots.storage.kubestash.com -n demo gcs-mariadb-repo-sample-mariadb-backup-frequent-backup-1738680900 -oyaml
 ```
 
 ```yaml
 apiVersion: storage.kubestash.com/v1alpha1
 kind: Snapshot
 metadata:
-  creationTimestamp: "2024-11-13T09:37:47Z"
+  creationTimestamp: "2025-02-04T14:55:00Z"
   finalizers:
-    - kubestash.com/cleanup
+  - kubestash.com/cleanup
   generation: 1
   labels:
     kubestash.com/app-ref-kind: AppBinding
-    kubestash.com/app-ref-name: mysql-appbinding
+    kubestash.com/app-ref-name: mariadb-appbinding
     kubestash.com/app-ref-namespace: demo
-    kubestash.com/repo-name: gcs-mysql-repo
-  name: gcs-mysql-repo-sample-mysql-backup-frequent-backup-1731490567
+    kubestash.com/repo-name: gcs-mariadb-repo
+  name: gcs-mariadb-repo-sample-mariadb-backup-frequent-backup-1738680900
   namespace: demo
   ownerReferences:
-    - apiVersion: storage.kubestash.com/v1alpha1
-      blockOwnerDeletion: true
-      controller: true
-      kind: Repository
-      name: gcs-mysql-repo
-      uid: c786be90-9a18-4c74-a29c-97e85d063a2e
-  resourceVersion: "24024"
-  uid: 9dd96c4b-2414-4e67-a692-6cd7f435062c
+  - apiVersion: storage.kubestash.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Repository
+    name: gcs-mariadb-repo
+    uid: bdb6288f-f3e7-4543-b26b-85477f735b6e
+  resourceVersion: "2756460"
+  uid: 0fdeea00-4236-4cd7-882b-e717f10bd10a
 spec:
   appRef:
     apiGroup: appcatalog.appscode.com
     kind: AppBinding
-    name: mysql-appbinding
+    name: mariadb-appbinding
     namespace: demo
-  backupSession: sample-mysql-backup-frequent-backup-1731490567
+  backupSession: sample-mariadb-backup-frequent-backup-1738680900
   deletionPolicy: Delete
-  repository: gcs-mysql-repo
+  repository: gcs-mariadb-repo
   session: frequent-backup
-  snapshotID: 01JCJE5QCVVXZDKEKH8TC7Z8DV
+  snapshotID: 01JK8QA74KM5VQ6S2TTQSKNBV0
   type: FullBackup
   version: v1
 status:
   components:
     dump:
       driver: Restic
-      duration: 9.532174884s
+      duration: 6.300290013s
       integrity: true
       path: repository/v1/frequent-backup/dump
       phase: Succeeded
       resticStats:
-        - hostPath: dumpfile.sql
-          id: da60acb7a735312c0ace978d26565975a44ec90f5058eb73434880624dad3151
-          size: 2.229 KiB
-          uploaded: 2.521 KiB
-      size: 7.003 KiB
+      - hostPath: dumpfile.sql
+        id: 9ab28fd7a447db63c929326344b7c85a3a6585eaeafcbc39e722088c3403ac2b
+        size: 2.198 KiB
+        uploaded: 2.490 KiB
+      size: 6.746 KiB
   conditions:
-    - lastTransitionTime: "2024-11-13T09:37:47Z"
-      message: Recent snapshot list updated successfully
-      reason: SuccessfullyUpdatedRecentSnapshotList
-      status: "True"
-      type: RecentSnapshotListUpdated
-    - lastTransitionTime: "2024-11-13T09:38:20Z"
-      message: Metadata uploaded to backend successfully
-      reason: SuccessfullyUploadedSnapshotMetadata
-      status: "True"
-      type: SnapshotMetadataUploaded
+  - lastTransitionTime: "2025-02-04T14:55:00Z"
+    message: Recent snapshot list updated successfully
+    reason: SuccessfullyUpdatedRecentSnapshotList
+    status: "True"
+    type: RecentSnapshotListUpdated
+  - lastTransitionTime: "2025-02-04T14:55:20Z"
+    message: Metadata uploaded to backend successfully
+    reason: SuccessfullyUploadedSnapshotMetadata
+    status: "True"
+    type: SnapshotMetadataUploaded
   integrity: true
   phase: Succeeded
-  size: 7.003 KiB
-  snapshotTime: "2024-11-13T09:37:47Z"
+  size: 6.745 KiB
+  snapshotTime: "2025-02-04T14:55:00Z"
   totalComponents: 1
 ```
 
@@ -484,50 +495,52 @@ In this section, we are going to restore the database from the backup we have ta
 Now, we have to delete the previously backed-up 'playground' database by connecting with the 'kubestash-test' MySQL database using the `mysql` client.
 
 ```bash
-$ mysql -u doadmin -pAVNS_Z575naNC0QfA1usflEg -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -P 25060 -D defaultdb
-mysql: [Warning] Using a password on the command line interface can be insecure.
-Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 5227
-Server version: 8.0.30 Source distribution
+➤ kubectl exec -it -n mariadb mariadb-0 -- bash
+Defaulted container "mariadb" out of: mariadb, preserve-logs-symlinks (init)
+I have no name!@mariadb-0:/$ mariadb -u root -p
+Enter password: 
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 8568
+Server version: 11.4.4-MariaDB Source distribution
 
-Copyright (c) 2000, 2024, Oracle and/or its affiliates.
-
-Oracle is a registered trademark of Oracle Corporation and/or its
-affiliates. Other names may be trademarks of their respective
-owners.
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
 
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-mysql> SHOW DATABASES;
+MariaDB [(none)]> SHOW DATABASES;
 +--------------------+
 | Database           |
 +--------------------+
-| defaultdb          |
 | information_schema |
+| my_database        |
 | mysql              |
 | performance_schema |
 | playground         |
 | sys                |
+| test               |
 +--------------------+
-6 rows in set (0.28 sec)
+7 rows in set (0.000 sec)
 
-mysql> DROP DATABASE playground;
-Query OK, 1 row affected (0.34 sec)
+MariaDB [(none)]> DROP DATABASE playground;
+Query OK, 1 row affected (0.017 sec)
 
-mysql> SHOW DATABASES;
+MariaDB [(none)]> SHOW DATABASES;
 +--------------------+
 | Database           |
 +--------------------+
-| defaultdb          |
 | information_schema |
+| my_database        |
 | mysql              |
 | performance_schema |
 | sys                |
+| test               |
 +--------------------+
-5 rows in set (0.27 sec)
+6 rows in set (0.000 sec)
 
-mysql> exit
+MariaDB [(none)]> exit
 Bye
+I have no name!@mariadb-0:/$ 
+
 
 ```
 
@@ -543,22 +556,22 @@ Below, is the contents of YAML file of the `RestoreSession` object that we are g
 apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: restore-sample-mysql
+  name: restore-mariadb
   namespace: demo
 spec:
   target:
     apiGroup: appcatalog.appscode.com
     kind: AppBinding
-    name: mysql-appbinding
+    name: mariadb-appbinding
     namespace: demo
   dataSource:
-    repository: gcs-mysql-repo
+    repository: gcs-mariadb-repo
     snapshot: latest
     encryptionSecret:
       name: encrypt-secret
       namespace: demo
   addon:
-    name: mysql-addon
+    name: mariadb-addon
     tasks:
       - name: logical-backup-restore
 ```
@@ -580,10 +593,12 @@ Once, you have created the `RestoreSession` object, KubeStash will create restor
 
 ```bash
 $ watch kubectl get restoresession -n demo
-Every 2.0s: kubectl get restores... AppsCode-PC-03: Wed Aug 21 10:44:05 2024
 
-NAME             REPOSITORY        FAILURE-POLICY   PHASE       DURATION   AGE
-sample-restore   gcs-demo-repo                      Succeeded   3s         53s
+Every 2.0s: kubectl get restoresession -n demo                                                                                          appscodepc-H510M-H: Tue Feb  4 21:09:50 2025
+
+NAME                              REPOSITORY         PHASE       DURATION   AGE
+sample-mariadb-restore            gcs-mariadb-repo   Succeeded   8s         70s
+
 ```
 
 The `Succeeded` phase means that the restore process has been completed successfully.
@@ -595,51 +610,53 @@ In this section, we are going to verify whether the desired data has been restor
 Now, connect to the database using the `mysql` client. Once connected, check the database, table, and sample data existence.
 
 ```bash
-$ mysql -u doadmin -pAVNS_Z575naNC0QfA1usflEg -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -P 25060 -D defaultdb
-mysql: [Warning] Using a password on the command line interface can be insecure.
-Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 5828
-Server version: 8.0.30 Source distribution
+$ kubectl exec -it -n mariadb mariadb-0 -- bash
+Defaulted container "mariadb" out of: mariadb, preserve-logs-symlinks (init)
+I have no name!@mariadb-0:/$ mariadb -u root -p
+Enter password: 
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 8659
+Server version: 11.4.4-MariaDB Source distribution
 
-Copyright (c) 2000, 2024, Oracle and/or its affiliates.
-
-Oracle is a registered trademark of Oracle Corporation and/or its
-affiliates. Other names may be trademarks of their respective
-owners.
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
 
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-mysql> SHOW DATABASES;
+
+MariaDB [(none)]> SHOW DATABASES;
 +--------------------+
 | Database           |
 +--------------------+
-| defaultdb          |
 | information_schema |
+| my_database        |
 | mysql              |
 | performance_schema |
 | playground         |
 | sys                |
+| test               |
 +--------------------+
-6 rows in set (0.23 sec)
+7 rows in set (0.000 sec)
 
-mysql> SHOW TABLES IN playground;
+
+MariaDB [(none)]> SHOW TABLES IN playground; 
 +----------------------+
 | Tables_in_playground |
 +----------------------+
 | equipment            |
 +----------------------+
-1 row in set (0.34 sec)
+1 row in set (0.000 sec)
 
-mysql> SELECT * FROM playground.equipment;
+MariaDB [(none)]> SELECT * FROM playground.equipment;  
 +----+-------+-------+-------+
 | id | type  | quant | color |
 +----+-------+-------+-------+
 |  1 | slide |     2 | blue  |
 +----+-------+-------+-------+
-1 row in set (0.26 sec)
+1 row in set (0.000 sec)
 
-mysql> exit
+MariaDB [(none)]> exit 
 Bye
+
 ```
 
 So, from the above output, we can see that the `playground` database and the `equipment` table we have created earlier, they are restored successfully.

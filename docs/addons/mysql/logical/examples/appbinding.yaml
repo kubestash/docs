@@ -1,12 +1,12 @@
 apiVersion: appcatalog.appscode.com/v1alpha1
 kind: AppBinding
 metadata:
-  name: mysql-appbinding
+  name: mariadb-appbinding
   namespace: demo
 spec:
   clientConfig:
-    url: mysql://kubestash-test-do-user-165729-0.m.db.ondigitalocean.com:25060/defaultdb?ssl-mode=REQUIRED
+    url: mariadb://mariadb.mariadb.svc.cluster.local:3306/mydb
   secret:
-    name: mysql-auth-secret
-  type: mysql
-  version: "8.0.21"
+    name: mariadb-auth-secret
+  type: mariadb
+  version: "11.4.4"
