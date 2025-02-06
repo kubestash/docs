@@ -3,16 +3,16 @@ title: Backup & Restore  | KubeStash
 description: Backup an externally managed MariaDB database using KubeStash
 menu:
   docs_{{ .version }}:
-    identifier: kubestash-mysql-logical-backup
+    identifier: kubestash-mariadb-logical-backup
     name: MariaDB Database Backup
-    parent: kubestash-mysql
+    parent: kubestash-mariadb
     weight: 20
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: kubestash-addons
 ---
 
-{{< notice type="warning" message="If you are using a KubeDB-managed MariaDB database, please refer to the following [guide](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/overview/). This guide covers backup and restore procedures for externally managed MariaDB databases." >}}
+{{< notice type="warning" message="If you are using a KubeDB-managed MariaDB database, please refer to the following [guide](https://kubedb.com/docs/latest/guides/mariadb/backup/kubestash/overview/). This guide covers backup and restore procedures for externally managed MariaDB databases." >}}
 
 # Backup and Restore MariaDB database using KubeStash
 
@@ -26,13 +26,13 @@ This guide will give you how you can take backup and restore your externally man
 - Install `kubedb-kubestash-catalog` in your cluster following the steps [here](https://github.com/kubedb/installer/tree/master/charts/kubedb-kubestash-catalog).
 - Install `KubeStash` in your cluster following the steps [here](https://kubestash.com/docs/latest/setup/install/kubestash).
 - Install KubeStash `kubectl` plugin following the steps [here](https://kubestash.com/docs/latest/setup/install/kubectl-plugin/).
-- If you are not familiar with how KubeStash backup and restore MariaDB databases, please check the following guide [here](/docs/addons/mysql/overview/index.md).
+- If you are not familiar with how KubeStash backup and restore MariaDB databases, please check the following guide [here](/docs/addons/mariadb/overview/index.md).
 
 You should be familiar with the following `KubeStash` concepts:
 
 - [BackupStorage](https://kubestash.com/docs/latest/concepts/crds/backupstorage/)
 - [BackupConfiguration](https://kubestash.com/docs/latest/concepts/crds/backupconfiguration/)
-- [AppBinding](https://kubedb.com/docs/v2024.9.30/guides/mysql/concepts/appbinding/)
+- [AppBinding](https://kubedb.com/docs/v2024.9.30/guides/mariadb/concepts/appbinding/)
 - [BackupSession](https://kubestash.com/docs/latest/concepts/crds/backupsession/)
 - [RestoreSession](https://kubestash.com/docs/latest/concepts/crds/restoresession/)
 - [Addon](https://kubestash.com/docs/latest/concepts/crds/addon/)
@@ -46,7 +46,7 @@ $ kubectl create ns demo
 namespace/demo created
 ```
 
-> **Note:** YAML files used in this tutorial are stored in [docs/addons/mysql/logical/examples](/docs/addons/mysql/logical/examples) directory of [kubestash/docs](https://github.com/kubestash/docs) repository.
+> **Note:** YAML files used in this tutorial are stored in [docs/addons/mariadb/logical/examples](/docs/addons/mariadb/logical/examples) directory of [kubestash/docs](https://github.com/kubestash/docs) repository.
 
 ## Backup MariaDB
 
@@ -262,7 +262,7 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ### Backup
 
-We have to create a `BackupConfiguration` targeting the respective `mysql-appbinding` AppBinding custom resource. This AppBinding resource contains all necessary connection information for the target `MariaDB` database. Then, KubeStash will create a `CronJob` for each session to take periodic backup of that database.
+We have to create a `BackupConfiguration` targeting the respective `mariadb-appbinding` AppBinding custom resource. This AppBinding resource contains all necessary connection information for the target `MariaDB` database. Then, KubeStash will create a `CronJob` for each session to take periodic backup of that database.
 
 At first, we need to create a secret with a Restic password for backup data encryption.
 
@@ -330,7 +330,7 @@ spec:
 Let's create the `BackupConfiguration` CR that we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/mysql/logical/examples/backupconfiguration.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/mariadb/logical/examples/backupconfiguration.yaml
 backupconfiguration.core.kubestash.com/sample-mariadb-backup created
 ```
 
@@ -397,6 +397,7 @@ At this moment we have one `Snapshot`. Run the following command to check the re
 
 ```bash
 $ kubectl get snapshots.storage.kubestash.com -n demo -l=kubestash.com/repo-name=gcs-mariadb-repo
+
 NAME                                                              REPOSITORY         SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
 gcs-mariadb-repo-sample-mariadb-ckup-frequent-backup-1738680444   gcs-mariadb-repo   frequent-backup   2025-02-04T14:47:24Z   Delete            Succeeded   5m18s
 gcs-mariadb-repo-sample-mariadb-ckup-frequent-backup-1738680600   gcs-mariadb-repo   frequent-backup   2025-02-04T14:50:00Z   Delete            Succeeded   5m18s
@@ -553,7 +554,7 @@ Above shows that 'playground' database are deleted successfully.
 
 Now, we need to create a `RestoreSession` CR pointing to targeted `MariaDB` database.
 
-Below, is the contents of YAML file of the `RestoreSession` object that we are going to create to restore backed up data into the newly created database provisioned by MariaDB object named `restored-mysql`.
+Below, is the contents of YAML file of the `RestoreSession` object that we are going to create to restore backed up data into the newly created database provisioned by MariaDB object named `restored-mariadb`.
 
 ```yaml
 apiVersion: core.kubestash.com/v1alpha1
@@ -581,7 +582,7 @@ spec:
 
 Here,
 
-- `.spec.target` refers to the `mysql-appbinding` AppBinding custom resource, Which contains all necessary connection information for the target MariaDB database.
+- `.spec.target` refers to the `mariadb-appbinding` AppBinding custom resource, Which contains all necessary connection information for the target MariaDB database.
 - `.spec.dataSource.repository` specifies the Repository object that holds the backed up data.
 - `.spec.dataSource.snapshot` specifies to restore from latest `Snapshot`.
 
