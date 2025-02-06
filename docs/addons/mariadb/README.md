@@ -1,36 +1,36 @@
 ---
-title: MySQL Addon Overview | KubeStash
-description: MySQL Addon Overview | KubeStash
+title: MariaDB Addon Overview | KubeStash
+description: MariaDB Addon Overview | KubeStash
 menu:
   docs_{{ .version }}:
-    identifier: kubestash-mysql-readme
+    identifier: kubestash-mariadb-readme
     name: Readme
-    parent: kubestash-mysql
+    parent: kubestash-mariadb
     weight: -1
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: kubestash-addons
-url: /docs/{{ .version }}/addons/mysql/
+url: /docs/{{ .version }}/addons/mariadb/
 aliases:
-  - /docs/{{ .version }}/addons/mysql/README/
+  - /docs/{{ .version }}/addons/mariadb/README/
 ---
 
-# KubeStash MySQL Addon
+# KubeStash MariaDB Addon
 
-KubeStash v2024.9.30+ supports extending its functionality through addons. KubeStash MySQL addon enables KubeStash to backup and restore MySQL databases.
+KubeStash v2024.9.30+ supports extending its functionality through addons. KubeStash MariaDB addon enables KubeStash to backup and restore MariaDB databases.
 
-This guide will give you an overview of which MySQL versions are supported and how the docs are organized.
+This guide will give you an overview of which MariaDB versions are supported and how the docs are organized.
 
-## Supported MySQL Versions
+## Supported MariaDB Versions
 
 **Backup Versions**
 
-To find the supported MySQL versions for backup operations in your Kubernetes cluster, you can inspect the `.spec.availableVersions` field of the `mysql-backup` function.
+To find the supported MariaDB versions for backup operations in your Kubernetes cluster, you can inspect the `.spec.availableVersions` field of the `mariadb-backup` function.
 
 Let's check the supported versions for backup:
 
 ```bash
-$  kubectl get functions.addons.kubestash.com mysql-backup  -o yaml
+$  kubectl get functions.addons.kubestash.com mariadb-backup  -o yaml
 apiVersion: addons.kubestash.com/v1alpha1
 kind: Function
 metadata:
@@ -45,7 +45,7 @@ metadata:
     app.kubernetes.io/name: kubedb-kubestash-catalog
     app.kubernetes.io/version: v2024.11.18
     helm.sh/chart: kubedb-kubestash-catalog-v2024.11.18
-  name: mysql-backup
+  name: mariadb-backup
   resourceVersion: "86023"
   uid: f3b159ba-2f7d-4a6b-bc14-d7e992685632
 spec:
@@ -56,14 +56,14 @@ spec:
   - --enable-cache=${enableCache:=}
   - --scratch-dir=${scratchDir:=}
   - --wait-timeout=${waitTimeout:=300}
-  - --mysql-args=${args:=}
+  - --mariadb-args=${args:=}
   - --db-version=${dbVersion:=}
   - --databases=${databases:=}
   availableVersions:
   - 5.7.25
   - 8.0.3
   - 8.0.21
-  image: ghcr.io/kubedb/mysql-restic-plugin:v0.12.0_${DB_VERSION}
+  image: ghcr.io/kubedb/mariadb-restic-plugin:v0.12.0_${DB_VERSION}
 ```
 
 Here,
@@ -72,12 +72,12 @@ Here,
 
 **Restore Versions**
 
-To find the supported MySQL versions for restore operations in your Kubernetes cluster, you can inspect the `.spec.availableVersions` field of the `mysql-restore` function.
+To find the supported MariaDB versions for restore operations in your Kubernetes cluster, you can inspect the `.spec.availableVersions` field of the `mariadb-restore` function.
 
 Let's check the supported versions for restore:
 
 ```bash
-$  kubectl get functions.addons.kubestash.com mysql-restore  -o yaml
+$  kubectl get functions.addons.kubestash.com mariadb-restore  -o yaml
 apiVersion: addons.kubestash.com/v1alpha1
 kind: Function
 metadata:
@@ -92,7 +92,7 @@ metadata:
     app.kubernetes.io/name: kubedb-kubestash-catalog
     app.kubernetes.io/version: v2024.11.18
     helm.sh/chart: kubedb-kubestash-catalog-v2024.11.18
-  name: mysql-restore
+  name: mariadb-restore
   resourceVersion: "85997"
   uid: 94a1e91f-3f2c-4274-a454-0aefdb351eca
 spec:
@@ -104,13 +104,13 @@ spec:
   - --enable-cache=${enableCache:=}
   - --scratch-dir=${scratchDir:=}
   - --wait-timeout=${waitTimeout:=300}
-  - --mysql-args=${args:=}
+  - --mariadb-args=${args:=}
   - --db-version=${dbVersion:=}
   availableVersions:
   - 5.7.25
   - 8.0.3
   - 8.0.21
-  image: ghcr.io/kubedb/mysql-restic-plugin:v0.12.0_${DB_VERSION}
+  image: ghcr.io/kubedb/mariadb-restic-plugin:v0.12.0_${DB_VERSION}
 ```
 
 Here,
@@ -119,11 +119,11 @@ Here,
 
 ## Addon Version Compatibility
 
-Any database version with a major version matching the supported MySQL versions should generally be able to back up the database. For instance, if the function supports the `8.x.x` version, it should work with any MySQL database within the `8.x.x` series. However, there may be exceptions where certain versions are incompatible. In such cases, use the specific version name that is explicitly supported.
+Any database version with a major version matching the supported MariaDB versions should generally be able to back up the database. For instance, if the function supports the `8.x.x` version, it should work with any MariaDB database within the `8.x.x` series. However, there may be exceptions where certain versions are incompatible. In such cases, use the specific version name that is explicitly supported.
 
 ## Documentation Overview
 
-KubeStash MySQL documentations are organized as below:
+KubeStash MariaDB documentations are organized as below:
 
-- [How does it work?](/docs/addons/mysql/overview/index.md) gives an overview of how backup and restore process for MySQL database works in KubeStash.
-- [Standalone MySQL Database](/docs/addons/mysql/logical/index.md) shows how to backup and restore an externally managed MySQL database.
+- [How does it work?](/docs/addons/mariadb/overview/index.md) gives an overview of how backup and restore process for MariaDB database works in KubeStash.
+- [Standalone MariaDB Database](/docs/addons/mariadb/logical/index.md) shows how to backup and restore an externally managed MariaDB database.
