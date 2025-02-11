@@ -21,8 +21,8 @@ KubeStash by AppsCode is a cloud native data backup and recovery solution for Ku
 The following diagram shows how KubeStash takes backup of any externally managed `MariaDB` database. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
-  <img alt="MySQL Backup Overview" src="/docs/addons/mysql/overview/images/backup_overview.svg">
-  <figcaption align="center">Fig: MySQL Backup Overview</figcaption>
+  <img alt="MariaDB Backup Overview" src="/docs/addons/mariadb/overview/images/backup_overview.svg">
+  <figcaption align="center">Fig: MariaDB Backup Overview</figcaption>
 </figure>
 
 The backup process consists of the following steps:
@@ -55,23 +55,23 @@ The backup process consists of the following steps:
 
 14. The backup `Job` reads necessary information (e.g. auth secret, port)  to connect with the database from the `AppBinding` CR. It also reads backend information and access credentials from `BackupStorage` CR, storage `Secret` and `Repository` path respectively.
 
-15. Then, the `Job` dumps the targeted `MySQL` database and uploads the output to the backend. KubeStash pipes the output of dump command to uploading process. Hence, backup `Job` does not require a large volume to hold the entire dump output.
+15. Then, the `Job` dumps the targeted `MariaDB` database and uploads the output to the backend. KubeStash pipes the output of dump command to uploading process. Hence, backup `Job` does not require a large volume to hold the entire dump output.
 
-16. After the backup process is completed, the backup `Job` updates the `status.components[dump]` field of the `Snapshot` resources with backup information of the target `MySQL` database.
+16. After the backup process is completed, the backup `Job` updates the `status.components[dump]` field of the `Snapshot` resources with backup information of the target `MariaDB` database.
 
 ## How Restore Process Works
 
-The following diagram shows how KubeStash restores backed up data into any externally managed `MySQL` database. Open the image in a new tab to see the enlarged version.
+The following diagram shows how KubeStash restores backed up data into any externally managed `MariaDB` database. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
-  <img alt="Database Restore Overview" src="/docs/addons/mysql/overview/images/restore_overview.svg">
-  <figcaption align="center">Fig: MySQL Restore Process Overview</figcaption>
+  <img alt="Database Restore Overview" src="/docs/addons/mariadb/overview/images/restore_overview.svg">
+  <figcaption align="center">Fig: MariaDB Restore Process Overview</figcaption>
 </figure>
 
 
 The restore process consists of the following steps:
 
-1. At first, a user creates a `MySQL` database where the data will be restored or the user can use the same `MySQL` database.
+1. At first, a user creates a `MariaDB` database where the data will be restored or the user can use the same `MariaDB` database.
 
 2. Then, she creates a `RestoreSession` custom resource that specifies the `AppBinding` custom resource (which contains the necessary information to connect with the target database) where the backed-up data will be restored, addon information (including restore tasks), the target snapshot to be restored, the `Repository` containing that snapshot, and other additional settings.
 
@@ -89,4 +89,4 @@ The restore process consists of the following steps:
 
 ## Next Steps
 
-- Backup an externally managed `MySQL` database using KubeStash by following the guides from [here](/docs/addons/mysql/logical/index.md).
+- Backup an externally managed `MariaDB` database using KubeStash by following the guides from [here](/docs/addons/mariadb/logical/index.md).
