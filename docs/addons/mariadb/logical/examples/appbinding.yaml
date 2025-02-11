@@ -1,0 +1,12 @@
+apiVersion: appcatalog.appscode.com/v1alpha1
+kind: AppBinding
+metadata:
+  name: mariadb-appbinding
+  namespace: demo
+spec:
+  clientConfig:
+    url: mariadb://mariadb.mariadb.svc.cluster.local:3306/mydb
+  secret:
+    name: mariadb-auth-secret
+  type: mariadb
+  version: "11.4.4"
