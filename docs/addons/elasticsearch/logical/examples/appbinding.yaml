@@ -1,0 +1,12 @@
+apiVersion: appcatalog.appscode.com/v1alpha1
+kind: AppBinding
+metadata:
+  name: elasticsearch-appbinding
+  namespace: demo
+spec:
+  clientConfig:
+    url: https://kubestash-es-test-do-user-165729-0.k.db.ondigitalocean.com:25060
+  secret:
+    name: elasticsearch-auth-secret
+  type: elasticsearch
+  version: "7.14.0"

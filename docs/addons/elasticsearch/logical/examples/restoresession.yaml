@@ -1,0 +1,21 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: restore-db-elasticsearch
+  namespace: demo
+spec:
+  target:
+    apiGroup: appcatalog.appscode.com
+    kind: AppBinding
+    name: elasticsearch-appbinding
+    namespace: demo
+  dataSource:
+    repository: gcs-elasticsearch-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret
+      namespace: demo
+  addon:
+    name: elasticsearch-addon
+    tasks:
+      - name: logical-backup-restore
