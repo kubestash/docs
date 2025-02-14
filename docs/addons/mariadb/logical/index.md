@@ -80,8 +80,8 @@ metadata:
   namespace: demo
 type: Opaque
 stringData:
-  username: "doadmin" # replace with your authentication username
-  password: "" # replace with your authentication password
+  username: "root" # replace with your authentication username
+  password: "PGRKUjtBVC" # replace with your authentication password
 ```
 
 **Create AppBinding:**
@@ -489,7 +489,7 @@ status:
 
 > KubeStash uses the `mariadbdump` command to take backups of target MariaDB databases. Therefore, the component name for logical backups is set as `dump`.
 
-Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/mariadb/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/dep/snapshots` directory.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/mariadb/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/mariadb/snapshots` directory.
 
 > Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
@@ -552,7 +552,7 @@ Above shows that 'playground' database are deleted successfully.
 
 #### Create RestoreSession:
 
-Now, we need to create a `RestoreSession` CR pointing to targeted `MariaDB` database.
+Now, we need to create a `RestoreSession` CR pointing to the targeted `AppBinding` of any externally managed `MariaDB` database.
 
 Below, is the contents of YAML file of the `RestoreSession` object that we are going to create to restore backed up data into the newly created database provisioned by MariaDB object named `restored-mariadb`.
 
@@ -602,7 +602,6 @@ Every 2.0s: kubectl get restoresession -n demo                                  
 
 NAME                              REPOSITORY         PHASE       DURATION   AGE
 sample-mariadb-restore            gcs-mariadb-repo   Succeeded   8s         70s
-
 ```
 
 The `Succeeded` phase means that the restore process has been completed successfully.

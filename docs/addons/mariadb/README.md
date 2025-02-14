@@ -30,24 +30,24 @@ To find the supported MariaDB versions for backup operations in your Kubernetes 
 Let's check the supported versions for backup:
 
 ```bash
-$  kubectl get functions.addons.kubestash.com mariadb-backup  -o yaml
+$ kubectl get functions.addons.kubestash.com mariadb-backup  -o yaml
 apiVersion: addons.kubestash.com/v1alpha1
 kind: Function
 metadata:
   annotations:
     meta.helm.sh/release-name: kubedb
     meta.helm.sh/release-namespace: kubedb
-  creationTimestamp: "2024-12-11T06:05:43Z"
+  creationTimestamp: "2025-02-14T06:58:37Z"
   generation: 1
   labels:
     app.kubernetes.io/instance: kubedb
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: kubedb-kubestash-catalog
-    app.kubernetes.io/version: v2024.11.18
-    helm.sh/chart: kubedb-kubestash-catalog-v2024.11.18
+    app.kubernetes.io/version: v2025.2.6-rc.0
+    helm.sh/chart: kubedb-kubestash-catalog-v2025.2.6-rc.0
   name: mariadb-backup
-  resourceVersion: "86023"
-  uid: f3b159ba-2f7d-4a6b-bc14-d7e992685632
+  resourceVersion: "16506"
+  uid: f3c8584a-31e6-453b-8a05-a4ad0c96c0bf
 spec:
   args:
   - backup
@@ -57,17 +57,11 @@ spec:
   - --scratch-dir=${scratchDir:=}
   - --wait-timeout=${waitTimeout:=300}
   - --mariadb-args=${args:=}
-  - --db-version=${dbVersion:=}
-  - --databases=${databases:=}
-  availableVersions:
-  - 5.7.25
-  - 8.0.3
-  - 8.0.21
-  image: ghcr.io/kubedb/mariadb-restic-plugin:v0.12.0_${DB_VERSION}
+  image: ghcr.io/kubedb/mariadb-restic-plugin:v0.10.0-rc.0
 ```
 
 Here,
- - `spec.availableVersions` specifies the version list which are supported for backup. 
+ - `spec.availableVersions` specifies the version list which are supported for backup. Currently, we're using the same image for every MariaDB version
 
 
 **Restore Versions**
@@ -77,24 +71,24 @@ To find the supported MariaDB versions for restore operations in your Kubernetes
 Let's check the supported versions for restore:
 
 ```bash
-$  kubectl get functions.addons.kubestash.com mariadb-restore  -o yaml
+$ kubectl get functions.addons.kubestash.com mariadb-restore  -o yaml
 apiVersion: addons.kubestash.com/v1alpha1
 kind: Function
 metadata:
   annotations:
     meta.helm.sh/release-name: kubedb
     meta.helm.sh/release-namespace: kubedb
-  creationTimestamp: "2024-12-11T06:05:43Z"
+  creationTimestamp: "2025-02-14T06:58:37Z"
   generation: 1
   labels:
     app.kubernetes.io/instance: kubedb
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: kubedb-kubestash-catalog
-    app.kubernetes.io/version: v2024.11.18
-    helm.sh/chart: kubedb-kubestash-catalog-v2024.11.18
+    app.kubernetes.io/version: v2025.2.6-rc.0
+    helm.sh/chart: kubedb-kubestash-catalog-v2025.2.6-rc.0
   name: mariadb-restore
-  resourceVersion: "85997"
-  uid: 94a1e91f-3f2c-4274-a454-0aefdb351eca
+  resourceVersion: "16517"
+  uid: 83a39de1-2d43-48f8-9b31-c74de7a343f6
 spec:
   args:
   - restore
@@ -105,16 +99,11 @@ spec:
   - --scratch-dir=${scratchDir:=}
   - --wait-timeout=${waitTimeout:=300}
   - --mariadb-args=${args:=}
-  - --db-version=${dbVersion:=}
-  availableVersions:
-  - 5.7.25
-  - 8.0.3
-  - 8.0.21
-  image: ghcr.io/kubedb/mariadb-restic-plugin:v0.12.0_${DB_VERSION}
+  image: ghcr.io/kubedb/mariadb-restic-plugin:v0.10.0-rc.0
 ```
 
 Here,
-- `spec.availableVersions` specifies the version list which are supported for restore.
+- `spec.availableVersions` specifies the version list which are supported for restore. Currently, we're using the same image for every MariaDB version.
 
 
 ## Addon Version Compatibility
