@@ -28,7 +28,7 @@ kubectl-kubestash download [flags]
       --docker-registry string   Docker image registry for restic cli (default "restic")
       --exclude strings          List of pattern for directory/file to ignore during restore
   -h, --help                     help for download
-      --image-tag string         Restic docker image tag (default "0.16.0")
+      --image-tag string         Restic docker image tag (default "latest")
       --include strings          List of pattern for directory/file to restore
 ```
 
