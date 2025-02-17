@@ -345,7 +345,7 @@ spec:
     last: 2
   maxRetentionPeriod: 2mo
   successfulSnapshots:
-    last: 5
+    last: 3
   usagePolicy:
     allowedNamespaces:
       from: All
@@ -448,7 +448,7 @@ Additionally, we can verify that the `Repository` specified in the `BackupConfig
 ```bash
 $ kubectl get repo -n demo
 NAME                     INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-mariadb-repo         true        5                6.744 KiB   Ready   99s                      14s
+gcs-mariadb-repo         true        3                6.744 KiB   Ready   99s                      14s
 ```
 
 KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the `Repository` YAML stored in the `demo/mariadb` directory.
@@ -488,7 +488,7 @@ Once a backup is complete, KubeStash will update the respective `Repository` CR 
 $ kubectl get repository -n demo gcs-mariadb-repo
 
 NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-mariadb-repo   true        5                6.744 KiB   Ready   34s                      4m9s
+gcs-mariadb-repo   true        3                6.744 KiB   Ready   34s                      4m9s
 ```
 
 At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
@@ -684,7 +684,7 @@ Here,
 - `.spec.dataSource.repository` specifies the Repository object that holds the backed up data.
 - `.spec.dataSource.snapshot` specifies to restore from latest `Snapshot`.
 
-Let's create the RestoreSession CRD object we have shown above,
+Let's create the `RestoreSession` CR object we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubedb/docs/raw/{{< param "info.version" >}}/docs/addons/mariadb/logical/examples/restoresession.yaml
@@ -776,4 +776,5 @@ kubectl delete retentionpolicies.storage.kubestash.com -n demo demo-retention
 kubectl delete backupstorage -n demo gcs-storage
 kubectl delete secret -n demo gcs-secret
 kubectl delete secret -n demo encrypt-secret
+helm uninstall mariadb -n demo
 ```
