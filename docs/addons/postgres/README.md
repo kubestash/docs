@@ -5,7 +5,7 @@ menu:
   docs_{{ .version }}:
     identifier: kubestash-postgres-readme
     name: Readme
-    parent: kubestash-postgres
+    parent: kubestash-postgresql
     weight: -1
 product_name: kubestash
 menu_name: docs_{{ .version }}

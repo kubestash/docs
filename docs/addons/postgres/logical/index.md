@@ -115,7 +115,8 @@ Now, connect to the database using the `postgres` client. Once connected, create
 
 ```bash
 
-$ docker run -it --rm postgres:latest psql -h kubestash-test-do-user-165729-0.m.docker run -it --rm postgres:latest psql -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -p 25060 -U doadmin -d defaultdb
+$ docker run -it --rm postgres:latest psql -h kubestash-test-do-user-165729-0.m.docker run -it \
+  psql -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -p 25060 -U doadmin -d defaultdb
 Password for user doadmin:
 psql (17.2 (Debian 17.2-1.pgdg120+1))
 SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off, ALPN: postgresql)
@@ -496,7 +497,7 @@ status:
 
 > KubeStash uses the `pg_dump` command to take backups of target PostgreSQL databases. Therefore, the component name for logical backups is set as `dump`.
 
-Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/postgres/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/dep/snapshots` directory.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/postgres/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/postgres/snapshots` directory.
 
 > Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
@@ -507,7 +508,8 @@ In this section, we are going to restore the database from the backup we have ta
 Now, we have to delete the previously backed-up table `company` of `demo` database by connecting with the 'kubestash-test' PostgreSQL database using the `postgres` client.
 
 ```bash
-$ docker run -it --rm postgres:latest psql -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -p 25060 -U doadmin -d defaultdb
+$ docker run -it --rm postgres:latest psql -h kubestash-test-do-user-165729-0.m.docker run -it \
+  psql -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -p 25060 -U doadmin -d defaultdb
 Password for user doadmin: 
 psql (17.2 (Debian 17.2-1.pgdg120+1))
 SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off, ALPN: postgresql)
@@ -606,12 +608,13 @@ The `Succeeded` phase means that the restore process has been completed successf
 
 #### Verify Restored Data:
 
-In this section, we are going to verify whether the desired data has been restored successfully. We are going to connect to the database server and check whether the delted table and data of `demo` database we backed-up earlier are successfully restored or not.
+In this section, we are going to verify whether the desired data has been restored successfully. We are going to connect to the database server and check whether the deleted table and data of `demo` database we backed-up earlier are successfully restored or not.
 
 Now, connect to the database using the `postgres` client. Once connected, check the database, table, and sample data existence.
 
 ```bash
-$ docker run -it --rm postgres:latest psql -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -p 25060 -U doadmin -d defaultdb
+$ docker run -it --rm postgres:latest psql -h kubestash-test-do-user-165729-0.m.docker run -it \
+  psql -h kubestash-test-do-user-165729-0.m.db.ondigitalocean.com -p 25060 -U doadmin -d defaultdb
 Password for user doadmin: 
 psql (17.2 (Debian 17.2-1.pgdg120+1))
 SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off, ALPN: postgresql)

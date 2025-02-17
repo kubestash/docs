@@ -22,7 +22,7 @@ KubeStash by AppsCode is a cloud native data backup and recovery solution for Ku
 The following diagram shows how KubeStash takes backup of any externally managed `PostgreSQL` database. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
-  <img alt="PostgreSQL Backup Overview" src="/docs/addons/overviewackup_overview.svg">
+  <img alt="PostgreSQL Backup Overview" src="/docs/addons/postgres/overview/images/backup_overview.svg">
   <figcaption align="center">Fig: PostgreSQL Backup Overview</figcaption>
 </figure>
 
@@ -66,7 +66,7 @@ The backup process consists of the following steps:
 The following diagram shows how KubeStash restores backed up data into any externally managed `PostgreSQL` database. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
-  <img alt="PostgreSQL Restore Overview" src="/docs/addons/overviewestore_overview.svg">
+  <img alt="PostgreSQL Restore Overview" src="/docs/addons/postgres/overview/images/restore_overview.svg">
   <figcaption align="center">Fig: PostgreSQL Restore Process Overview</figcaption>
 </figure>
 
