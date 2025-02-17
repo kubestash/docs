@@ -164,7 +164,7 @@ spec:
 
 Here’s what we’ve done so far:
 - Created a sample `MariaDB` database named `playground`.
-- The image also displays the necessary connection details for this database.
+
 
 **Create Secret:**
 
