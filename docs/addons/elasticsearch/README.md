@@ -22,13 +22,14 @@ KubeStash v2024.9.30+ supports extending its functionality through addons. KubeS
 This guide will give you an overview of which Elasticsearch versions are supported and how the docs are organized.
 
 ## Supported Elasticsearch Versions
-6.x.x
-7.x.x
+6.x.x<br>
+7.x.x<br>
 8.x.x
 
 ## Supported Opensearch Versions
-1.x.x
+1.x.x<br>
 2.x.x
+
 
 ## Documentation Overview
 

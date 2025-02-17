@@ -16,7 +16,7 @@ section_menu_id: kubestash-addons
 
 # Backup and Restore Elasticsearch database using KubeStash
 
-KubeStash allows you to backup and restore `Elasticsearch` databases. It supports backups for `Elasticsearch` instances running in Standalone, Group Replication, and InnoDB cluster configurations. KubeStash makes managing your `Elasticsearch` backups and restorations more straightforward and efficient.
+KubeStash allows you to backup and restore `Elasticsearch` databases. KubeStash makes managing your `Elasticsearch` backups and restorations more straightforward and efficient.
 
 This guide will give you how you can take backup and restore your externally managed `Elasticsearch` databases using `Kubestash`.
 
@@ -49,7 +49,6 @@ namespace/demo created
 > **Note:** YAML files used in this tutorial are stored in [docs/addons/elasticsearch/logical/examples](/docs/addons/elasticsearch/logical/examples) directory of [kubedb/docs](https://github.com/kubedb/docs) repository.
 ## Backup Elasticsearch
 
-KubeStash supports backups for `Elasticsearch` instances across different configurations, including Standalone, Group Replication, and InnoDB Cluster setups.
 
 In this demonstration, we’ll focus on a DigitalOcean-managed `Elasticsearch` database configured in Standalone mode. The backup and restore process is similar for Group Replication and InnoDB Cluster configurations as well.
 
@@ -287,7 +286,7 @@ spec:
 
 - `.spec.sessions[*].schedule` specifies that we want to backup the database at `5 minutes` interval.
 - `.spec.target` refers to the `elasticsearch-appbinding` AppBinding custom resource, Which contains all necessary connection information for the target Elasticsearch database.
-- `.spec.sessions[].addon.tasks[].params.databases` refers the targeted backup database list.
+- `.spec.sessions[].addon.tasks[].params.args` refers that backup configuration will take backup of all the indices except the indices starts with `.` and `security-auditlog`.
 
 Let's create the `BackupConfiguration` CR that we have shown above,
 
@@ -445,7 +444,7 @@ status:
 
 > KubeStash uses the `multielasticdump` command to take backups of target Elasticsearch databases. Therefore, the component name for logical backups is set as `dump`.
 
-Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/elasticsearch/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/dep/snapshots` directory.
+Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/elasticsearch/repository/v1/frequent-backup/dump` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/elasticsearch/snapshots` directory.
 
 > Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
 
@@ -474,7 +473,7 @@ Above shows that 'info' index has been deleted successfully.
 
 Now, we need to create a `RestoreSession` CR pointing to targeted `Elasticsearch` database.
 
-Below, is the contents of YAML file of the `RestoreSession` object that we are going to create to restore backed up data into the newly created database provisioned by Elasticsearch object named `restored-elasticsearch`.
+Below, is the contents of YAML file of the RestoreSession object,
 
 ```yaml
 apiVersion: core.kubestash.com/v1alpha1
@@ -539,7 +538,7 @@ green  open   .plugins-ml-config        y5MS3LMlR42wr66b4UpXgA   1   0          
 green  open   info                      U7CAuZ4uSKqwAQ0XOAHxrg   1   0          1            0      4.5kb          4.5kb
 ```
 
-So, from the above output, we can see that the `playground` database and the `equipment` table we have created earlier, they are restored successfully.
+So, from the above output, we can see that the `info` index we created earlier, has been restored successfully.
 
 ## Cleanup
 
