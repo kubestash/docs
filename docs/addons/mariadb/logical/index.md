@@ -56,16 +56,114 @@ In this demonstration, we will focus on a [Bitnami-managed](https://github.com/b
 
 
 ### Create a Sample MariaDB Database
+Let's create a sample `MariaDB` database guided by [Bitnami MariaDB Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/mariadb) MariaDB database. 
 
-Let's create a sample `MariaDB` database in DigitalOcean and insert some data into it.
+```bash
+$ helm install mariadb oci://registry-1.docker.io/bitnamicharts/mariadb -n demo
 
-<figure align="center">
-  <img alt="Sample database in DigitalOcean" src="/docs/addons/mysql/logical/images/sample-mysql-database.png">
-  <figcaption align="center">Fig: Sample database in DigitalOcean</figcaption>
-</figure>
+Pulled: registry-1.docker.io/bitnamicharts/mariadb:20.2.2
+Digest: sha256:2cf85469dcd5ecd1c67050b6973d399af7a80f384230004a736d349bf2b6db65
+NAME: mariadb
+LAST DEPLOYED: Mon Feb 17 16:21:24 2025
+NAMESPACE: demo
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+CHART NAME: mariadb
+CHART VERSION: 20.2.2
+APP VERSION: 11.4.4
+
+Did you know there are enterprise versions of the Bitnami catalog? For enhanced secure software supply chain features, unlimited pulls from Docker, LTS support, or application customization, see Bitnami Premium or Tanzu Application Catalog. See https://www.arrow.com/globalecs/na/vendors/bitnami for more information.
+
+** Please be patient while the chart is being deployed **
+
+Tip:
+
+  Watch the deployment status using the command: kubectl get pods -w --namespace demo -l app.kubernetes.io/instance=mariadb
+
+Services:
+
+  echo Primary: mariadb.mariadb.svc.cluster.local:3306
+
+Administrator credentials:
+
+  Username: root
+  Password : $(kubectl get secret --namespace demo mariadb -o jsonpath="{.data.mariadb-root-password}" | base64 -d)
+
+To connect to your database:
+
+  1. Run a pod that you can use as a client:
+
+      kubectl run mariadb-client --rm --tty -i --restart='Never' --image  docker.io/bitnami/mariadb:11.4.4-debian-12-r3 --namespace demo --command -- bash
+
+  2. To connect to primary service (read/write):
+
+      mysql -h mariadb.mariadb.svc.cluster.local -uroot -p my_database
+
+To upgrade this helm chart:
+
+  1. Obtain the password as described on the 'Administrator credentials' section and set the 'auth.rootPassword' parameter as shown below:
+
+      ROOT_PASSWORD=$(kubectl get secret --namespace demo mariadb -o jsonpath="{.data.mariadb-root-password}" | base64 -d)
+      helm upgrade --namespace demo mariadb oci://registry-1.docker.io/bitnamicharts/mariadb --set auth.rootPassword=$ROOT_PASSWORD
+
+$ kubectl get pods -n demo
+NAME        READY   STATUS    RESTARTS   AGE
+mariadb-0   1/1     Running   0          2m17s
+
+$ kubectl get statefulset -n demo
+NAME      READY   AGE
+mariadb   1/1     13m
+```
+
+Now, we are ready to backup the database.
+
+
+### Prepare Backend
+
+We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a `BackupStorage` CR to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](https://kubestash.com/docs/latest/guides/backends/overview/).
+
+**Create Secret:**
+
+Let's create a secret called `gcs-secret` with access credentials to our desired GCS bucket,
+
+```bash
+$ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
+$ cat /path/to/downloaded-sa-key.json > GOOGLE_SERVICE_ACCOUNT_JSON_KEY
+$ kubectl create secret generic -n demo gcs-secret \
+    --from-file=./GOOGLE_PROJECT_ID \
+    --from-file=./GOOGLE_SERVICE_ACCOUNT_JSON_KEY
+secret/gcs-secret created
+```
+
+**Create BackupStorage:**
+
+Now, create a `BackupStorage` using this secret. Below is the YAML of `BackupStorage` CR we are going to create,
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
+metadata:
+  name: gcs-storage
+  namespace: demo
+spec:
+  storage:
+    provider: gcs
+    gcs:
+      bucket: kubestash-qa
+      prefix: demo
+      secretName: gcs-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true
+  deletionPolicy: Delete
+```
+
 
 Here’s what we’ve done so far:
-- Created a sample `MariaDB` database named `kubestash-test`.
+- Created a sample `MariaDB` database named `playground`.
 - The image also displays the necessary connection details for this database.
 
 **Create Secret:**
@@ -114,7 +212,7 @@ Here,
 Now, connect to the database using the `mariadb` client. Once connected, create a new database and table, then insert some sample data into it.
 
 ```bash
-$ kubectl exec -it -n mariadb mariadb-0 -- bash
+$ kubectl exec -it -n demo mariadb-0 -- bash
 Defaulted container "mariadb" out of: mariadb, preserve-logs-symlinks (init)
 I have no name!@mariadb-0:/$ mariadb -u root -p
 Enter password: 
@@ -502,7 +600,7 @@ In this section, we are going to restore the database from the backup we have ta
 Now, we have to delete the previously backed-up 'playground' database by connecting with the 'kubestash-test' MariaDB database using the `mariadb` client.
 
 ```bash
-$ kubectl exec -it -n mariadb mariadb-0 -- bash
+$ kubectl exec -it -n demo mariadb-0 -- bash
 Defaulted container "mariadb" out of: mariadb, preserve-logs-symlinks (init)
 I have no name!@mariadb-0:/$ mariadb -u root -p
 Enter password: 
@@ -613,7 +711,7 @@ In this section, we are going to verify whether the desired data has been restor
 Now, connect to the database using the `mariadb` client. Once connected, check the database, table, and sample data existence.
 
 ```bash
-$ kubectl exec -it -n mariadb mariadb-0 -- bash
+$ kubectl exec -it -n demo mariadb-0 -- bash
 Defaulted container "mariadb" out of: mariadb, preserve-logs-symlinks (init)
 I have no name!@mariadb-0:/$ mariadb -u root -p
 Enter password: 
