@@ -21,13 +21,165 @@ KubeStash v2024.9.30+ supports extending its functionality through addons. KubeS
 
 This guide will give you an overview of which Elasticsearch versions are supported and how the docs are organized.
 
-## Supported Elasticsearch Versions
+## Elasticsearch Addon
 
-**Backup Versions**
+```bash
+$  kubectl get functions.addons.kubestash.com elasticsearch-addon -oyaml
+apiVersion: addons.kubestash.com/v1alpha1
+kind: Addon
+metadata:
+  creationTimestamp: "2025-02-17T07:40:02Z"
+  generation: 1
+  name: elasticsearch-addon
+  resourceVersion: "293799"
+  uid: a1386f01-5c39-4291-8604-b19ef1775005
+spec:
+  backupTasks:
+  - driver: Restic
+    executor: Job
+    function: elasticsearch-backup
+    name: logical-backup
+    parameters:
+    - default: --match=^(?![.])(?!apm-agent-configuration)(?!kubedb-system).+
+      name: args
+      required: false
+      usage: Arguments to be passed to the dump command.
+    - default: /kubestash-interim/data
+      name: interimDataDir
+      required: false
+      usage: Directory where data will be stored temporarily before uploading to the
+        backend.
+    - default: "true"
+      name: enableCache
+      required: false
+      usage: Enable or disable caching. Disabling caching may impact backup performance.
+    - default: /kubestash-tmp
+      name: scratchDir
+      required: false
+      usage: Directory for holding temporary files and restic cache.
+    singleton: true
+    volumeMounts:
+    - mountPath: /kubestash-interim
+      name: kubestash-interim-volume
+    - mountPath: /kubestash-tmp
+      name: kubestash-tmp-volume
+    volumeTemplate:
+    - name: kubestash-interim-volume
+      source:
+        emptyDir: {}
+      usage: Holds backed up data temporarily before uploading to the backend.
+    - name: kubestash-tmp-volume
+      source:
+        emptyDir: {}
+      usage: Holds temporary files and restic cache.
+  - driver: Restic
+    executor: Job
+    function: elasticsearch-dashboard-backup
+    name: dashboard-backup
+    parameters:
+    - default: /kubestash-interim/data
+      name: interimDataDir
+      required: false
+      usage: Directory where data will be stored temporarily before uploading to the
+        backend.
+    - default: "true"
+      name: enableCache
+      required: false
+      usage: Enable or disable caching. Disabling caching may impact backup performance.
+    - default: /kubestash-tmp
+      name: scratchDir
+      required: false
+      usage: Directory for holding temporary files and restic cache.
+    singleton: true
+    volumeMounts:
+    - mountPath: /kubestash-interim
+      name: kubestash-interim-volume
+    - mountPath: /kubestash-tmp
+      name: kubestash-tmp-volume
+    volumeTemplate:
+    - name: kubestash-interim-volume
+      source:
+        emptyDir: {}
+      usage: Holds backed up data temporarily before uploading to the backend.
+    - name: kubestash-tmp-volume
+      source:
+        emptyDir: {}
+      usage: Holds temporary files and restic cache.
+  restoreTasks:
+  - driver: Restic
+    executor: Job
+    function: elasticsearch-restore
+    name: logical-backup-restore
+    parameters:
+    - default: --match=^(?![.])(?!apm-agent-configuration)(?!kubedb-system).+
+      name: args
+      required: false
+      usage: Arguments to be passed to the dump command.
+    - default: /kubestash-interim/data
+      name: interimDataDir
+      required: false
+      usage: Specifies the directory where data will be stored temporarily before
+        dumping to the database.
+    - default: "true"
+      name: enableCache
+      required: false
+      usage: Enable or disable caching. Disabling caching may impact backup performance.
+    - default: /kubestash-tmp
+      name: scratchDir
+      required: false
+      usage: Directory for holding temporary files and restic cache.
+    singleton: true
+    volumeMounts:
+    - mountPath: /kubestash-interim
+      name: kubestash-interim-volume
+    - mountPath: /kubestash-tmp
+      name: kubestash-tmp-volume
+    volumeTemplate:
+    - name: kubestash-interim-volume
+      source:
+        emptyDir: {}
+      usage: Holds backed up data temporarily before dumping to the database.
+    - name: kubestash-tmp-volume
+      source:
+        emptyDir: {}
+      usage: Holds temporary files and restic cache.
+  - driver: Restic
+    executor: Job
+    function: elasticsearch-dashboard-restore
+    name: dashboard-restore
+    parameters:
+    - default: /kubestash-interim/data
+      name: interimDataDir
+      required: false
+      usage: Specifies the directory where data will be stored temporarily before
+        restoring to the dashboard.
+    - default: "true"
+      name: enableCache
+      required: false
+      usage: Enable or disable caching. Disabling caching may impact backup performance.
+    - default: /kubestash-tmp
+      name: scratchDir
+      required: false
+      usage: Directory for holding temporary files and restic cache.
+    singleton: true
+    volumeMounts:
+    - mountPath: /kubestash-interim
+      name: kubestash-interim-volume
+    - mountPath: /kubestash-tmp
+      name: kubestash-tmp-volume
+    volumeTemplate:
+    - name: kubestash-interim-volume
+      source:
+        emptyDir: {}
+      usage: Holds backed up data temporarily before dumping to the database.
+    - name: kubestash-tmp-volume
+      source:
+        emptyDir: {}
+      usage: Holds temporary files and restic cache.
+```
 
-To find the supported Elasticsearch versions for backup operations in your Kubernetes cluster, you can inspect the `.spec.availableVersions` field of the `Elasticsearch-backup` function.
+## Elasticsearch Backup Function
 
-Let's check the supported versions for backup:
 
 ```bash
 $  kubectl get functions.addons.kubestash.com elasticsearch-backup -oyaml
@@ -61,15 +213,9 @@ spec:
   image: ghcr.io/kubedb/elasticsearch-restic-plugin:v0.14.0
 ```
 
-Here,
-- `spec.availableVersions` specifies the version list which are supported for backup.
 
 
-**Restore Versions**
-
-To find the supported Elasticsearch versions for restore operations in your Kubernetes cluster, you can inspect the `.spec.availableVersions` field of the `elasticsearch-restore` function.
-
-Let's check the supported versions for restore:
+# Elasticsearch Restore Function
 
 ```bash
 $  kubectl get functions.addons.kubestash.com elasticsearch-restore -oyaml
@@ -103,14 +249,6 @@ spec:
   - --interim-data-dir=${interimDataDir:=
   image: ghcr.io/kubedb/elasticsearch-restic-plugin:v0.14.0
 ```
-
-Here,
-- `spec.availableVersions` specifies the version list which are supported for restore.
-
-
-## Addon Version Compatibility
-
-Any database version with a major version matching the supported Elasticsearch versions should generally be able to back up the database. For instance, if the function supports the `8.x.x` version, it should work with any Elasticsearch database within the `8.x.x` series. However, there may be exceptions where certain versions are incompatible. In such cases, use the specific version name that is explicitly supported.
 
 ## Documentation Overview
 
