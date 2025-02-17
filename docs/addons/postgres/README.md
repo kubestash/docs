@@ -25,7 +25,7 @@ This guide will give you an overview of which `PostgreSQL` versions are supporte
 
 **Backup Versions**
 
-To find the supported MySQL versions for backup operations in your Kubernetes cluster, you can inspect the `.spec.availableVersions` field of the `mysql-backup` function.
+To find the supported `PostgreSQL` versions for backup operations in your Kubernetes cluster, you can inspect the `.spec.availableVersions` field of the `postgres-backup` function.
 
 Let's check the supported versions for backup:
 
@@ -68,7 +68,7 @@ spec:
 ```
 
 Here,
-- `spec.availableVersions` specifies the version list which are supported for backup. 
+- `spec.availableVersions` lists the versions used to run `pg_dump` or `pg_dumpall` for backups, based on your database version.
 
 **Restore Versions**
 
@@ -115,11 +115,11 @@ spec:
 ```
 
 Here,
-- `spec.availableVersions` specifies the version list which are supported for restore.
+- `spec.availableVersions` lists the versions used to run `psql` for restore, based on your database version.
 
 ## Addon Version Compatibility
 
-Any database version with a major version matching the supported `PostgreSQL` versions should generally be able to back up the database. For instance, if the function supports the `8.x.x` version, it should work with any `PostgreSQL` database within the `8.x.x` series. However, there may be exceptions where certain versions are incompatible. In such cases, use the specific version name that is explicitly supported.
+Any database version with a major version matching the supported `PostgreSQL` versions should generally be able to back up the database. For instance, if the function supports the `13.x` version, it should work with any `PostgreSQL` database within the `14.x` series. However, there may be exceptions where certain versions are incompatible. In such cases, use the specific version name that is explicitly supported.
 
 ## Documentation Overview
 
