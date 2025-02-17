@@ -50,7 +50,7 @@ namespace/demo created
 ## Backup Elasticsearch
 
 
-In this demonstration, we’ll focus on a DigitalOcean-managed `Elasticsearch` database configured in Standalone mode. The backup and restore process is similar for Group Replication and InnoDB Cluster configurations as well.
+In this demonstration, we’ll focus on a DigitalOcean-managed `Elasticsearch`.
 
 ### Create a Sample Elasticsearch Database
 
