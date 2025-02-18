@@ -1,0 +1,12 @@
+apiVersion: appcatalog.appscode.com/v1alpha1
+kind: AppBinding
+metadata:
+  name: postgres-appbinding
+  namespace: demo
+spec:
+  clientConfig:
+    url: postgres://kubestash-test-do-user-165729-0.k.db.ondigitalocean.com:25060/defaultdb?ssl-mode=REQUIRED
+  secret:
+    name: postgres-auth-secret
+  type: postgres
+  version: "17.2"

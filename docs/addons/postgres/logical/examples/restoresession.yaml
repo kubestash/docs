@@ -1,0 +1,23 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: restore-sample-postgres
+  namespace: demo
+spec:
+  target:
+    apiGroup: appcatalog.appscode.com
+    kind: AppBinding
+    name: postgres-appbinding
+    namespace: demo
+  dataSource:
+    repository: gcs-postgres-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret
+      namespace: demo
+  addon:
+    name: postgres-addon
+    tasks:
+      - name: logical-backup-restore
+        params:
+          args: --dbname=demo
