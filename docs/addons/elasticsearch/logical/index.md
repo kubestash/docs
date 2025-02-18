@@ -57,7 +57,7 @@ In this demonstration, we’ll focus on a DigitalOcean-managed `Elasticsearch`.
 Let's create a sample `Elasticsearch` database in DigitalOcean and insert some data into it.
 
 <figure align="center">
-  <img alt="Sample database in DigitalOcean" src="/docs/addons/elasticsearch/logical/images/sample-elasticsearch-database.png">
+  <img alt="Sample database in DigitalOcean" src="/docs/addons/elasticsearch/logical/images/sample-elasticsearch-database.svg">
   <figcaption align="center">Fig: Sample database in DigitalOcean</figcaption>
 </figure>
 
@@ -310,7 +310,7 @@ Additionally, we can verify that the `Repository` specified in the `BackupConfig
 ```bash
 $ kubectl get repo -n demo
 NAME                     INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-elasticsearch-repo   true        5                6.021 KiB   Ready   2m11s                    16m
+gcs-elasticsearch-repo   true        1                6.021 KiB   Ready   2m11s                    16m
 ```
 
 KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the `Repository` YAML stored in the `demo/elasticsearch` directory.
@@ -346,7 +346,7 @@ Once a backup is complete, KubeStash will update the respective `Repository` CR 
 ```bash
 $ kubectl get repo -n demo
 NAME                     INTEGRITY   SNAPSHOT-COUNT   SIZE        PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-elasticsearch-repo   true        5                6.022 KiB   Ready   2m15s                    18m
+gcs-elasticsearch-repo   true        1                6.022 KiB   Ready   2m15s                    18m
 ```
 
 At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
@@ -372,7 +372,7 @@ $ kubectl get snapshots -n demo gcs-elasticsearch-repo-sample-elasticsearch-back
 ```
 
 ```yaml
-kubectl get snapshot -n demo gcs-elasticsearch-repo-elasticseckup-frequent-backup-1738660680 -oyaml
+$ kubectl get snapshot -n demo gcs-elasticsearch-repo-elasticseckup-frequent-backup-1738660680 -oyaml
 apiVersion: storage.kubestash.com/v1alpha1
 kind: Snapshot
 metadata:
@@ -454,7 +454,7 @@ In this section, we are going to restore the database from the backup we have ta
 
 **Delete Backed-up Database:**
 
-Now, we have to delete the previously backed-up 'info' database by connecting with the 'kubestash-es-test' Elasticsearch database using the `elasticsearch` client.
+Now, we have to delete the previously backed-up `info` database by connecting with the `kubestash-es-test` Elasticsearch database using the `elasticsearch` client.
 
 ```bash
 $ curl -XDELETE -k --user 'doadmin:<YOUR USER PASSWORD>' "https://kubestash-es-test-do-user-165729-0.k.db.ondigitalocean.com:25060/info"
@@ -471,9 +471,9 @@ Above shows that 'info' index has been deleted successfully.
 
 #### Create RestoreSession:
 
-Now, we need to create a `RestoreSession` CR pointing to targeted `Elasticsearch` database.
+Now, we need to create a `RestoreSession` CR pointing to targeted `AppBinding` of any externally managed `Elasticsearch` database.
 
-Below, is the contents of YAML file of the RestoreSession object,
+Below, is the contents of YAML file of the `RestoreSession` object,
 
 ```yaml
 apiVersion: core.kubestash.com/v1alpha1
