@@ -38,6 +38,7 @@ Available command for `kubectl kubestash` cli are:
 | [debug backup](#debug-backup)               | Debug KubeStash backup issues.                                             |
 | [debug restore](#debug-restore)             | Debug KubeStash restore issues.                                            |
 | [debug operator](#debug-operator)           | Debug KubeStash operator issues.                                           |
+| [convert](#convert)                         | Convert Stash resources yaml into equivalent KubeStash resources yaml      |
 
 ## Copy Command
 
@@ -337,3 +338,35 @@ kubectl kubestash pw remove <repository-name> [flags]
 ```bash
 kubectl kubestash pw remove demo-repo --namespace=demo --id-paths=a30343d8:repository/v1/frequent-backup/pod-2
 ```
+
+### Convert
+This command is used to convert [Stash](https://stash.run/) resources into their corresponding KubeStash equivalents. This allows users to seamlessly migrate from Stash to KubeStash by converting existing YAML configurations. The following Stash resources are converted into their KubeStash counterparts:
+
+| Stash Resource        | KubeStash Equivalent                                     |
+|-----------------------|----------------------------------------------------------|
+| `Repository`          | `BackupStorage`                                          |
+| `BackupConfiguration` | `BackupConfiguration`, `HookTemplate`, `RetentionPolicy` |
+| `RestoreSession`      | `RestoreSession`, `HookTemplate`                         |
+
+The available flags for this command are:
+
+| Flag           | Description                                                                             |
+|----------------|-----------------------------------------------------------------------------------------|
+| `--source-dir` | Specifies the directory containing Stash resource YAML files that need to be converted. |
+| `--target-dir` | Defines the directory where the converted KubeStash resource YAML files will be stored. |
+
+**Format**
+
+```bash
+kubectl kubestash convert [flags]
+```
+
+**Example**
+
+To convert Stash resource files stored in `/home/user/stash-resources` and save the converted KubeStash resources to `/home/user/kubestash-resources`, use the following command:
+
+```bash
+kubectl kubestash convert --source-dir=/home/user/stash-resources --target-dir=/home/user/kubestash-resources 
+```
+
+> After the conversion process, certain fields in the generated KubeStash resource files require manual input. These fields are marked with placeholders in the format `### Set Valid <field-name> ###`, indicating that users need to replace them with appropriate values before applying the resources.
