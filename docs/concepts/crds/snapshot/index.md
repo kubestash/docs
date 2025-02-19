@@ -167,6 +167,14 @@ A `Snapshot` object holds `repository` and target application `kind`, `name` and
 
 `status.phase` represents the backup state of this `Snapshot`.
 
+**status.verificationStatus**
+
+`status.verificationStatus` specifies whether this `Snapshot` has been verified or not. The valid values for this field are `Verified`, `NotVerified` and `VerificationFailed`.
+
+**status.verificationSession**
+
+`status.verificationSession` specifies which BackupVerificationSession verified this `Snapshot`.
+
 **status.snapshotTime**
 
 `status.snapshotTime` represents the original creation timestamp for this `Snapshot`.
@@ -191,6 +199,7 @@ A `Snapshot` object holds `repository` and target application `kind`, `name` and
 |-----------------------------|-----------------------------------------------------------------|
 | `SnapshotMetadataUploaded`  | Indicates whether the metadata of Snapshot was uploaded or not. |
 | `RecentSnapshotListUpdated` | Indicates whether the recent Snapshot list was updated or not.  |
+| `BackupIncomplete`          | Indicates whether the backup is incomplete or not.              |
 
 **status.totalComponents**
 

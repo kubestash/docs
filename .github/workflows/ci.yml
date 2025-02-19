@@ -51,11 +51,16 @@ jobs:
           echo
           echo "install helm 3"
           curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
-          echo "install stash-crds chart"
+          
+          echo "install kubestash-crds chart"
+#          sleep 10
+#          kubectl get pods -A
+#          kubectl create -f https://github.com/kubestash/installer/raw/verification/crds/kubestash-crds.yaml || true
+#          kubectl get crds
+#          kubectl create -f https://github.com/kubedb/installer/raw/master/crds/kubedb-crds.yaml
+
           helm repo add appscode https://charts.appscode.com/stable/
           helm repo update
-#          helm install stash-crds appscode/stash-crds
-#          helm install kubedb-crds appscode/kubedb-crds
 #          helm install kmodules-crds appscode/kmodules-crds
           kubectl create -f https://github.com/kubestash/installer/raw/master/crds/kubestash-crds.yaml
           kubectl create -f https://github.com/kubedb/installer/raw/master/crds/kubedb-crds.yaml

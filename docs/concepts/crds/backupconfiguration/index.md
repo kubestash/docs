@@ -44,7 +44,7 @@ spec:
     - addon:
         name: workload-addon
         tasks:
-          - name: LogicalBackup
+          - name: logical-backup
             params:
               exclude: /source/data/lost+found
               paths: /source/data
@@ -150,7 +150,7 @@ namespace. Each backend has the following fields:
 - **retryConfig :** specifies the behavior of retry in case of a backup failure. RetryConfig has the following fields:
   - **maxRetry :** specifies the maximum number of times KubeStash should retry the backup/restore process. By default, KubeStash will retry only 1 time.
   - **delay :** The amount of time to wait before next retry. If you don't specify this field, KubeStash will retry immediately. Format: 30s, 2m, 1h etc.
-- **timeout :** specifies the maximum duration of backup. BackupSession will be considered Failed if backup does not complete within this time limit. By default, KubeStash don't set any timeout for backup.
+- **backupTimeout :** specifies the maximum duration of backup. Backup will be considered `Failed` if backup tasks do not complete within this time limit. By default, KubeStash don't set any timeout for backup.
 - **sessionHistoryLimit :** specifies how many backup Jobs and associate resources KubeStash should keep for debugging purpose. The default value is 1.
 - **addon :** specifies addon configuration that will be used to backup the target. Addon has the following fields:
   - **name :** specifies the name of the addon that will be used for the backup purpose.
@@ -160,6 +160,7 @@ namespace. Each backend has the following fields:
 - **repositories :** specifies a list of repository information where the backed up data will be stored. KubeStash will create the respective `Repository` CRs using this information. Each repository consists of the following fields:
   - **name :** specifies the name of the `Repository`.
   - **backend :** specifies the name of the backend where this repository will be initialized. This should point to a backend name specified in `.spec.backends` section. For using a default backend, keep this field empty.
+  - **backupVerifier :** specifies the name of the `BackupVerifier` which will be used to verify the backed up data in this repository. You can refer to a `BackupVerifier` of a different namespace by providing `name` and `namespace` fields.
   - **directory :** specifies the path inside the backend where the backed up data will be stored.
   - **encryptionSecret :** refers to the Secret containing the encryption key which will be used to encrypt the backed up data. You can refer to a Secret of a different namespace by providing `name` and `namespace` fields. This field is optional. No encryption secret is required for `VolumeSnapshot` backups.
   - **deletionPolicy :** specifies what to do when you delete a `Repository` CR. The valid values for this field are:
@@ -184,7 +185,7 @@ Scheduler Spec specifies the configuration for the backup triggering CronJob for
 - **jobTemplate :** Specifies the job that will be created when executing a CronJob. JobTemplate has the following fields:
 
   | Field                     | Usage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-    |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+  |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
   | `parallelism`             | Specifies the maximum desired number of pods the job should run at any given time. The actual number of pods running in steady state will be less than this number when ((`.spec.completions` - `.status.successful)` < `.spec.parallelism`), i.e. when the work left to do is less than max parallelism. More info can be found [here](https://kubernetes.io/docs/concepts/workloads/controllers/job/#parallel-jobs)                                                                                                                                                                                                                                     |
   | `completions`             | Specifies the desired number of successfully finished pods the job should be run with.  Setting to nil means that the success of any pod signals the success of all pods, and allows parallelism to have any positive value. Setting to 1 means that parallelism is limited to 1 and the success of that pod signals the success of the job. More info [here](https://kubernetes.io/docs/concepts/workloads/controllers/job/#parallel-jobs)                                                                                                                                                                                                               |
   | `activeDeadlineSeconds`   | Specifies the duration in seconds relative to the startTime that the job  may be continuously active before the system tries to terminate it; value must be positive integer. If a Job is suspended (at creation or through an update), this timer will effectively be stopped and reset when the Job is resumed again.                                                                                                                                                                                                                                                                                                                                   |
@@ -318,15 +319,17 @@ A `BackupConfiguration` object has the following fields in the `status` section.
   - **name :** indicate the name of the `Repository`.
   - **phase :** indicates the phase of the respective Repository which can be `Ready` or `NotReady`.
   - **reason :** specifies the error messages found while ensuring the respective `Repository`.
+  - **verificationConfigured :** indicates whether the backup verification for this repository is configured or not.
 - **dependencies :** specifies whether the objects required by this `BackupConfiguration` exist or not.
 - **sessions :** specifies status of the session specific resources. It consists of the following fields:
   - **name :** indicates the name of the session.
   - **nextSchedule :** specifies when the next backup will execute for this session.
   - **conditions :** specifies a list of conditions related to this session. The following condition is set by the KubeStash operator on each `.status.sessions`.
   
-| Condition Type     | Usage                                               |
-|--------------------|-----------------------------------------------------|
-| `SchedulerEnsured` | indicates whether the Scheduler was ensured or not. |
+| Condition Type           | Usage                                                     |
+|--------------------------|-----------------------------------------------------------|
+| `SchedulerEnsured`       | indicates whether the Scheduler was ensured or not.       |
+| `InitialBackupTriggered` | indicates whether the initial backup is triggered or not. |
 
 - **phase :** represents the current state of the `BackupConfiguration`.
 - **targetFound :** specifies whether the backup target exists or not.
