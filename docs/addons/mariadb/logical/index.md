@@ -119,48 +119,6 @@ mariadb   1/1     13m
 
 **Create Secret:**
 
-Let's create a secret called `gcs-secret` with access credentials to our desired GCS bucket,
-
-```bash
-$ echo -n '<your-project-id>' > GOOGLE_PROJECT_ID
-$ cat /path/to/downloaded-sa-key.json > GOOGLE_SERVICE_ACCOUNT_JSON_KEY
-$ kubectl create secret generic -n demo gcs-secret \
-    --from-file=./GOOGLE_PROJECT_ID \
-    --from-file=./GOOGLE_SERVICE_ACCOUNT_JSON_KEY
-secret/gcs-secret created
-```
-
-**Create BackupStorage:**
-
-Now, create a `BackupStorage` using this secret. Below is the YAML of `BackupStorage` CR we are going to create,
-
-```yaml
-apiVersion: storage.kubestash.com/v1alpha1
-kind: BackupStorage
-metadata:
-  name: gcs-storage
-  namespace: demo
-spec:
-  storage:
-    provider: gcs
-    gcs:
-      bucket: kubestash-qa
-      prefix: demo
-      secretName: gcs-secret
-  usagePolicy:
-    allowedNamespaces:
-      from: All
-  default: true
-  deletionPolicy: Delete
-```
-
-
-Here’s what we’ve done so far:
-- Created a sample `MariaDB` database named `playground`.
-
-
-**Create Secret:**
-
 Now, create a `Secret` that contains the authentication username and password.
 
 ```yaml
@@ -267,8 +225,10 @@ MariaDB [playground]> exit
 Bye
 ```
 
-Now, we are ready to backup the database.
+Here’s what we’ve done so far:
+- Created a sample `MariaDB` database named `playground`.
 
+Now, we are ready to backup the database.
 
 ### Prepare Backend
 
