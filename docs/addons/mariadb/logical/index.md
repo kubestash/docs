@@ -117,13 +117,6 @@ NAME      READY   AGE
 mariadb   1/1     13m
 ```
 
-Now, we are ready to backup the database.
-
-
-### Prepare Backend
-
-We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a `BackupStorage` CR to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](https://kubestash.com/docs/latest/guides/backends/overview/).
-
 **Create Secret:**
 
 Let's create a secret called `gcs-secret` with access credentials to our desired GCS bucket,
