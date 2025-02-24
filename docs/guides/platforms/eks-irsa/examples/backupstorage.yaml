@@ -7,7 +7,7 @@ spec:
   storage:
     provider: s3
     s3:
-      endpoint: 's3.amazonaws.com'
+      endpoint: 'https://s3.us-east-1.amazonaws.com'
       bucket: kubestash
       prefix: demo
       region: us-east-1

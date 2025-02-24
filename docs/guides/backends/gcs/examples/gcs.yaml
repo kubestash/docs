@@ -5,13 +5,11 @@ metadata:
   namespace: demo
 spec:
   storage:
-    provider: s3
-    s3:
-      endpoint: s3.amazonaws.com # use server URL for s3 compatible other storage service
+    provider: gcs
+    gcs:
       bucket: kubestash-demo
-      region: us-west-1
-      prefix: /backup/demo/deployment/kubestash-demo
-      secretName: s3-secret
+      prefix: demo
+      secretName: gcs-secret
   usagePolicy:
     allowedNamespaces:
       from: All

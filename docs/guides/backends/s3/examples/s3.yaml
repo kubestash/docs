@@ -7,7 +7,7 @@ spec:
   storage:
     provider: s3
     s3:
-      endpoint: s3.amazonaws.com # use server URL for s3 compatible other storage service
+      endpoint: https://s3.us-west-1.amazonaws.com # use server URL for s3 compatible other storage service
       bucket: kubestash-demo
       region: us-west-1
       prefix: /backup/demo/deployment/kubestash-demo
