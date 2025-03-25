@@ -1,0 +1,43 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: resources-request-limit
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: Deployment
+    name: kubestash-demo
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: demo-session
+      scheduler:
+        schedule: "*/5 * * * *"
+      repositories:
+        - name: gcs-demo-repo
+          backend: gcs-backend
+          directory: /dep
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        jobTemplate:
+          spec:
+            resources:
+              requests:
+                cpu: "200m"
+                memory: "1Gi"
+              limits:
+                cpu: "200m"
+                memory: "1Gi"
+        tasks:
+          - name: logical-backup
