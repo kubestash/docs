@@ -1,0 +1,21 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: specific-snapshot
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: StatefulSet
+    namespace: demo
+    name: kubestash-restore-statefulset
+  dataSource:
+    repository: statefulset-demo-gcs
+    snapshot: gcs-sts-repo-sample-sts-backup-frequent-backup-1725258300
+    encryptionSecret:
+      name: encrypt-secret # some addon may not support encryption
+      namespace: demo
+  addon:
+    name: workload-addon
+    tasks:
+      - name: logical-backup-restore

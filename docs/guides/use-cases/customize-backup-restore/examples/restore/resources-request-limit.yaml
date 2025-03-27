@@ -1,0 +1,30 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: resources-request-limit
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: StatefulSet
+    namespace: demo
+    name: kubestash-restore-statefulset
+  dataSource:
+    repository: statefulset-demo-gcs
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret # some addon may not support encryption
+      namespace: demo
+  addon:
+    name: workload-addon
+    jobTemplate:
+      spec:
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "1Gi"
+          limits:
+            cpu: "200m"
+            memory: "1Gi"
+    tasks:
+      - name: logical-backup-restore

@@ -1,0 +1,47 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: multiple-backend
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: Deployment
+    name: kubestash-demo
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+    - name: s3-backend
+      storageRef:
+        namespace: demo
+        name: s3-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: demo-session
+      scheduler:
+        schedule: "*/5 * * * *"
+      repositories:
+        - name: gcs-demo-repo
+          backend: gcs-backend
+          directory: /dep-s3
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+        - name: s3-demo-repo
+          backend: s3-backend
+          directory: /dep-gcs
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
