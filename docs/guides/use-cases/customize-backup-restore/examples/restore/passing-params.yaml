@@ -1,7 +1,7 @@
 apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: include-exlude
+  name: passing-params
   namespace: demo
 spec:
   target:
