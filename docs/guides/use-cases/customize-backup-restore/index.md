@@ -14,7 +14,7 @@ section_menu_id: guides
 
 # Customizing the Backup and Restore Process
 
-This guide will show you how you can customize backup and restore processes in Stash according to your needs.
+This guide will show you how you can customize backup and restore processes in KubeStash according to your needs.
 
 > Note: YAML files used in this tutorial are stored [here](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/use-cases/customize-backup-restore/examples).
 
@@ -22,9 +22,55 @@ This guide will show you how you can customize backup and restore processes in S
 
 In this section, we are going to show you how to customize the backup process. Here, we are going to show some examples of providing arguments to the backup process, running the backup process as a specific user, using a volume for restic cache, etc.
 
-### Passing include/exclude paths to the backup process
+### Passing `Include/Exclude` Paths for Backup
 
-We can send a list of backup paths and a list of pattern for the files that should be ignored during backup.
+We can define a list of paths to include via `spec.sessions[*].addon.tasks[*}.params.paths` in the backup and specify patterns for files that should be excluded via `spec.sessions[*].addon.tasks[*}.params.exclude` during the process.
+
+Here is an example of passing `paths` and `exclude` parameters in `BackupConfiguration`:
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: passing-params
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: Deployment
+    name: kubestash-demo
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: demo-session
+      scheduler:
+        schedule: "*/5 * * * *"
+      repositories:
+        - name: gcs-demo-repo
+          backend: gcs-backend
+          directory: /dep
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: logical-backup
+            params:
+              paths: /source/data,/source/config
+              exclude: /source/data/lost+found,/source/config/lost+found
+```
+Here,
+- `addon.tasks[*].params.paths` specifies the targeted paths during the backup process.
+- `addon.tasks[*].params.exclude` specifies the list of  paths that should be ignored during backup.
+
 
 ### Using multiple backends
 
@@ -84,8 +130,8 @@ spec:
 
 You can specify a Restic cache volume using either an existing PVC name or a volumeClaimTemplate:
 
-- Use `addon.tasks[*].addonVolumes.source.PersistentVolumeClaim.claimName` to provide an existing PVC name.
-- Use `addon.tasks[*].addonVolumes.volumeClaimTemplate` to define a volumeClaimTemplate.
+- Use `addon.tasks[*].addonVolumes[*].source.PersistentVolumeClaim.claimName` to provide an existing PVC name.
+- Use `addon.tasks[*].addonVolumes[*].source.volumeClaimTemplate` to define a volumeClaimTemplate.
 
 Here is an example of passing `volumeClaimTemplate` during in `BackupConfiguration`:
 
@@ -138,57 +184,7 @@ spec:
 Here,
 - `addon.tasks[*].addonVolumes[*].source.volumeClaimTemplate` dynamically creates a volume for use as the Restic cache during backup.
 
-> Note: The placeholder `${RESTIC_CACHE_VOLUME}` is automatically resolved at runtime, ensuring the correct volume is created.
-
-
-### Passing Include/Exclude Paths for Backup
-
-We can define a list of paths to include via `spec.sessions[*].addon.tasks[*}.params.paths` in the backup and specify patterns for files that should be excluded via `spec.sessions[*].addon.tasks[*}.params.exclude` during the process.
-
-Here is an example of passing `paths` and `exclude` parameters in `BackupConfiguration`:
-
-```yaml
-apiVersion: core.kubestash.com/v1alpha1
-kind: BackupConfiguration
-metadata:
-  name: passing-params
-  namespace: demo
-spec:
-  target:
-    apiGroup: apps
-    kind: Deployment
-    name: kubestash-demo
-    namespace: demo
-  backends:
-    - name: gcs-backend
-      storageRef:
-        name: gcs-storage
-        namespace: demo
-      retentionPolicy:
-        name: demo-retention
-        namespace: demo
-  sessions:
-    - name: demo-session
-      scheduler:
-        schedule: "*/5 * * * *"
-      repositories:
-        - name: gcs-demo-repo
-          backend: gcs-backend
-          directory: /dep
-          encryptionSecret:
-            name: encrypt-secret
-            namespace: demo
-      addon:
-        name: workload-addon
-        tasks:
-          - name: logical-backup
-            params:
-              paths: /source/data,/source/config
-              exclude: /source/data/lost+found,/source/config/lost+found
-```
-Here,
-- `addon.tasks[*].params.paths` specifies the targeted paths during the backup process.
-- `addon.tasks[*].params.exclude` specifies the list of  paths that should be ignored during backup.
+> Note: The placeholder `${RESTIC_CACHE_VOLUME}` is automatically resolved at runtime. To use the `Restic` cache volume, you must define this placeholder.
 
 ### Running backup Container as a specific user
 
@@ -236,8 +232,7 @@ spec:
           - name: logical-backup
 ```
 
-
-### Specifying Memory/CPU limit/request for the backup job
+### Specifying `Memory/CPU` limit/request for the backup job
 
 If you want to specify the `Memory/CPU` limit/request for your backup job, you can specify `resources` field under `addon.jobTemplate.spec` section.
 
@@ -291,12 +286,88 @@ spec:
 
 In this section, we are going to show you how to customize the restore process. Here, we are going to show some examples of providing arguments to the restore process, running the restore process as a specific user, using a volume for restic cache, etc.
 
+### Passing Include/Exclude Parameters for Restore
+
+We can define a list of paths to include via `spec.addon.tasks[*}.params.include` in the restore and specify patterns for files that should be excluded via `spec.addon.tasks[*}.params.exclude` during the restore process.
+
+Here is an example of passing `include` and `exclude` parameters in `RestoreSession`:
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: passing-params
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: StatefulSet
+    namespace: demo
+    name: kubestash-restore-statefulset
+  dataSource:
+    repository: statefulset-demo-gcs
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret # some addon may not support encryption
+      namespace: demo
+  addon:
+    name: workload-addon
+    tasks:
+    - name: logical-backup-restore
+      params:
+        exclude: /source/config
+        include: /source/data
+```
+
+Here,
+- `addon.tasks[*].params.include` specifies the list of patterns for the files that should be restored.
+- `addon.tasks[*].params.exclude` specifies the list of patterns for the files that should be ignored during restore.
+
+### Restore specific snapshot
+
+You can also restore a specific snapshot. At first, list the available snapshot as bellow,
+
+```bash
+➤ kubectl get snapshots.storage.kubestash.com -n demo -l=kubestash.com/repo-name=gcs-sts-repo
+NAME                                                            REPOSITORY       SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
+gcs-sts-repo-sample-sts-backup-frequent-backup-1725257849   gcs-sts-repo   frequent-backup   2024-09-02T06:18:01Z   Delete            Succeeded   15m
+gcs-sts-repo-sample-sts-backup-frequent-backup-1725258000   gcs-sts-repo   frequent-backup   2024-09-02T06:20:00Z   Delete            Succeeded   13m
+gcs-sts-repo-sample-sts-backup-frequent-backup-1725258300   gcs-sts-repo   frequent-backup   2024-09-02T06:25:00Z   Delete            Succeeded   8m34s
+gcs-sts-repo-sample-sts-backup-frequent-backup-1725258600   gcs-sts-repo   frequent-backup   2024-09-02T06:30:00Z   Delete            Succeeded   3m34s
+```
+
+The below example shows how you can pass a specific snapshot name in `.dataSource` section.
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: specific-snapshot
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: StatefulSet
+    namespace: demo
+    name: kubestash-restore-statefulset
+  dataSource:
+    repository: statefulset-demo-gcs
+    snapshot: gcs-sts-repo-sample-sts-backup-frequent-backup-1725258300
+    encryptionSecret:
+      name: encrypt-secret # some addon may not support encryption
+      namespace: demo
+  addon:
+    name: workload-addon
+    tasks:
+      - name: logical-backup-restore
+```
+
 ### Passing a `PVC` name or `volumeClaimTemplate` as restic cache volume
 
 You can specify a Restic cache volume using either an existing PVC name or a volumeClaimTemplate:
 
-- Use `addon.tasks[*].addonVolumes.source.PersistentVolumeClaim.claimName` to provide an existing PVC name.
-- Use `addon.tasks[*].addonVolumes.volumeClaimTemplate` to define a volumeClaimTemplate.
+- Use `addon.tasks[*].addonVolumes[*].source.PersistentVolumeClaim.claimName` to provide an existing PVC name.
+- Use `addon.tasks[*].addonVolumes[*].source.volumeClaimTemplate` to define a volumeClaimTemplate.
 
 Here is an example of passing `volumeClaimTemplate` during in `RestoreSession`:
 
@@ -336,80 +407,7 @@ spec:
 Here,
 - `addon.tasks[*].addonVolumes[*].source.volumeClaimTemplate` dynamically creates a volume for use as the Restic cache during restore.
 
-> Note: The placeholder `${RESTIC_CACHE_VOLUME}` is automatically resolved at runtime, ensuring the correct volume is created.
-
-
-### Passing Include/Exclude Parameters for Restore
-
-We can define a list of paths to include via `spec.addon.tasks[*}.params.include` in the restore and specify patterns for files that should be excluded via `spec.addon.tasks[*}.params.exclude` during the restore process.
-
-Here is an example of passing `include` and `exclude` parameters in `RestoreSession`:
-
-```yaml
-apiVersion: core.kubestash.com/v1alpha1
-kind: RestoreSession
-metadata:
-  name: passing-params
-  namespace: demo
-spec:
-  target:
-    apiGroup: apps
-    kind: StatefulSet
-    namespace: demo
-    name: kubestash-restore-statefulset
-  dataSource:
-    repository: statefulset-demo-gcs
-    snapshot: latest
-    encryptionSecret:
-      name: encrypt-secret # some addon may not support encryption
-      namespace: demo
-  addon:
-    name: workload-addon
-    tasks:
-    - name: logical-backup-restore
-      params:
-        exclude: /source/config
-        include: /source/data
-```
-
-Here,
-- `addon.tasks[*].params.include` specifies the list of patterns for the files that should be restored.
-- `addon.tasks[*].params.exclude` specifies the list of patterns for the files that should be ignored during restore.
-
-
-### Restore specific snapshot
-
-You can also restore a specific snapshot. At first, list the available snapshot as bellow,
-
-```bash
-```
-
-The below example shows how you can pass a specific snapshot name in `.dataSource` section.
-
-```yaml
-apiVersion: core.kubestash.com/v1alpha1
-kind: RestoreSession
-metadata:
-  name: specific-snapshot
-  namespace: demo
-spec:
-  target:
-    apiGroup: apps
-    kind: StatefulSet
-    namespace: demo
-    name: kubestash-restore-statefulset
-  dataSource:
-    repository: statefulset-demo-gcs
-    snapshot: 
-    encryptionSecret:
-      name: encrypt-secret # some addon may not support encryption
-      namespace: demo
-  addon:
-    name: workload-addon
-    tasks:
-      - name: logical-backup-restore
-```
-
+> Note: The placeholder `${RESTIC_CACHE_VOLUME}` is automatically resolved at runtime. To use the `Restic` cache volume, you must define this placeholder.
 
 ### Running restore job as a specific user
 

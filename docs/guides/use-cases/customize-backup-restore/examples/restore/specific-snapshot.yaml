@@ -11,7 +11,7 @@ spec:
     name: kubestash-restore-statefulset
   dataSource:
     repository: statefulset-demo-gcs
-    snapshot:
+    snapshot: gcs-sts-repo-sample-sts-backup-frequent-backup-1725258300
     encryptionSecret:
       name: encrypt-secret # some addon may not support encryption
       namespace: demo
