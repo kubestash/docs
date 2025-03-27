@@ -139,7 +139,7 @@ Here is an example of passing `volumeClaimTemplate` during in `BackupConfigurati
 apiVersion: core.kubestash.com/v1alpha1
 kind: BackupConfiguration
 metadata:
-  name: passing-params
+  name: restic-cache-volume
   namespace: demo
 spec:
   target:
