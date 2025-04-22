@@ -1,0 +1,22 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: my-app-restoresession
+  namespace: demo
+spec:
+  manifestOptions:
+    workload:
+      restoreNamespace: demo
+  dataSource:
+    repository: gcs-repo-for-app
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret
+      namespace: demo
+  addon:
+    name: workload-addon
+    tasks:
+      - name: manifest-restore
+        params:
+          includeClusterResources: "true"
+          overrideResources: "true"

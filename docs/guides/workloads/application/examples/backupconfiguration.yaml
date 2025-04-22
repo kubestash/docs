@@ -1,0 +1,45 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: my-app-backupconfiguration
+  namespace: demo
+spec:
+  target:
+    apiGroup: apps
+    kind: StatefulSet
+    name: my-app
+    namespace: demo
+  backends:
+    - name: gcs-storage
+      storageRef:
+        namespace: demo
+        name: gcs-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: workload-backup
+      sessionHistoryLimit: 3
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: gcs-repo-for-app
+          backend: gcs-storage
+          directory: /manifest/app
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: workload-addon
+        tasks:
+          - name: manifest-backup
+            params:
+              includeClusterResources: "true"
+        jobTemplate:
+          spec:
+            serviceAccountName: my-serviceaccount
+      retryConfig:
+        maxRetry: 2
+        delay: 1m
