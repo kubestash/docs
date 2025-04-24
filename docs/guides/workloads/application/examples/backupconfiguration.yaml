@@ -39,7 +39,7 @@ spec:
               includeClusterResources: "true"
         jobTemplate:
           spec:
-            serviceAccountName: my-serviceaccount
+           serviceAccountName: permissions-serviceaccount
       retryConfig:
         maxRetry: 2
         delay: 1m

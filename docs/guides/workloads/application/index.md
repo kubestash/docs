@@ -119,8 +119,8 @@ metadata:
   labels:
     app: my-app
 rules:
-  - apiGroups: ["*"]
-    resources: ["*"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles","rolebindings"]
     verbs: ["create", "list", "get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -146,8 +146,8 @@ metadata:
   labels:
     app: my-app
 rules:
-  - apiGroups: ["*"]
-    resources: ["*"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
     verbs: ["create", "get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -159,9 +159,6 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: my-serviceaccount
-    namespace: demo
-  - kind: Group
-    name: system:serviceaccounts:demo 
     namespace: demo
 roleRef:
   kind: ClusterRole
@@ -244,7 +241,6 @@ $ kubectl get pods -n demo
 NAME       READY   STATUS    RESTARTS   AGE
 my-app-0   1/1     Running   0          8m33s
 my-app-1   1/1     Running   0          8m8s
-
 ```
 ```bash
 $ kubectl get persistentvolumeclaim,configmap,secret,service,serviceaccount,role,rolebinding -n demo -l app=my-app
@@ -433,7 +429,7 @@ spec:
               includeClusterResources: "true"
         jobTemplate:
           spec:
-            serviceAccountName: my-serviceaccount
+            serviceAccountName: permissions-serviceaccount
       retryConfig:
         maxRetry: 2
         delay: 1m
@@ -458,9 +454,9 @@ backupconfiguration.core.kubestash.com/my-app-backupconfiguration created
 Additionally, we can verify that the `Repository` specified in the `BackupConfiguration` has been created using the following command,
 
 ```bash
-kubectl get repo -n demo
-NAME                       INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repo-for-statefulset               1                0 B    Ready                            92s
+$ kubectl get repository -n demo gcs-repo-for-app
+NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE         PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-repo-for-app   true        3                27.456 KiB   Ready   4m58s                    7m25s
 
 ```
 
@@ -473,9 +469,10 @@ It will also create a `CronJob` with the schedule specified in `spec.sessions[*]
 Verify that the `CronJob` has been created using the following command,
 
 ```bash
-$ kubectl get cronjob -n demo
-NAME                                     SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
-trigger-sample-backup-sts-demo-session   */2 * * * *             0        2m45s           3m25s
+$ kubectl get cronjob -n demo 
+NAME                                                 SCHEDULE      TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+trigger-my-app-backupconfiguration-workload-backup   */5 * * * *   <none>     False     0        2m37s           4m54s
+
 ```
 
 **Wait for BackupSession:**
@@ -483,9 +480,11 @@ trigger-sample-backup-sts-demo-session   */2 * * * *             0        2m45s 
 Wait for the next schedule for backup. Run the following command to watch `BackupSession` CR,
 
 ```bash
-$ kubectl get backupsession -n demo -w
-NAME                                        INVOKER-TYPE          INVOKER-NAME        PHASE       DURATION   AGE
-sample-backup-sts-demo-session-1706015400   BackupConfiguration   sample-backup-sts   Succeeded              7m22s
+$ kubectl get backupsession -n demo 
+NAME                                                    INVOKER-TYPE          INVOKER-NAME                 PHASE       DURATION   AGE
+my-app-backupconfiguration-workload-backup-1745487153   BackupConfiguration   my-app-backupconfiguration   Succeeded   38s        5m54s
+my-app-backupconfiguration-workload-backup-1745487300   BackupConfiguration   my-app-backupconfiguration   Succeeded   42s        3m37s
+
 ```
 
 We can see from the above output that the backup session has succeeded. Now, we are going to verify whether the backed up data has been stored in the backend.
@@ -495,17 +494,19 @@ We can see from the above output that the backup session has succeeded. Now, we 
 Once a backup is complete, KubeStash will update the respective `Repository` CR to reflect the backup. Check that the repository `gcs-demo-repo` has been updated by the following command,
 
 ```bash
-$ kubectl get repository -n demo gcs-demo-repo
-NAME              INTEGRITY   SNAPSHOT-COUNT   SIZE    PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-demo-repo     true        1                806 B   Ready   8m27s                    9m18s
+$ kubectl get repository -n demo gcs-repo-for-app
+NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE         PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+gcs-repo-for-app   true        3                27.456 KiB   Ready   4m58s                    7m25s
+
 ```
 
 At this moment we have one `Snapshot`. Run the following command to check the respective `Snapshot` which represents the state of a backup run for an application.
 
 ```bash
-$ kubectl get snapshots -n demo -l=kubestash.com/repo-name=gcs-demo-repo
-NAME                                                      REPOSITORY      SESSION        SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
-gcs-demo-repo-sample-backup-sts-demo-session-1706015400   gcs-demo-repo   demo-session   2024-01-23T13:10:54Z   Delete            Succeeded   16h
+$ kubectl get snapshots.storage.kubestash.com -n demo -l kubestash.com/repo-name=gcs-repo-for-app
+NAME                                                              REPOSITORY         SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
+gcs-repo-for-app-my-app-backupcotion-workload-backup-1745487300   gcs-repo-for-app   workload-backup   2025-04-24T09:35:00Z   Delete            Succeeded   7m49s
+gcs-repo-for-app-my-app-backupcotion-workload-backup-1745487600   gcs-repo-for-app   workload-backup   2025-04-24T09:40:00Z   Delete            Succeeded   2m49s
 ```
 
 > Note: KubeStash creates a `Snapshot` with the following labels:
@@ -519,67 +520,125 @@ gcs-demo-repo-sample-backup-sts-demo-session-1706015400   gcs-demo-repo   demo-s
 If we check the YAML of the `Snapshot`, we can find the information about the backed up components of the StatefulSet.
 
 ```bash
-$ kubectl get snapshots -n demo gcs-demo-repo-sample-backup-sts-demo-session-1706015400 -oyaml
+$ kubectl get snapshots.storage.kubestash.com -n demo gcs-repo-for-app-my-app-backupcotion-workload-backup-1745487600 -oyaml
 ```
 
 ```yaml
 apiVersion: storage.kubestash.com/v1alpha1
 kind: Snapshot
 metadata:
+  creationTimestamp: "2025-04-24T09:40:00Z"
+  finalizers:
+  - kubestash.com/cleanup
+  generation: 1
   labels:
     kubestash.com/app-ref-kind: StatefulSet
-    kubestash.com/app-ref-name: sample-sts
+    kubestash.com/app-ref-name: my-app
     kubestash.com/app-ref-namespace: demo
-    kubestash.com/repo-name: gcs-demo-repo
-  name: gcs-demo-repo-sample-backup-sts-demo-session-1706015400
+    kubestash.com/repo-name: gcs-repo-for-app
+  name: gcs-repo-for-app-my-app-backupcotion-workload-backup-1745487600
   namespace: demo
+  ownerReferences:
+  - apiVersion: storage.kubestash.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Repository
+    name: gcs-repo-for-app
+    uid: babf1352-4c2c-4821-a53d-cfb9617a8ac4
+  resourceVersion: "306561"
+  uid: c8d77b9a-452f-491a-a7be-2dd5022561dd
 spec:
-  ...
+  appRef:
+    apiGroup: apps
+    kind: StatefulSet
+    name: my-app
+    namespace: demo
+  backupSession: my-app-backupconfiguration-workload-backup-1745487600
+  deletionPolicy: Delete
+  repository: gcs-repo-for-app
+  session: workload-backup
+  snapshotID: 01JSKJP78E1P5695K7S3FFKF20
+  type: FullBackup
+  version: v1
 status:
   components:
-    dump-pod-0:
+    manifest:
       driver: Restic
-      duration: 1.61162906s
+      duration: 12.029804059s
       integrity: true
-      path: repository/v1/demo-session/dump-pod-0
+      path: repository/v1/workload-backup/manifest
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 4e881fdd20afb49e1baab37654cc18d440dc2f90ad61c9077956ea4561bd41dd
-        size: 13 B
-        uploaded: 1.046 KiB
-      size: 803 B
-    dump-pod-1:
-      driver: Restic
-      duration: 1.597963671s
-      integrity: true
-      path: repository/v1/demo-session/dump-pod-1
-      phase: Succeeded
-      resticStats:
-      - hostPath: /source/data
-        id: 16a414187d554e1713c0a6363d904837998dc7f7d600d7c635a04c61dc1b5467
-        size: 13 B
-        uploaded: 1.046 KiB
-      size: 803 B
-    dump-pod-2:
-      driver: Restic
-      duration: 1.52695046s
-      integrity: true
-      path: repository/v1/demo-session/dump-pod-2
-      phase: Succeeded
-      resticStats:
-      - hostPath: /source/data
-        id: 9dc9efd5e9adfd0154eca48433cc57aa09bca018d970e9530769326c9783905c
-        size: 13 B
-        uploaded: 1.046 KiB
-      size: 798 B
-  ...
+      - hostPath: /kubestash-tmp/manifest
+        id: 94695b794dce66038d4a6752b3ed92272b7a80e5f5de1eedcfb7ec66e3e2e55a
+        size: 6.132 KiB
+        uploaded: 9.883 KiB
+      size: 27.429 KiB
+  conditions:
+  - lastTransitionTime: "2025-04-24T09:40:01Z"
+    message: Recent snapshot list updated successfully
+    reason: SuccessfullyUpdatedRecentSnapshotList
+    status: "True"
+    type: RecentSnapshotListUpdated
+  - lastTransitionTime: "2025-04-24T09:40:28Z"
+    message: Metadata uploaded to backend successfully
+    reason: SuccessfullyUploadedSnapshotMetadata
+    status: "True"
+    type: SnapshotMetadataUploaded
+  integrity: true
+  phase: Succeeded
+  size: 27.429 KiB
+  snapshotTime: "2025-04-24T09:40:00Z"
+  totalComponents: 1
+  verificationStatus: NotVerified
 ```
 > For StatefulSet, KubeStash takes backup from every pod of the StatefulSet. Since we are using three replicas, three components are present in the Snapshot. KubeStash uses `dump-pod-<ordinal-value>` as the component name for StatefulSet. The ordinal value in the component's name represents the ordinal value of the StatefulSet pod ordinal.
 
 Now, if we navigate to GCS bucket, we will see the backed up data stored in the `demo/demo/sample-sts/repository/v1/demo-session/dump-pod-<ordinal-value>` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the `demo/demo/sample-sts/snapshots` directory.
 
 > Note: KubeStash stores all dumped data encrypted in the backup directory, meaning it remains unreadable until decrypted.
+
+**Download Snapshot and Verify Manifest Files**
+
+To download a specific `Snapshot` you have to install `KubeStash Kubectl Plugin` from [here](/docs/setup/install/kubectl-plugin/). To know the format and flags available for `kubectl kubestash download` command explore [here](/docs/guides/cli/kubectl-plugin/). 
+
+```bash 
+ $ kubectl kubestash download cs-repo-for-app-my-app-backupcotion-workload-backup-1745487600 --namespace=demo --destination=/path/to/download
+
+I0424 17:14:47.434803  882209 download.go:197] Component: manifest of Snapshot demo/gcs-repo-for-app-my-app-backupcotion-workload-backup-1745487600 restored in path /path/to/download
+```
+
+After downloading the snapshot navigate to it's directory and check all the manifests file related to your application. 
+
+```bash 
+$ ~/path/to/download/gcs-repo-for-app-my-app-backupcotion-workload-backup-1745492700> tree
+.
+└── manifest
+    └── kubestash-tmp
+        └── manifest
+            ├── clusterrole
+            │   └── my-clusterrole.yaml
+            ├── clusterrolebinding
+            │   └── my-clusterrolebinding.yaml
+            ├── configmap
+            │   └── my-config.yaml
+            ├── pvc
+            │   └── my-pvc.yaml
+            ├── role
+            │   └── my-role.yaml
+            ├── rolebinding
+            │   └── my-rolebinding.yaml
+            ├── secret
+            │   └── my-secret.yaml
+            ├── service
+            │   └── my-service.yaml
+            ├── serviceaccount
+            │   └── my-serviceaccount.yaml
+            └── statefulset
+                └── my-app.yaml
+
+14 directories, 10 files
+```
 
 ## Restore
 
@@ -608,26 +667,25 @@ Here, is the YAML of the `RestoreSession` object that we are going to use for re
 apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: sample-restore
+  name: my-app-restoresession
   namespace: demo
 spec:
-  target:
-    apiGroup: apps
-    kind: StatefulSet
-    name: sample-sts
-    namespace: demo
+  manifestOptions:
+    workload:
+      restoreNamespace: demo
   dataSource:
-    repository: gcs-demo-repo
+    repository: gcs-repo-for-app
     snapshot: latest
     encryptionSecret:
       name: encrypt-secret
       namespace: demo
-    components:
-      - dump-pod-0
   addon:
     name: workload-addon
     tasks:
-      - name: logical-backup-restore
+      - name: manifest-restore
+        params:
+          includeClusterResources: "true"
+          overrideResources: "true"
 ```
 
 Here,
