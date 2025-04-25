@@ -40,7 +40,7 @@ namespace/demo created
 
 ## Backup Application Along With Related Resources
 
-This section will show you how to use KubeStash to backup backup an application along with related resources. Here, we are going to deploy a StatefulSet with a PVC and generate some sample data in it. Then, we are going to backup this sample data using KubeStash.
+This section will show you how to use KubeStash to backup an application along with related resources. Here, we are going to deploy a StatefulSet as application along with persistentvolumeclaim, secret, configmap, service,   serviceaccount, role, rolebinding, clusterrole, clusterrolebinding. Then, we are going to backup this resources using KubeStash.
 
 **Deploy The Application Along With Related Resources:**
 
@@ -242,6 +242,7 @@ NAME       READY   STATUS    RESTARTS   AGE
 my-app-0   1/1     Running   0          8m33s
 my-app-1   1/1     Running   0          8m8s
 ```
+Check the namespace scoped resources. 
 ```bash
 $ kubectl get persistentvolumeclaim,configmap,secret,service,serviceaccount,role,rolebinding -n demo -l app=my-app
 NAME                                            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
@@ -267,6 +268,7 @@ role.rbac.authorization.k8s.io/my-role   2025-04-22T08:37:59Z
 NAME                                                   ROLE           AGE
 rolebinding.rbac.authorization.k8s.io/my-rolebinding   Role/my-role   4m38s
 ```
+Check the clusterscoped resources. 
 ```bash
 $ kubectl get clusterrole,clusterrolebinding -l app=my-app
 NAME                                                   CREATED AT
@@ -275,15 +277,13 @@ clusterrole.rbac.authorization.k8s.io/my-clusterrole   2025-04-22T08:37:59Z
 NAME                                                                 ROLE                         AGE
 clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding   ClusterRole/my-clusterrole   10m
 ```
-Verify that the sample data has been generated in `/source/data` directory for `sample-sts-0` , `sample-sts-1` and `sample-sts-2` pod respectively using the following commands,
+Verify whether the applications pod are in running state. 
 
 ```bash
-$ kubectl exec -n demo sample-sts-0 -- cat /source/data/data.txt
-sample-sts-0
-$ kubectl exec -n demo sample-sts-1 -- cat /source/data/data.txt
-sample-sts-1
-$ kubectl exec -n demo sample-sts-2 -- cat /source/data/data.txt
-sample-sts-2
+$ kubectl get pods -n demo -l app=my-app 
+NAME       READY   STATUS    RESTARTS   AGE
+my-app-0   1/1     Running   0          13m45s
+my-app-1   1/1     Running   0          13m45s
 ```
 
 ### Prepare Backend
@@ -368,7 +368,7 @@ retentionpolicy.storage.kubestash.com/demo-retention created
 
 ### Backup
 
-We have to create a `BackupConfiguration` CR targeting the `sample-sts` StatefulSet that we have deployed earlier. KubeStash will create a `CronJob` for each session to take periodic backup of `/source/data` directory of the target.
+We have to create a `BackupConfiguration` CR targeting the `my-app` StatefulSet that we have deployed earlier. KubeStash will create a `CronJob` for each session to take periodic backup.
 
 At first, we need to create a secret with a Restic password for backup data encryption.
 
@@ -385,7 +385,9 @@ secret "encrypt-secret" created
 
 **Create BackupConfiguration:**
 
-Below is the YAML of the `BackupConfiguration` CR that we are going to create,
+Below is the YAML of the `BackupConfiguration` CR that we are going to create. 
+
+Note that you've to set `includeClusterResources` flag to `true` if you want to backup cluster scoped resources. By default this flag is set to `false`.
 
 ```yaml
 apiVersion: core.kubestash.com/v1alpha1
@@ -448,16 +450,16 @@ If everything goes well, the phase of the `BackupConfiguration` should be `Ready
 
 ```bash
 $ kubectl get backupconfiguration.core.kubestash.com -n demo 
-backupconfiguration.core.kubestash.com/my-app-backupconfiguration created
+NAME                         PHASE   PAUSED   AGE
+my-app-backupconfiguration   Ready            3m17s
 ```
 
 Additionally, we can verify that the `Repository` specified in the `BackupConfiguration` has been created using the following command,
 
 ```bash
-$ kubectl get repository -n demo gcs-repo-for-app
+arnab@nipun-pc ~> kubectl get repository -n demo
 NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE         PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repo-for-app   true        3                27.456 KiB   Ready   4m58s                    7m25s
-
+gcs-repo-for-app   true        2                25.085 KiB   Ready   33s                      24m
 ```
 
 KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the `Repository` YAML stored in the `demo/demo/sample-sts` directory.
@@ -469,10 +471,9 @@ It will also create a `CronJob` with the schedule specified in `spec.sessions[*]
 Verify that the `CronJob` has been created using the following command,
 
 ```bash
-$ kubectl get cronjob -n demo 
+arnab@nipun-pc ~> kubectl get cronjob -n demo
 NAME                                                 SCHEDULE      TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
-trigger-my-app-backupconfiguration-workload-backup   */5 * * * *   <none>     False     0        2m37s           4m54s
-
+trigger-my-app-backupconfiguration-workload-backup   */5 * * * *   <none>     False     0        2m49s           24m
 ```
 
 **Wait for BackupSession:**
@@ -611,7 +612,7 @@ I0424 17:14:47.434803  882209 download.go:197] Component: manifest of Snapshot d
 After downloading the snapshot navigate to it's directory and check all the manifests file related to your application. 
 
 ```bash 
-$ ~/path/to/download/gcs-repo-for-app-my-app-backupcotion-workload-backup-1745492700> tree
+$ ~/path/to/download/gcs-repo-for-app-my-app-backupcotion-workload-backup-1745487600> tree
 .
 └── manifest
     └── kubestash-tmp
@@ -642,26 +643,37 @@ $ ~/path/to/download/gcs-repo-for-app-my-app-backupcotion-workload-backup-174549
 
 ## Restore
 
-In this section, we are going to show you how to restore in the same StatefulSet which may be necessary when you have accidentally deleted any data.
+In this section, we are going to show you how to restore in the same StatefulSet along with related resources which may be necessary when you have accidentally deleted some of your resources.
 
 **Simulate Disaster:**
 
-Now, let's simulate an accidental deletion scenario. Here, we are going to exec into the StatefulSet pod `sample-sts-0` and delete the `data.txt` file from `/source/data`.
+Now, let's simulate an accidental deletion scenario. Here, we are going to delete all the related resources both namespace scoped and clusterscoped used by the application and the application itself. 
 
+**Delete namespace scoped resources:** 
 ```bash
-$ kubectl exec -it -n demo sample-sts-0 -- sh
-/ # 
-/ # rm /source/data/data.txt
-/ # cat /source/data/data.txt
-cat: can't open '/source/data/data.txt': No such file or directory
-/ # exit
+$ kubectl delete statefulset,secret,configmap,role,rolebinding,persistentvolumeclaim -n demo -l app=my-app
+statefulset.apps "my-app" deleted
+secret "my-secret" deleted
+configmap "my-config" deleted
+role.rbac.authorization.k8s.io "my-role" deleted
+rolebinding.rbac.authorization.k8s.io "my-rolebinding" deleted
+persistentvolumeclaim "my-pvc" deleted
+persistentvolumeclaim "storage-volume-my-app-0" deleted
+persistentvolumeclaim "storage-volume-my-app-1" deleted
+```
+
+**Delete cluster scoped resources:** 
+```bash 
+$ kubectl delete clusterrole,clusterrolebinding,persistentvolumeclaim -l app=my-app
+clusterrole.rbac.authorization.k8s.io "my-clusterrole" deleted
+clusterrolebinding.rbac.authorization.k8s.io "my-clusterrolebinding" deleted
 ```
 
 **Create RestoreSession:**
 
-To restore the StatefulSet, you have to create a `RestoreSession` object pointing to the StatefulSet.
+To restore the Application and all the related resources , you have to create a `RestoreSession` object pointing to the StatefulSet.
 
-Here, is the YAML of the `RestoreSession` object that we are going to use for restoring our `sample-sts` StatefulSet.
+Here, is the YAML of the `RestoreSession` object that we are going to use for restoring our `my-app` StatefulSet. Note that you've to set `includeClusterResources` flag to `true` if you want to restore cluster scoped resources. Also you've to set `overrideResources` flag to `true` if you want to override the resources. Both of the flags are by default set to `false`. 
 
 ```yaml
 apiVersion: core.kubestash.com/v1alpha1
@@ -696,40 +708,133 @@ Here,
 Let's create the `RestoreSession` object we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/statefulset/examples/restoresession.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/workloads/application/examples/restoresession.yaml
 restoresession.core.kubestash.com/sample-restore created
 ```
 
 Once, you have created the `RestoreSession` object, KubeStash will create restore Job(s). Run the following command to watch the phase of the `RestoreSession` object,
 
 ```bash
-$ watch kubectl get restoresession -n demo
-Every 2.0s: kubectl get restores... AppsCode-PC-03: Wed Jan 10 17:13:18 2024
+$ kubectl get restoresession -n demo
+NAME                    REPOSITORY         PHASE       DURATION   AGE
+my-app-restoresession   gcs-repo-for-app   Succeeded   45s        91s
 
-NAME             REPOSITORY      FAILURE-POLICY   PHASE       DURATION   AGE
-sample-restore   gcs-demo-repo                    Succeeded   3s         53s
 ```
 
 The `Succeeded` phase means that the restore process has been completed successfully.
 
-**Verify Restored Data:**
+**Verify Restored Resources:**
 
-Now, lets exec into the StatefulSet pod and verify whether actual data was restored or not,
+Now, let's check whether the namespace scoped resources restored or not,
 
 ```bash
-$ kubectl exec -it -n demo sample-sts-0 -- cat /source/data/data.txt
-sample-sts-0
+$ kubectl get statefulset,secret,configmap,role,rolebinding,persistentvolumeclaim -n demo -l app=my-app
+NAME                      READY   AGE
+statefulset.apps/my-app   2/2     103s
+
+NAME               TYPE     DATA   AGE
+secret/my-secret   Opaque   2      104s
+
+NAME                  DATA   AGE
+configmap/my-config   1      104s
+
+NAME                                     CREATED AT
+role.rbac.authorization.k8s.io/my-role   2025-04-25T08:22:58Z
+
+NAME                                                   ROLE           AGE
+rolebinding.rbac.authorization.k8s.io/my-rolebinding   Role/my-role   103s
+
+NAME                                            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/my-pvc                    Bound    pvc-fb4323ad-4540-4cb1-b6b4-f93a9e67ecb6   5Gi        RWO            longhorn       <unset>                 105s
+persistentvolumeclaim/storage-volume-my-app-0   Bound    pvc-ee59ea3d-8549-4151-8677-b4a8f36597c5   5Gi        RWO            longhorn       <unset>                 104s
+persistentvolumeclaim/storage-volume-my-app-1   Bound    pvc-91c1acba-626f-4ae0-b3b5-d6a8616cd47b   5Gi        RWO            longhorn       <unset>                 87s
+
+```
+Check the cluster scoped resources if you've set the includeClusterResources `flag` to `true` in `restoresession`. 
+```bash
+$ kubectl get clusterrole,clusterrolebinding -n demo -l app=my-app
+
+NAME                                                   CREATED AT
+clusterrole.rbac.authorization.k8s.io/my-clusterrole   2025-04-25T08:22:58Z
+
+NAME                                                                 ROLE                         AGE
+clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding   ClusterRole/my-clusterrole   103s
+```
+Check the pods of `my-app` application whether those are in `Ready` state or not.   
+```bash 
+$ kubectl get pods -n demo -l app=my-app
+NAME       READY   STATUS    RESTARTS   AGE
+my-app-0   1/1     Running   0          2m57s
+my-app-1   1/1     Running   0          2m40s
+```
+Describe the statefulset. 
+```bash 
+$ kubectl describe statefulset -n demo my-app
+Name:               my-app
+Namespace:          demo
+CreationTimestamp:  Fri, 25 Apr 2025 14:22:58 +0600
+Selector:           app=my-app
+Labels:             app=my-app
+Annotations:        <none>
+Replicas:           2 desired | 2 total
+Update Strategy:    RollingUpdate
+  Partition:        0
+Pods Status:        2 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:           app=my-app
+  Service Account:  my-serviceaccount
+  Containers:
+   my-container:
+    Image:        nginx:latest
+    Port:         8080/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:
+      /data from storage-volume (rw)
+      /etc/config from config-volume (rw)
+      /etc/secret from secret-volume (rw)
+  Volumes:
+   config-volume:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      my-config
+    Optional:  false
+   secret-volume:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  my-secret
+    Optional:    false
+   storage-volume:
+    Type:          PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:     my-pvc
+    ReadOnly:      false
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Volume Claims:
+  Name:          storage-volume
+  StorageClass:  
+  Labels:        app=my-app
+  Annotations:   <none>
+  Capacity:      5Gi
+  Access Modes:  [ReadWriteOnce]
+Events:
+  Type    Reason            Age    From                    Message
+  ----    ------            ----   ----                    -------
+  Normal  SuccessfulCreate  3m45s  statefulset-controller  create Claim storage-volume-my-app-0 Pod my-app-0 in StatefulSet my-app success
+  Normal  SuccessfulCreate  3m45s  statefulset-controller  create Pod my-app-0 in StatefulSet my-app successful
+  Normal  SuccessfulCreate  3m28s  statefulset-controller  create Claim storage-volume-my-app-1 Pod my-app-1 in StatefulSet my-app success
+  Normal  SuccessfulCreate  3m28s  statefulset-controller  create Pod my-app-1 in StatefulSet my-app successful
+
 ```
 
-Hence, we can see from the above output that the deleted data has been restored successfully from the backup.
+Hence, we can see from the above output that the deleted resour has been restored successfully from the backup.
 
 ## Cleaning Up
 
 To clean up the Kubernetes resources created by this tutorial, run:
 
 ```bash
-kubectl delete -n demo statefulset sample-sts
-kubectl delete -n demo backupconfiguration sample-backup-sts
-kubectl delete -n demo restoresession sample-restore
-kubectl delete -n demo backupstorage gcs-storage
+kubectl delete statefulset,secret,configmap,service,serviceaccount,role,rolebinding,persistentvolumeclaim -n demo -l app=my-app 
+kubectl delete clusterrole,clusterrolebinding -n demo -l app=my-app 
+kubectl delete backupconfiguration -n demo my-app-backupconfiguration
+kubectl delete restoresession -n demo my-app-restoresession
+kubectl delete backupstorages.storage.kubestash.com -n demo gcs-storage
 ```
