@@ -457,7 +457,7 @@ my-app-backupconfiguration   Ready            3m17s
 Additionally, we can verify that the `Repository` specified in the `BackupConfiguration` has been created using the following command,
 
 ```bash
-arnab@nipun-pc ~> kubectl get repository -n demo
+$ kubectl get repository -n demo
 NAME               INTEGRITY   SNAPSHOT-COUNT   SIZE         PHASE   LAST-SUCCESSFUL-BACKUP   AGE
 gcs-repo-for-app   true        2                25.085 KiB   Ready   33s                      24m
 ```
@@ -471,7 +471,7 @@ It will also create a `CronJob` with the schedule specified in `spec.sessions[*]
 Verify that the `CronJob` has been created using the following command,
 
 ```bash
-arnab@nipun-pc ~> kubectl get cronjob -n demo
+$ kubectl get cronjob -n demo
 NAME                                                 SCHEDULE      TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
 trigger-my-app-backupconfiguration-workload-backup   */5 * * * *   <none>     False     0        2m49s           24m
 ```
@@ -760,7 +760,7 @@ clusterrole.rbac.authorization.k8s.io/my-clusterrole   2025-04-25T08:22:58Z
 NAME                                                                 ROLE                         AGE
 clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding   ClusterRole/my-clusterrole   103s
 ```
-Check the pods of `my-app` application whether those are in `Ready` state or not.   
+Check the pods of `my-app` application if the status is `Running`.   
 ```bash 
 $ kubectl get pods -n demo -l app=my-app
 NAME       READY   STATUS    RESTARTS   AGE
@@ -825,7 +825,7 @@ Events:
 
 ```
 
-Hence, we can see from the above output that the deleted resour has been restored successfully from the backup.
+Hence, we can see from the above output that the deleted resources have been restored successfully from the backup.
 
 ## Cleaning Up
 
