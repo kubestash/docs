@@ -1,0 +1,19 @@
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
+metadata:
+  name: s3-storage
+  namespace: demo
+spec:
+  storage:
+    provider: s3
+    s3:
+      bucket: kubestash-qa
+      region: us-east-2
+      endpoint: http://s3.us-east-2.amazonaws.com
+      secretName: aws-s3-secret
+      prefix: nipun    
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  default: true 
+  deletionPolicy: WipeOut
