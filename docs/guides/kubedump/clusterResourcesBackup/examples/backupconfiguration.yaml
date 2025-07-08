@@ -1,0 +1,43 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: cluster-resources-backup
+  namespace: demo
+spec:
+  backends:
+    - name: s3-backend
+      storageRef:
+        namespace: demo
+        name: s3-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      sessionHistoryLimit: 1
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: s3-repo
+          backend: s3-backend
+          directory: /kubedump-manifests
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+          deletionPolicy: Retain
+      addon:
+        name: kubedump-addon
+        tasks:
+          - name: manifest-backup
+            params:
+              IncludeClusterResources: "true"
+              IncludeNamespaces: "*"
+              ExcludeNamespaces: "kube-system,longhorn-system"
+              IncludeResources: "deployments,statefulsets,serviceaccounts,serivces,secrets,configmaps"
+              ExcludeResources: "pods,events"
+              ANDedLabelSelectors: "app:my-app"
+        jobTemplate:
+          spec:
+            serviceAccountName: cluster-resource-reader-writter

@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-resource-reader-writter
+  namespace: demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-resource-reader-writter
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-resource-reader-writter
+subjects:
+- kind: ServiceAccount
+  name: cluster-resource-reader-writter
+  namespace: demo
+roleRef:
+  kind: ClusterRole
+  name: cluster-resource-reader-writter
+  apiGroup: rbac.authorization.k8s.io
