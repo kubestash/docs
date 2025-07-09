@@ -22,7 +22,7 @@ spec:
       repositories:
         - name: s3-repo
           backend: s3-backend
-          directory: /kubedump-manifests
+          directory: /cluster-manifests
           encryptionSecret:
             name: encrypt-secret
             namespace: demo
@@ -33,11 +33,10 @@ spec:
           - name: manifest-backup
             params:
               IncludeClusterResources: "true"
-              IncludeNamespaces: "*"
+              IncludeNamespaces: "demo-a,demo-b"
               ExcludeNamespaces: "kube-system,longhorn-system"
-              IncludeResources: "deployments,statefulsets,serviceaccounts,serivces,secrets,configmaps"
-              ExcludeResources: "pods,events"
-              ANDedLabelSelectors: "app:my-app"
+              IncludeResources: "*"
+              ORedLabelSelectors: "app:my-app,app:my-sts"
         jobTemplate:
           spec:
             serviceAccountName: cluster-resource-reader-writter
