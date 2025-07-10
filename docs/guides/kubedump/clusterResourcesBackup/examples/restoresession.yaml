@@ -18,8 +18,8 @@ spec:
           IncludeClusterResources: "true"
           ExcludeNamespaces: "demo-a"
           IncludeResources: "*"
-          ExcludeResources: "pods,replicasets"
-          ANDedLabelSelectors: "app:my-sts"
+          ExcludeResources: ""
+          #ANDedLabelSelectors: "app:my-sts"
           OverrideResources: "true"
           RestorePVs: "true"
     jobTemplate:
