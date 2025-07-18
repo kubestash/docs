@@ -11,7 +11,6 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  volumeName: my-pv-a
   storageClassName: "longhorn"
 ---
 apiVersion: v1
