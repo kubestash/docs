@@ -19,7 +19,6 @@ spec:
           ExcludeNamespaces: "demo-a"
           IncludeResources: "*"
           ExcludeResources: ""
-          #ANDedLabelSelectors: "app:my-sts"
           OverrideResources: "true"
           RestorePVs: "true"
     jobTemplate:

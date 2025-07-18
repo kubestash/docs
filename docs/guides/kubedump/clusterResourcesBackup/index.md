@@ -12,7 +12,7 @@ menu_name: docs_{{ .version }}
 section_menu_id: guides
 ---
 
-# Backup resource YAMLs of entire cluster using KubeStash
+# Backing Up and Restoring Cluster Resource Manifests Using KubeStash
 
 This guide will show you how you can take a backup of the resource YAMLs of your entire cluster using KubeStash.
 
@@ -32,20 +32,432 @@ You have to be familiar with the following custom resources:
 - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
 - [RetentionPolicy](/docs/concepts/crds/retentionpolicy/index.md)
 
-To keep things isolated, we are going to use a separate namespace called `demo` throughout this tutorial. Create the `demo` namespace if you haven't created it already.
+To keep things isolated, we are going to use a separate namespace called `demo`, `demo-a` and `demo-b` throughout this tutorial. Create the namespaces. 
 
 ```bash
 $ kubectl create ns demo
 namespace/demo created
+$ kubectl create ns demo-a 
+namespace/demo-a created
+$ kubectl create ns demo-b
+namespace/demo-b created
 ```
 
-> Note: YAML files used in this tutorial are stored [here](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/kubedump/cluster/examples).
+> Note: YAML files used in this tutorial are stored [here](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples).
 
-### Prepare for Backup
+--- 
 
-We are going to configure a backup for all the resource of our cluster.
+## Create Resources 
 
-#### Prepare Backend
+We need to create some resources both namespace scoped and cluster scoped for demonstrating our backup and restore process. For simplification we will be using two `labels` to demonstarte separation of the resources.   
+
+---
+
+For label `app=my-app` all of the resources will be either in `demo-a` namespace or cluster scoped.     
+
+--- 
+
+#### Resource Having Label `app=my-app` 
+
+Below is the YAML of the resources: 
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc-a
+  namespace: demo-a
+  labels:
+    app: my-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: "longhorn"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config-a
+  namespace: demo-a
+  labels:
+    app: my-app
+data:
+  app.properties: |
+    greeting.message=Hello, World!
+    app.version=1.0.0
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret-a
+  namespace: demo-a
+  labels:
+    app: my-app
+type: Opaque
+data:
+  username: "your_username" 
+  password:  "your_password" 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service-a
+  namespace: demo-a
+  labels:
+    app: my-app
+spec:
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-serviceaccount-a
+  namespace: demo-a
+  labels:
+    app: my-app
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: my-clusterrole-a
+  labels:
+    app: my-app
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-clusterrolebinding-a
+  labels:
+    app: my-app
+subjects:
+  - kind: ServiceAccount
+    name: my-serviceaccount-a
+    namespace: demo-a
+roleRef:
+  kind: ClusterRole
+  name: my-clusterrole-a
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment-a
+  namespace: demo-a
+  labels:
+    app: my-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      serviceAccountName: my-serviceaccount-a
+      containers:
+        - name: my-container-a
+          image: nginx:latest
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config-volume-a
+              mountPath: /etc/config
+            - name: secret-volume-a
+              mountPath: /etc/secret
+            - name: storage-volume-a
+              mountPath: /data
+      volumes:
+        - name: config-volume-a
+          configMap:
+            name: my-config-a
+        - name: secret-volume-a
+          secret:
+            secretName: my-secret-a
+        - name: storage-volume-a
+          persistentVolumeClaim:
+            claimName: my-pvc-a
+```
+
+Let's create the objects of having label `app:my-app` we have shown above,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/resources-a.yaml
+persistentvolumeclaim/my-pvc-a created
+configmap/my-config-a created
+secret/my-secret-a created
+service/my-service-a created
+serviceaccount/my-serviceaccount-a created
+clusterrole.rbac.authorization.k8s.io/my-clusterrole-a created
+clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding-a created
+deployment.apps/my-deployment-a created
+```
+
+**Verify Resource Creation:**
+
+Verify that the Repository specified in the BackupConfiguration has been created using the following command,
+
+```bash
+Every 2.0s: kubectl get replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app   nipun-pc: Thu Jul 10 15:39:45 2025
+
+NAME                                        DESIRED   CURRENT   READY   AGE
+replicaset.apps/my-deployment-a-6bbd894c5   3         3         3       4m47s
+
+NAME                TYPE     DATA   AGE
+secret/my-secret-a  Opaque   2      4m47s
+
+NAME                   DATA   AGE
+configmap/my-config-a  1      4m47s
+
+NAME                                                  CREATED AT
+clusterrole.rbac.authorization.k8s.io/my-clusterrole-a   2025-07-10T09:34:58Z
+
+NAME                                                                 ROLE                            AGE
+clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding-a   ClusterRole/my-clusterrole-a   4m47s
+
+NAME                     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM               STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+persistentvolume/my-pv-a 5Gi        RWO            Retain           Bound    demo-a/my-pvc-a     <unset>        <unset>                          4m47s
+
+NAME                            STATUS   VOLUME     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/my-pvc-a Bound    my-pv-a    5Gi        RWO            <unset>        <unset>                 4m47s
+
+NAME                TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+service/my-service-a ClusterIP  10.43.81.18   <none>        80/TCP    4m47s
+
+NAME                                SECRETS   AGE
+serviceaccount/my-serviceaccount-a  0         4m47s
+
+NAME                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/my-deployment-a   3/3     3             3         4m47s
+
+AME                                  READY   STATUS    RESTARTS   AGE
+pod/my-deployment-a-6bbd894c5-b9ks5   1/1     Running   0          4m47s
+pod/my-deployment-a-6bbd894c5-p992t   1/1     Running   0          4m47s
+pod/my-deployment-a-6bbd894c5-s72fw   1/1     Running   0          4m47s
+
+NAME                                        DESIRED   CURRENT   READY   AGE
+replicaset.apps/my-deployment-a-6bbd894c5   3         3         3       4m47s
+```
+
+--- 
+
+
+For label `app=my-sts` all of the resources will be either in `demo-b` namespace or cluster scoped.   
+
+---
+
+#### Resource Having Label `app=my-sts` 
+
+Below is the YAML of the resources: 
+
+```yaml
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc-b
+  namespace: demo-b
+  labels:
+    app: my-sts
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: "longhorn"  
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config-b
+  namespace: demo-b
+  labels:
+    app: my-sts
+data:
+  app.properties: |
+    greeting.message=Hello, World!
+    app.version=1.0.0
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret-b
+  namespace: demo-b
+  labels:
+    app: my-sts
+type: Opaque
+data:
+  username: your_username 
+  password: your_password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service-b
+  namespace: demo-b
+  labels:
+    app: my-sts
+spec:
+  selector:
+    app: my-sts
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-serviceaccount-b
+  namespace: demo-b
+  labels:
+    app: my-sts
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: my-clusterrole-b
+  labels:
+    app: my-sts
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-clusterrolebinding-b
+  labels:
+    app: my-sts
+subjects:
+  - kind: ServiceAccount
+    name: my-serviceaccount-b
+    namespace: demo-b
+roleRef:
+  kind: ClusterRole
+  name: my-clusterrole-b
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-statefulset
+  namespace: demo-b
+  labels:
+    app: my-sts
+spec:
+  serviceName: "my-service-b"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-sts
+  template:
+    metadata:
+      labels:
+        app: my-sts
+    spec:
+      serviceAccountName: my-serviceaccount-b
+      containers:
+        - name: my-container-b
+          image: nginx:latest
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config-volume-b
+              mountPath: /etc/config
+            - name: secret-volume-b
+              mountPath: /etc/secret
+            - name: storage-volume-b
+              mountPath: /data
+      volumes:
+        - name: config-volume-b
+          configMap:
+            name: my-config-b
+        - name: secret-volume-b
+          secret:
+            secretName: my-secret-b
+        - name: storage-volume-b
+          persistentVolumeClaim:
+            claimName: my-pvc-b 
+```
+
+Let's create the objects of having label `app:my-sts` we have shown above,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/resources-b.yaml
+persistentvolume/my-pv-b created
+persistentvolumeclaim/my-pvc-b created
+configmap/my-config-b created
+secret/my-secret-b created
+service/my-service-b created
+serviceaccount/my-serviceaccount-b created
+clusterrole.rbac.authorization.k8s.io/my-clusterrole-b created
+clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding-b created
+statefulset.apps/my-statefulset created
+```
+
+
+**Verify Resource Creation:**
+
+Verify that the Repository specified in the BackupConfiguration has been created using the following command,
+
+```bash
+Every 2.0s: kubectl get replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,pod -n demo-b -l app=my-sts   nipun-pc: Thu Jul 10 15:40:14 2025
+
+NAME                 TYPE     DATA   AGE
+secret/my-secret-b   Opaque   2      80m
+
+NAME                    DATA   AGE
+configmap/my-config-b   1      80m
+
+NAME                   TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE
+service/my-service-b   ClusterIP   10.43.63.79   <none>        80/TCP    80m
+
+NAME                                                     CREATED AT
+clusterrole.rbac.authorization.k8s.io/my-clusterrole-b   2025-07-18T08:52:52Z
+
+NAME                                                                   ROLE                           AGE
+clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding-b   ClusterRole/my-clusterrole-b   80m
+
+NAME                                 SECRETS   AGE
+serviceaccount/my-serviceaccount-b   0         80m
+
+NAME                              READY   AGE
+statefulset.apps/my-statefulset   3/3     80m
+
+NAME                             STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/my-pvc-b   Bound    pvc-aa924f87-e580-4dcd-9873-904e5c18c194   5Gi        RWO            longhorn       <unset>                 80m
+
+NAME                   READY   STATUS    RESTARTS   AGE
+pod/my-statefulset-0   1/1     Running   0          80m
+pod/my-statefulset-1   1/1     Running   0          80m
+pod/my-statefulset-2   1/1     Running   0          80m
+```
+
+---
+
+## Prepare for Backup
+
+We are going to configure a backup for some of the specific resources of our cluster.
+
+### Prepare Backend
 
 Now, we are going backup of the YAMLs of entire cluster to a S3 bucket using KubeStash. For this, we have to create a `Secret` with  necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
@@ -132,8 +544,9 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 retentionpolicy.storage.kubestash.com/demo-retention created
 ```
 
+---
 
-#### Create RBAC
+### Create RBAC
 
 To take backup of the resource YAMLs of entire cluster KubeStash creates a backup `Job`. This `Job` requires read permission for all the cluster resources. By default, KubeStash does not grant such cluster-wide permissions. We have to provide the necessary permissions manually.
 
@@ -178,7 +591,8 @@ clusterrole.rbac.authorization.k8s.io/cluster-resource-reader-writter created
 clusterrolebinding.rbac.authorization.k8s.io/cluster-resource-reader-writter created
 ```
 
-Now, we are ready for backup. In the next section, we are going to schedule a backup for our cluster resources.
+---
+
 
 ### Backup
 
@@ -226,7 +640,7 @@ spec:
       repositories:
         - name: s3-repo
           backend: s3-backend
-          directory: /kubedump-manifests19
+          directory: /cluster-manifests
           encryptionSecret:
             name: encrypt-secret
             namespace: demo
@@ -237,10 +651,10 @@ spec:
           - name: manifest-backup
             params:
               IncludeClusterResources: "true"
-              IncludeNamespaces: "demo"
-              #IncludeResources: "secrets,configmaps,deployments"
-              ANDedLabelSelectors: "app:my-app"
-              #ORedLabelSelectors: "app1:my-app1,app2:my-app2"
+              IncludeNamespaces: "demo-a,demo-b"
+              ExcludeNamespaces: "kube-system,longhorn-system"
+              IncludeResources: "*"
+              ORedLabelSelectors: "app:my-app,app:my-sts"
         jobTemplate:
           spec:
             serviceAccountName: cluster-resource-reader-writter
@@ -251,10 +665,80 @@ Here,
 - `spec.sessions[*].addon.tasks[*].name` specifies the name of the backup task.
 - `spec.sessions[*].addon.jobTemplate.spec.serviceAccountName`specifies the ServiceAccount name that we have created earlier with cluster-wide resource reading permission.
 
+### Flags in `manifest-backup` task in KubeDump 
+
+We have introduced some flags for filtering resources while taking backup.  
+
+``` yaml 
+- ANDedLabelSelectors
+  Usage: A set of labels, all of which need to be matched
+  to filter the resources.
+  Default: ""
+  Required: false
+  Example: "app:my-app,tier:frontend"
+
+- ORedLabelSelectors
+  Usage: A set of labels, at least one of which need to 
+  be matched to filter the resources. 
+  Default: ""
+  Required: false
+  Example: "app:nginx,app:redis"
+
+- IncludeClusterResources
+  Usage: Specify whether to restore
+  cluster scoped resources.
+  Default: "false"
+  Required: false
+  Example: "true" 
+  
+- IncludeNamespaces
+  Usage: Namespaces to include in backup.
+  Default: "*"
+  Required: false
+  Example: "demo,kubedb,kubestash"
+
+- ExcludeNamespaces
+  Usage: Namespaces to exclude from backup.
+  Default: ""
+  Required: false
+  Example: "default,kube-system"
+
+- IncludeResources
+  Usage: Resource types to include in backup.
+  Default: "*"
+  Required: false
+  Example: "secrets,configmaps,deployments"
+  
+- ExcludeResources
+  Usage: Resource types to exclude from backup
+  Default: ""
+  Required: false
+  Example: "persistentvolumeclaims,persistentvolumes"
+```
+
+These flags are independent. That means when a resource is backed up all the parameters are checked
+to pass the filter operation.
+
+For example: 
+
+Consider a deployment named as `my-deployment` in `demo-a` namespace having label `app=my-app`. It will pass the 
+filter if the flags are set as followed: 
+1. `IncludeResources` contain `deployments` in the list or set to default value `*`.    
+2. `ExcludeResources` do not contain `deployments` in the list or set to default value `""`.
+3. `IncludeNamespaces` contain `demo-a` in the list or set to default value `*`.
+4. `ExcludeNamespaces` do not contain `demo-a` in the list or set to default value `""`.
+5. `ANDedLabelSelectors` contain only `app:my-app` in the list or set to default value `""`.
+6. `ORedLabelSelectors` contain `app:my-app` in the list or set to default value `""`.
+7. `IncludeClusterResources` flag doesn't matter here as `deployments` are not cluster scoped resources. 
+
+Conventions that're followed in the parameters: 
+1. Resource types have to be in `plural` form for `IncludeResources` or `ExcludeResources` flag. 
+2. Asterisk `*` indicates `all` and `""` indicates `empty`. 
+
 Let's create the `BackupConfiguration` object we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/cluster/examples/backupconfiguration.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/backupconfiguration.yaml
 backupconfiguration.core.kubestash.com/cluster-resources-backup created
 ```
 
@@ -277,11 +761,11 @@ Verify that the Repository specified in the BackupConfiguration has been created
 
 ```bash
 $ kubectl get repositories -n demo
-NAME             INTEGRITY   SNAPSHOT-COUNT   SIZE   PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-gcs-repository                                       Ready                            28s
+NAME      INTEGRITY   SNAPSHOT-COUNT   SIZE         PHASE   LAST-SUCCESSFUL-BACKUP   AGE
+s3-repo   true        2                13.856 KiB   Ready   98s                      19h                                   Ready                            28s
 ```
 
-KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the GCS bucket, we will see the Repository YAML stored in the `demo/cluster-manifests` directory.
+KubeStash keeps the backup for `Repository` YAMLs. If we navigate to the S3 bucket, we will see the Repository YAML stored in the `nipun/cluster-manifests` directory where nipun is the `prefix` of the `bucket`.
 
 **Verify CronJob:**
 
@@ -291,8 +775,9 @@ Check that the `CronJob` has been created using the following command,
 
 ```bash
 $ kubectl get cronjob -n demo
-NAME                                                        SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
-trigger-cluster-resources-backup-frequent-backup            */5 * * * *   False     0        <none>          45s
+NAME                                               SCHEDULE      TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+trigger-cluster-resources-backup-frequent-backup   */5 * * * *   <none>     False     0        <none>          2m10s
+
 ```
 
 **Wait for BackupSession:**
@@ -300,10 +785,14 @@ trigger-cluster-resources-backup-frequent-backup            */5 * * * *   False 
 Now, wait for the next backup schedule. You can watch for `BackupSession` CR using the following command,
 
 ```bash
-$ watch -n 1 kubectl get backupsession -n demo -l=kubestash.com/invoker-name=cluster-resources-backup                                        anisur: Fri Feb 23 19:46:11 2024
+$ watch -n 1 kubectl get backupsession -n demo -l=kubestash.com/invoker-name=cluster-resources-backup                                        
 
-NAME                                                  INVOKER-TYPE          INVOKER-NAME               PHASE       DURATION   AGE
-cluster-resources-backup-frequent-backup-1708694700   BackupConfiguration   cluster-resources-backup   Succeeded              21m
+Every 1.0s: kubectl get backupsession -n demo -l=kubestash.com/invoker-name=cluster-resources-backup          nipun-pc: Wed Jul  9 12:43:07 2025
+
+NAME                                                           INVOKER-TYPE         INVOKER-NAME                PHASE       DURATION   AGE
+cluster-resources-backup-1752043200                           BackupConfiguration  cluster-resources-backup    Succeeded   35s        3m7s
+cluster-resources-backup-frequent-backup-1752043049           BackupConfiguration  cluster-resources-backup    Succeeded   35s        5m38s
+
 ```
 
 **Verify Backup:**
@@ -313,25 +802,20 @@ When `BackupSession` is created, KubeStash operator creates `Snapshot` for each 
 Run the following command to check the respective `Snapshot`,
 
 ```bash
-$ kubectl get snapshots -n demo
-NAME                                                              REPOSITORY       SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
-gcs-repository-cluster-resourcesckup-frequent-backup-1708694700   gcs-repository   frequent-backup   2024-02-23T13:25:00Z   Delete            Succeeded   22m
+$ kubectl get snapshots.storage.kubestash.com -n demo
+NAME                                                          REPOSITORY   SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
+s3-repo-cluster-resources-backup-1752139800                   s3-repo      frequent-backup   2025-07-10T09:30:00Z   Delete            Succeeded   91m
+s3-repo-cluster-resources-backup-frequent-backup-1752139981   s3-repo      frequent-backup   2025-07-10T09:33:01Z   Delete            Succeeded   88m
 ```
 
-Now, if we navigate to the GCS bucket, we will see the backed up data stored in the `demo/cluster-manifests/repository/v1/frequent-backup/manifest` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the` demo/cluster-manifests/repository/snapshots` directory.
+Now, if we navigate to the S3 bucket, we will see the backed up data stored in the `nipun/cluster-manifests/repository/v1/frequent-backup/manifest` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the` nipun/cluster-manifests/repository/snapshots` directory.
 
 <figure align="center">
-  <img alt="Backup data in GCS Bucket" src="/docs/guides/kubedump/cluster/images/cluster_manifests_backup.png">
-  <figcaption align="center">Fig: Backup data in GCS Bucket</figcaption>
+  <img alt="Backup data in S3 Bucket" src="/docs/guides/kubedump/clusterResourcesBackup/images/s3-snapshots.png">
+  <figcaption align="center">Fig: Backup data in S3 Bucket</figcaption>
 </figure>
 
 > Note: KubeStash stores all dumped data encrypted in backup directory, meaning it remains unreadable until decrypted.
-
-## Restore
-
-KubeStash does not provide any automatic mechanism to restore the cluster resources from the backed-up YAMLs. Your application might be managed by Helm or by an operator. In such cases, just applying the YAMLs is not enough to restore the application. Furthermore, there might be an order issue. Some resources must be applied before others. It is difficult to generalize and codify various application-specific logic.
-
-Therefore, it is the user's responsibility to download the backed-up YAMLs and take the necessary steps based on his application to restore it properly.
 
 ### Download the YAMLs
 
@@ -340,112 +824,466 @@ KubeStash provides a [kubectl plugin](/docs/guides/cli/kubectl-plugin/index.md#d
 Now, let's download the latest Snapshot from our backed-up data into the `$HOME/Downloads/kubestash` folder of our local machine.
 
 ```bash
-$  kubectl kubestash download --namespace=demo gcs-repository-cluster-resourcesckup-frequent-backup-1708694700  --destination=$HOME/Downloads/kubestash/cluster
+$ kubectl kubestash download --namespace=demo s3-repo-cluster-resources-backup-frequent-backup-1752139981 --destination=$/home/arnab/Downloads
 ```
 
 Now, lets use [tree](https://linux.die.net/man/1/tree) command to inspect downloaded YAMLs files.
 
 ```bash
-$ /home/anisur/Downloads/kubestash/cluster/gcs-repository-cluster-resourcesckup-frequent-backup-1708694700
-└── manifest
-    └── tmp
-        └── manifest
-            ├── global
-            │   ├── Addon
-            │   │   ├── kubedump-addon.yaml
-            │   │   ├── pvc-addon.yaml
-            │   │   └── workload-addon.yaml
-            │   ├── APIService
-            │   │   ├── v1.admissionregistration.k8s.io.yaml
-            └── namespaces
-                ├── default
-                │   ├── ConfigMap
-                │   │   └── kube-root-ca.crt.yaml
-                │   ├── Endpoints
-                │   │   └── kubernetes.yaml
-                │   ├── EndpointSlice
-                │   │   └── kubernetes.yaml
-                │   ├── Service
-                │   │   └── kubernetes.yaml
-                │   └── ServiceAccount
-                │       └── default.yaml
-                ├── demo
-                │   ├── BackupConfiguration
-                │   │   └── cluster-resources-backup.yaml
-                │   ├── BackupSession
-                │   │   └── cluster-resources-backup-frequent-backup-1708694700.yaml
-                │   ├── BackupStorage
-                │   │   └── gcs-storage.yaml
-                │   ├── ConfigMap
-                │   │   └── kube-root-ca.crt.yaml
-                │   ├── ReplicaSet
-                │   │   └── coredns-565d847f94.yaml
-                │   ├── Role
-                │   │   ├── extension-apiserver-authentication-reader.yaml
-                │   │   ├── kubeadm:kubelet-config.yaml
-                │   ├── RoleBinding
-                │   │   ├── kubeadm:kubelet-config.yaml
-                │   │   ├── kubeadm:nodes-kubeadm-config.yaml
-                │   ├── Service
-                │   │   └── kube-dns.yaml
-                │   └── ServiceAccount
-                │       ├── attachdetach-controller.yaml
-                │       ├── bootstrap-signer.yaml
-                │       ├── certificate-controller.yaml
-                │       ├── cluster-resource-reader.yaml
-                └── local-path-storage
-                    ├── ConfigMap
-                    │   ├── kube-root-ca.crt.yaml
-                    │   └── local-path-config.yaml
-                    ├── Deployment
-                    │   └── local-path-provisioner.yaml
-
-84 directories, 405 files
+arnab@nipun-pc:~/Downloads/azure-repo-cluster-resources-backup-frequent-backup-1752836554/manifest/kubestash-tmp/manifest$ tree
+.
+├── clusterrolebindings.rbac.authorization.k8s.io
+│   └── cluster
+│       ├── my-clusterrolebinding-a.yaml
+│       └── my-clusterrolebinding-b.yaml
+├── clusterroles.rbac.authorization.k8s.io
+│   └── cluster
+│       ├── my-clusterrole-a.yaml
+│       └── my-clusterrole-b.yaml
+├── configmaps
+│   └── namespaces
+│       ├── demo-a
+│       │   └── my-config-a.yaml
+│       └── demo-b
+│           └── my-config-b.yaml
+├── controllerrevisions.apps
+│   └── namespaces
+│       └── demo-b
+│           └── my-statefulset-7bc9c486fc.yaml
+├── deployments.apps
+│   └── namespaces
+│       └── demo-a
+│           └── my-deployment-a.yaml
+├── endpoints
+│   └── namespaces
+│       ├── demo-a
+│       │   └── my-service-a.yaml
+│       └── demo-b
+│           └── my-service-b.yaml
+├── endpointslices.discovery.k8s.io
+│   └── namespaces
+│       ├── demo-a
+│       │   └── my-service-a-crqk5.yaml
+│       └── demo-b
+│           └── my-service-b-lv4jh.yaml
+├── persistentvolumeclaims
+│   └── namespaces
+│       ├── demo-a
+│       │   └── my-pvc-a.yaml
+│       └── demo-b
+│           └── my-pvc-b.yaml
+├── pods
+│   └── namespaces
+│       ├── demo-a
+│       │   ├── my-deployment-a-6bbd894c5-b9ks5.yaml
+│       │   ├── my-deployment-a-6bbd894c5-p992t.yaml
+│       │   └── my-deployment-a-6bbd894c5-s72fw.yaml
+│       └── demo-b
+│           ├── my-statefulset-0.yaml
+│           ├── my-statefulset-1.yaml
+│           └── my-statefulset-2.yaml
+├── replicasets.apps
+│   └── namespaces
+│       └── demo-a
+│           └── my-deployment-a-6bbd894c5.yaml
+├── secrets
+│   └── namespaces
+│       ├── demo-a
+│       │   └── my-secret-a.yaml
+│       └── demo-b
+│           └── my-secret-b.yaml
+├── serviceaccounts
+│   └── namespaces
+│       ├── demo-a
+│       │   └── my-serviceaccount-a.yaml
+│       └── demo-b
+│           └── my-serviceaccount-b.yaml
+├── services
+│   └── namespaces
+│       ├── demo-a
+│       │   └── my-service-a.yaml
+│       └── demo-b
+│           └── my-service-b.yaml
+└── statefulsets.apps
+    └── namespaces
+        └── demo-b
+            └── my-statefulset.yaml
 ```
 
-Here, the non-namespaced resources have been grouped under the `global` directory and the namespaced resources have been grouped inside the namespace specific folder under the `namespaces` directory.
+We followed this file structure for backing up manifests of resources: 
 
-Let's inspect the YAML of `kubeadm-config.yaml` file under `kube-system` namespace.
+
+``` yaml
+resources/
+├── <groupResourceClusterScoped>/               # e.g., clusterroles.rbac.authorization.k8s.io
+│   └── cluster/
+│       └── <resource-name>.yaml
+
+├── <groupResourceNamespaced>/                  # e.g., deployments.apps, configmaps 
+│   └── namespaces/
+│       ├── namespace-1/
+│       │   ├── <resource-1>.yaml
+│       │   ├── <resource-2>.yaml
+│       │   └── ...
+│       ├── namespace-2/
+│       │   ├── <resource-1>.yaml
+│       │   └── ...
+│       └── namespace-n/
+│           ├── ... 
+│           └── <resource-n>.yaml
+
+```
+
+---
+
+Let's inspect the YAML of `my-statefulset.yaml` file under `demo-b` namespace.
 
 ```yaml
-$ cat /home/anisur/Downloads/kubestash/cluster/gcs-repository-cluster-resourcesckup-frequent-backup-1708694700/manifest/tmp/manifest/namespaces/kube-system/ConfigMap/kubeadm-config.yaml
-apiVersion: v1
-data:
-  ClusterConfiguration: |
-    apiServer:
-      certSANs:
-      - localhost
-      - 127.0.0.1
-      extraArgs:
-        authorization-mode: Node,RBAC
-        runtime-config: ""
-      timeoutForControlPlane: 4m0s
-    apiVersion: kubeadm.k8s.io/v1beta3
-    certificatesDir: /etc/kubernetes/pki
-    clusterName: kind
-    controlPlaneEndpoint: kind-control-plane:6443
-    controllerManager:
-      extraArgs:
-        enable-hostpath-provisioner: "true"
-    dns: {}
-    etcd:
-      local:
-        dataDir: /var/lib/etcd
-    imageRepository: registry.k8s.io
-    kind: ClusterConfiguration
-    kubernetesVersion: v1.25.2
-    networking:
-      dnsDomain: cluster.local
-      podSubnet: 10.244.0.0/16
-      serviceSubnet: 10.96.0.0/16
-    scheduler: {}
-kind: ConfigMap
+arnab@nipun-pc:~/Downloads/s3-repo-cluster-resources-backup-frequent-backup-1752139981/manifest/kubestash-tmp/manifest$ cat statefulsets.apps/namespaces/demo-b/my-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
-  name: kubeadm-config
-  namespace: kube-system
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"StatefulSet","metadata":{"annotations":{},"labels":{"app":"my-sts"},"name":"my-statefulset","namespace":"demo-b"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"my-sts"}},"serviceName":"my-service-b","template":{"metadata":{"labels":{"app":"my-sts"}},"spec":{"containers":[{"image":"nginx:latest","name":"my-container-b","ports":[{"containerPort":8080}],"volumeMounts":[{"mountPath":"/etc/config","name":"config-volume-b"},{"mountPath":"/etc/secret","name":"secret-volume-b"},{"mountPath":"/data","name":"storage-volume-b"}]}],"serviceAccountName":"my-serviceaccount-b","volumes":[{"configMap":{"name":"my-config-b"},"name":"config-volume-b"},{"name":"secret-volume-b","secret":{"secretName":"my-secret-b"}},{"name":"storage-volume-b","persistentVolumeClaim":{"claimName":"my-pvc-b"}}]}}}}
+  labels:
+    app: my-sts
+  name: my-statefulset
+  namespace: demo-b
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
+  replicas: 3
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: my-sts
+  serviceName: my-service-b
+  template:
+    metadata:
+      labels:
+        app: my-sts
+    spec:
+      containers:
+      - image: nginx:latest
+        imagePullPolicy: Always
+        name: my-container-b
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/config
+          name: config-volume-b
+        - mountPath: /etc/secret
+          name: secret-volume-b
+        - mountPath: /data
+          name: storage-volume-b
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: my-serviceaccount-b
+      serviceAccountName: my-serviceaccount-b
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: my-config-b
+        name: config-volume-b
+      - name: secret-volume-b
+        secret:
+          defaultMode: 420
+          secretName: my-secret-b
+      - name: storage-volume-b
+        persistentVolumeClaim:
+          claimName: my-pvc-b
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+status:
+  availableReplicas: 3
+  collisionCount: 0
+  currentReplicas: 3
+  currentRevision: my-statefulset-7bc9c486fc
+  observedGeneration: 1
+  readyReplicas: 3
+  replicas: 3
+  updateRevision: my-statefulset-7bc9c486fc
+  updatedReplicas: 3
 ```
 
 Now, you can use these YAML files to re-create your desired application.
+
+## Restore
+
+Let's demostrate an accidental situation and assume that the resources are gone from the cluster. 
+
+Pause the running backupconfiguration using kubestash cli command: 
+
+```fish 
+$ kubectl kubestash pause cluster-resources-backup -n demo
+I0710 15:33:36.497053 1445161 pause.go:51] BackupConfiguration demo/cluster-resources-backup has been paused successfully
+```
+
+
+
+Delete all the resources of we have created so far 
+
+```bash 
+$ kubectl delete replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app
+replicaset.apps "my-deployment-a-6bbd894c5" deleted
+secret "my-secret-a" deleted
+configmap "my-config-a" deleted
+Warning: deleting cluster-scoped resources, not scoped to the provided namespace
+clusterrole.rbac.authorization.k8s.io "my-clusterrole-a" deleted
+clusterrolebinding.rbac.authorization.k8s.io "my-clusterrolebinding-a" deleted
+persistentvolumeclaim "my-pvc-a" deleted
+service "my-service-a" deleted
+serviceaccount "my-serviceaccount-a" deleted
+deployment.apps "my-deployment-a" deleted
+pod "my-deployment-a-6bbd894c5-67lvb" deleted
+pod "my-deployment-a-6bbd894c5-b9ks5" deleted
+pod "my-deployment-a-6bbd894c5-jpm4x" deleted
+pod "my-deployment-a-6bbd894c5-k8sjn" deleted
+pod "my-deployment-a-6bbd894c5-p992t" deleted
+pod "my-deployment-a-6bbd894c5-s72fw" deleted
+```
+
+Verify deletion:  
+
+```bash 
+$ kubectl get  replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app
+No resources found
+```
+
+```bash
+$ kubectl delete  replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-b -l app=my-sts
+secret "my-secret-b" deleted
+configmap "my-config-b" deleted
+statefulset.apps "my-statefulset" deleted
+Warning: deleting cluster-scoped resources, not scoped to the provided namespace
+clusterrole.rbac.authorization.k8s.io "my-clusterrole-b" deleted
+clusterrolebinding.rbac.authorization.k8s.io "my-clusterrolebinding-b" deleted
+persistentvolumeclaim "my-pvc-b" deleted
+service "my-service-b" deleted
+serviceaccount "my-serviceaccount-b" deleted
+pod "my-statefulset-0" deleted
+pod "my-statefulset-1" deleted
+pod "my-statefulset-2" deleted
+``` 
+Verify deletion: 
+```bash 
+$ kubectl get replicaset,secret,configmap,
+statefulset,role,rolebinding,clusterrole,clusterrolebinding,
+persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod 
+-n demo-b -l app=my-sts
+No resources found
+```
+
+Now apply restoresession to restore your target resources from snapshot. 
+
+
+#### Create RestoreSession
+
+Below is the YAML for `RestoreSession` object we care going to use to restore the YAMLs and apply those YAMLs to create the lost/deleted cluster resources,
+
+```yaml
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: cluster-resources-restore
+  namespace: demo
+spec:
+  dataSource:
+    repository: s3-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret
+      namespace: demo
+  addon:
+    name: kubedump-addon
+    tasks:
+      - name: manifest-restore
+        params:
+          IncludeClusterResources: "true"
+          ExcludeNamespaces: "demo-a"
+          IncludeResources: "*"
+          ExcludeResources: ""
+          OverrideResources: "true"
+          RestorePVs: "true"
+    jobTemplate:
+          spec:
+            serviceAccountName: cluster-resource-reader-writter
+```
+
+Let's create the `RestoreSession` object we have shown above,
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/restoresession.yaml
+restoresession.core.kubestash.com/cluster-resources-restore created
+```
+
+Verify the recovery of cluster resources: 
+
+```bash 
+Every 2.0s: kubectl get replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-b -l app=my-sts         nipun-pc: Thu Jul 10 11:47:50 2025
+
+NAME                 TYPE     DATA   AGE
+secret/my-secret-b   Opaque   2      52s
+
+NAME                    DATA   AGE
+configmap/my-config-b   1      52s
+
+NAME                   TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE
+service/my-service-b   ClusterIP   10.43.63.79   <none>        80/TCP    52s
+
+NAME                                                     CREATED AT
+clusterrole.rbac.authorization.k8s.io/my-clusterrole-b   2025-07-18T11:12:35Z
+
+NAME                                                                   ROLE                           AGE
+clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding-b   ClusterRole/my-clusterrole-b   52s
+
+NAME                                 SECRETS   AGE
+serviceaccount/my-serviceaccount-b   0         52s
+
+NAME                              READY   AGE
+statefulset.apps/my-statefulset   3/3     52s
+
+NAME                             STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/my-pvc-b   Bound    pvc-d6aea112-c6d6-4764-8358-711baff501b0   5Gi        RWO            longhorn       <unset>                 52s
+
+NAME                   READY   STATUS    RESTARTS   AGE
+pod/my-statefulset-0   1/1     Running   0          52s
+pod/my-statefulset-1   1/1     Running   0          36s
+pod/my-statefulset-2   1/1     Running   0          33s
+```
+
+Inspect the manifest of statefulset: 
+
+```bash 
+$ kubectl get statefulset -n demo-b -oyaml
+apiVersion: v1
+items:
+- apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"StatefulSet","metadata":{"annotations":{},"labels":{"app":"my-sts"},"name":"my-statefulset","namespace":"demo-b"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"my-sts"}},"serviceName":"my-service-b","template":{"metadata":{"labels":{"app":"my-sts"}},"spec":{"containers":[{"image":"nginx:latest","name":"my-container-b","ports":[{"containerPort":8080}],"volumeMounts":[{"mountPath":"/etc/config","name":"config-volume-b"},{"mountPath":"/etc/secret","name":"secret-volume-b"},{"mountPath":"/data","name":"storage-volume-b"}]}],"serviceAccountName":"my-serviceaccount-b","volumes":[{"configMap":{"name":"my-config-b"},"name":"config-volume-b"},{"name":"secret-volume-b","secret":{"secretName":"my-secret-b"}},{"name":"storage-volume-b","persistentVolumeClaim":{"claimName":"my-pvc-b"}}]}}}}
+    creationTimestamp: "2025-07-18T11:12:35Z"
+    generation: 1
+    labels:
+      app: my-sts
+    name: my-statefulset
+    namespace: demo-b
+    resourceVersion: "16056"
+    uid: 1a2fa288-a9f6-4d8e-be12-bf788b135c2f
+  spec:
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Retain
+      whenScaled: Retain
+    podManagementPolicy: OrderedReady
+    replicas: 3
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: my-sts
+    serviceName: my-service-b
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: my-sts
+      spec:
+        containers:
+        - image: nginx:latest
+          imagePullPolicy: Always
+          name: my-container-b
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/config
+            name: config-volume-b
+          - mountPath: /etc/secret
+            name: secret-volume-b
+          - mountPath: /data
+            name: storage-volume-b
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: my-serviceaccount-b
+        serviceAccountName: my-serviceaccount-b
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - configMap:
+            defaultMode: 420
+            name: my-config-b
+          name: config-volume-b
+        - name: secret-volume-b
+          secret:
+            defaultMode: 420
+            secretName: my-secret-b
+        - name: storage-volume-b
+          persistentVolumeClaim:
+            claimName: my-pvc-b
+    updateStrategy:
+      rollingUpdate:
+        partition: 0
+      type: RollingUpdate
+  status:
+    availableReplicas: 3
+    collisionCount: 0
+    currentReplicas: 3
+    currentRevision: my-statefulset-7bc9c486fc
+    observedGeneration: 1
+    readyReplicas: 3
+    replicas: 3
+    updateRevision: my-statefulset-7bc9c486fc
+    updatedReplicas: 3
+kind: List
+metadata:
+  resourceVersion: ""
+```
+
+# New in `KubeStash v2025.6.30`: Intelligent and Automatic Cluster-Wide Resource Restoration
+
+Starting from **KubeStash v2025.6.30**, we have introduced an **automatic, dependency-aware mechanism** to restore **entire cluster resources** from backed-up YAMLs.
+
+## Key Features
+
+### Built-in Priority and Ordering Logic
+Resources are applied in a well-defined sequence to respect their interdependencies. For example:
+
+- `Namespaces`, `CRDs`, and `RBAC` roles are restored **first**
+- `Secrets`, `ConfigMaps`, and other configurations are restored **before** dependent workloads like `Deployments` or `StatefulSets`
+- Handles `finalizers`, `ownerReferences`, and other metadata correctly
+
+### Cluster-Wide Support
+This mechanism applies to **all Kubernetes resources** backed up by KubeStash:
+
+- Cluster-scoped resources: `ClusterRoles`, `CRDs`, etc.
+- Namespaced resources: `Deployments`, `Services`, `Secrets`, etc.
+- Resources managed by **Helm** and **Kubernetes operators**
+
+### No Manual Intervention Required
+No need to write custom scripts or manually define restore orders — everything is handled automatically.
+
+---
+
+## Why This Matters
+
+With this new feature, KubeStash ensures a **robust and reliable** cluster restoration experience — especially important for complex and production-grade environments where resource dependencies are non-trivial.
+
+Restore your entire cluster with **confidence and ease** using KubeStash `v2025.6.30` and above.
+
 
 ## Cleanup
 
@@ -453,11 +1291,14 @@ To cleanup the Kubernetes resources created by this tutorial, run:
 
 ```bash
 kubectl delete -n demo backupconfiguration cluster-resources-backup
-kubectl delete -n kubestash serviceaccount cluster-resource-reader
-kubectl delete clusterrole cluster-resource-reader
-kubectl delete clusterrolebinding cluster-resource-reader
+kubectl delete -n demo restoresession cluster-resources-restore
+kubectl delete -n demo serviceaccount cluster-resource-reader-writter
+kubectl delete clusterrole cluster-resource-reader-writter
+kubectl delete clusterrolebinding cluster-resource-reader-writter
 kubectl delete retentionPolicy -n demo demo-retention
-kubectl delete -n demo backupstorage gcs-storage
+kubectl delete -n demo backupstorage azure-storage
 kubectl delete secret -n demo encrypt-secret
-kubectl delete secret -n demo gcs-secret
+kubectl delete secret -n demo azure-secret
+kubectl delete secrets,configmaps,services,clusterroles,clusterrolebindings,serviceaccounts,deployments,persistentvolumeclaims,persistentvolumes,pods,replicasets -n demo-a -l app=my-app
+kubectl delete secrets,configmaps,services,clusterroles,clusterrolebindings,serviceaccounts,statefulsets,persistentvolumeclaims,persistentvolumes,pods,replicasets -n demo-b -l app=my-sts
 ```
