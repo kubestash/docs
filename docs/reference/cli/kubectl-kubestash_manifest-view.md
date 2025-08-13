@@ -1,27 +1,47 @@
 ---
-title: Kubectl-Kubestash
+title: Manifest-View
 menu:
   docs_{{ .version }}:
-    identifier: kubectl-kubestash
-    name: Kubectl-Kubestash
+    identifier: kubectl-kubestash-manifest-view
+    name: Manifest-View
     parent: reference-cli
-    weight: 0
-
 menu_name: docs_{{ .version }}
 section_menu_id: reference
-url: /docs/{{ .version }}/reference/cli/
-aliases:
-- /docs/{{ .version }}/reference/cli/kubectl-kubestash/
 ---
-## kubectl-kubestash
+## kubectl-kubestash manifest-view
 
-kubectl plugin for KubeStash
+view components(manifest) of a snapshot
 
 ### Synopsis
 
-kubectl plugin for KubeStash. For more information, visit here: https://kubestash.com
+view components(manifest) of a snapshot from restic repositories
+
+```
+kubectl-kubestash manifest-view [flags]
+```
 
 ### Options
+
+```
+      --and-label-selectors strings   A set of labels, all of which need to be matched to filter the resources (comma-separated, e.g., 'key1:value1,key2:value2')
+      --components strings            List of components to restore
+      --enable-cache                  Specify whether to enable caching for restic
+      --exclude strings               List of pattern for directory/file to ignore during restore
+      --exclude-namespaces strings    Namespaces to exclude from backup (comma-separated, e.g., 'kube-public,temp')
+      --exclude-resources strings     Resource types to exclude (comma-separated, e.g., 'secrets,configmaps')
+  -h, --help                          help for manifest-view
+      --include strings               List of pattern for directory/file to restore
+      --include-cluster-resources     Specify whether to backup cluster scoped resources (default true)
+      --include-namespaces strings    Namespaces to include in backup (comma-separated, e.g., 'default,kube-system')
+      --include-resources strings     Resource types to include (comma-separated, e.g., 'pods,deployments')
+      --namespace string              Namespace of the snapshot (default "default")
+      --or-label-selectors strings    A set of labels, a subset of which need to be matched to filter the resources (comma-separated, e.g., 'key1:value1,key2:value2')
+      --paths strings                 Gives a random list of paths
+      --scratch-dir string            Temporary directory
+      --snapshot string               Name of the snapshot
+```
+
+### Options inherited from parent commands
 
 ```
       --as string                             Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
@@ -35,11 +55,9 @@ kubectl plugin for KubeStash. For more information, visit here: https://kubestas
       --context string                        The name of the kubeconfig context to use
       --default-seccomp-profile-type string   Default seccomp profile
       --disable-compression                   If true, opt-out of response compression for all requests to the server
-  -h, --help                                  help for kubectl-kubestash
       --insecure-skip-tls-verify              If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
       --kubeconfig string                     Path to the kubeconfig file to use for CLI requests.
       --match-server-version                  Require server version to match client version
-  -n, --namespace string                      If present, the namespace scope for this CLI request
       --request-timeout string                The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests. (default "0")
   -s, --server string                         The address and port of the Kubernetes API server
       --tls-server-name string                Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
@@ -49,18 +67,5 @@ kubectl plugin for KubeStash. For more information, visit here: https://kubestas
 
 ### SEE ALSO
 
-* [kubectl-kubestash clone](/docs/reference/cli/kubectl-kubestash_clone.md)	 - Clone Kubernetes resources
-* [kubectl-kubestash completion](/docs/reference/cli/kubectl-kubestash_completion.md)	 - Generate completion script
-* [kubectl-kubestash convert](/docs/reference/cli/kubectl-kubestash_convert.md)	 - Convert Stash resources yaml to Kubestash resources yaml
-* [kubectl-kubestash copy](/docs/reference/cli/kubectl-kubestash_copy.md)	 - Copy kubestash resources from one namespace to another namespace
-* [kubectl-kubestash debug](/docs/reference/cli/kubectl-kubestash_debug.md)	 - Debug common KubeStash issues
-* [kubectl-kubestash download](/docs/reference/cli/kubectl-kubestash_download.md)	 - Download components of a snapshot
-* [kubectl-kubestash manifest-restore](/docs/reference/cli/kubectl-kubestash_manifest-restore.md)	 - Restore Kubernetes resources
-* [kubectl-kubestash manifest-view](/docs/reference/cli/kubectl-kubestash_manifest-view.md)	 - view components(manifest) of a snapshot
-* [kubectl-kubestash password](/docs/reference/cli/kubectl-kubestash_password.md)	 - Manage restic keys (passwords) for accessing the repository
-* [kubectl-kubestash pause](/docs/reference/cli/kubectl-kubestash_pause.md)	 - Pause KubeStash backup temporarily
-* [kubectl-kubestash resume](/docs/reference/cli/kubectl-kubestash_resume.md)	 - Resume KubeStash backup
-* [kubectl-kubestash trigger](/docs/reference/cli/kubectl-kubestash_trigger.md)	 - Trigger a backup
-* [kubectl-kubestash unlock](/docs/reference/cli/kubectl-kubestash_unlock.md)	 - Unlock Restic Repositories
-* [kubectl-kubestash version](/docs/reference/cli/kubectl-kubestash_version.md)	 - Prints binary version number.
+* [kubectl-kubestash](/docs/reference/cli/kubectl-kubestash.md)	 - kubectl plugin for KubeStash
 
