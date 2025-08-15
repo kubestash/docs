@@ -4,7 +4,7 @@ description: Take backup of cluster resources YAMLs using KubeStash
 menu:
   docs_{{ .version }}:
     identifier: kubestash-kubedump-cluster
-    name: Cluster Backup
+    name: Backup & Restore Kubernetes Resources
     parent: kubestash-kubedump
     weight: 20
 product_name: kubestash
@@ -32,7 +32,7 @@ You have to be familiar with the following custom resources:
 - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
 - [RetentionPolicy](/docs/concepts/crds/retentionpolicy/index.md)
 
-> Note: YAML files used in this tutorial are stored [here](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples).
+> Note: YAML files used in this tutorial are stored [here](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/kubedump/ResourcesBackupRestore/examples).
 
 ---
 
@@ -196,7 +196,7 @@ spec:
 Let's create the objects having label `app:my-app` we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/resources-a.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/ResourcesBackupRestore/examples/resources-a.yaml
 persistentvolumeclaim/my-pvc-a created
 configmap/my-config-a created
 secret/my-secret-a created
@@ -399,7 +399,7 @@ spec:
 Let's create the objects of having label `app:my-sts` we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/resources-b.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/ResourcesBackupRestore/examples/resources-b.yaml
 persistentvolume/my-pv-b created
 persistentvolumeclaim/my-pvc-b created
 configmap/my-config-b created
@@ -502,7 +502,7 @@ spec:
 Let's create the `BackupStorage` object that we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/backupstorage.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/ResourcesBackupRestore/examples/backupstorage.yaml
 backupstorage.storage.kubestash.com/s3-storage created
 ```
 
@@ -537,7 +537,7 @@ spec:
 Let's create the `RetentionPolicy` object that we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/retentionpolicy.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/ResourcesBackupRestore/examples/retentionpolicy.yaml
 retentionpolicy.storage.kubestash.com/demo-retention created
 ```
 
@@ -582,7 +582,7 @@ roleRef:
 Let's create the RBAC resources we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/kubedump/clusterResourcesBackup/examples/rbac.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/kubedump/ResourcesBackupRestore/examples/rbac.yaml
 serviceaccount/cluster-resource-reader-writer created
 clusterrole.rbac.authorization.k8s.io/cluster-resource-reader-writer created
 clusterrolebinding.rbac.authorization.k8s.io/cluster-resource-reader-writer created
@@ -660,7 +660,7 @@ We have introduced some flags for filtering resources while taking backup.
   Example: "app:nginx,app:redis,app"
 
 - IncludeClusterResources
-  Usage: Specify whether to restore
+  Usage: Specify whether to backup
   cluster scoped resources.
   Default: "false"
   Required: false
@@ -714,7 +714,7 @@ Conventions that're followed in the parameters:
 Let's create the `BackupConfiguration` object we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/backupconfiguration.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/ResourcesBackupRestore/examples/backupconfiguration.yaml
 backupconfiguration.core.kubestash.com/cluster-resources-backup created
 ```
 ---
@@ -789,7 +789,7 @@ s3-repo-cluster-resources-backup-frequent-backup-1752139981   s3-repo      frequ
 Now, if we navigate to the S3 bucket, we will see the backed up data stored in the `nipun/cluster-manifests/repository/v1/frequent-backup/manifest` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the` nipun/cluster-manifests/repository/snapshots` directory.
 
 <figure align="center">
-  <img alt="Backup data in S3 Bucket" src="/docs/guides/kubedump/clusterResourcesBackup/images/s3-snapshots.png">
+  <img alt="Backup data in S3 Bucket" src="/docs/guides/kubedump/ResourcesBackupRestore/images/s3-snapshots.png">
   <figcaption align="center">Fig: Backup data in S3 Bucket</figcaption>
 </figure>
 
@@ -1166,7 +1166,7 @@ We have introduced several flags to filter resources during the restore process.
 Let's create the `RestoreSession` object we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/restoresession.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/ResourcesBackupRestore/examples/restoresession.yaml
 restoresession.core.kubestash.com/cluster-resources-restore created
 ```
 
@@ -1299,11 +1299,11 @@ metadata:
 
 ---
 
-## Intelligent and Automatic Cluster-Wide Resource Restoration
+### Intelligent and Automatic Cluster-Wide Resource Restoration
 
 KubeStash includes an **automatic, dependency-aware mechanism** to restore entire cluster resources from backed-up YAMLs — now enhanced with **multi-iteration restores** and **owner reference fixes** for new clusters.
 
-### Key Features
+#### Key Features
 
 #### Built-in Priority and Ordering Logic
 Resources are restored in a sequence that respects their dependencies.
