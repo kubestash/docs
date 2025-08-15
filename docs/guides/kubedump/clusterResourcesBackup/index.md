@@ -618,29 +618,6 @@ metadata:
   name: cluster-resources-backup
   namespace: demo
 spec:
-  backends:
-    - name: s3-backend
-      storageRef:
-        namespace: demo
-        name: s3-storage
-      retentionPolicy:
-        name: demo-retention
-        namespace: demo
-  sessions:
-    - name: frequent-backup
-      sessionHistoryLimit: 1
-      scheduler:
-        schedule: "*/5 * * * *"
-        jobTemplate:
-          backoffLimit: 1
-      repositories:
-        - name: s3-repo
-          backend: s3-backend
-          directory: /cluster-manifests
-          encryptionSecret:
-            name: encrypt-secret
-            namespace: demo
-          deletionPolicy: Retain
       addon:
         name: kubedump-addon
         tasks:
@@ -702,16 +679,16 @@ We have introduced some flags for filtering resources while taking backup.
   Example: "default,kube-system"
 
 - IncludeResources
-  Usage: Resource types to include in backup.
+  Usage: Resource types and group resources to include in backup.
   Default: "*"
   Required: false
-  Example: "secrets,configmaps,deployments"
+  Example: "secrets,configmaps,deployments,statefulsets.apps"
   
 - ExcludeResources
-  Usage: Resource types to exclude from backup
+  Usage: Resource types and group resources to exclude from backup
   Default: ""
   Required: false
-  Example: "persistentvolumeclaims,persistentvolumes"
+  Example: "persistentvolumeclaims,persistentvolumes,pods.metrics.k8s.io,metrics.k8s.io"
 ```
 These flags are independent. That means when a resource is backed up all the parameters are checked
 to pass the filter operation.
@@ -1124,48 +1101,48 @@ We have introduced several flags to filter resources during the restore process.
 ``` yaml
 - ANDedLabelSelectors
   Usage: A set of labels, all of which need to be matched
-  to filter the resources.
+  to filter the resources
   Default: ""
   Required: false
   Example: "app:my-app,db:mongo,db"
 
 - ORedLabelSelectors
   Usage: A set of labels, at least one of which need to
-  be matched to filter the resources.
+  be matched to filter the resources
   Default: ""
   Required: false
   Example: "app:nginx,app:redis"
 
 - IncludeClusterResources
   Usage: Specify whether to restore
-  cluster scoped resources.
+  cluster scoped resources
   Default: "false"
   Required: false
   Example: "true"
 
 - IncludeNamespaces
-  Usage: Namespaces to include in backup.
+  Usage: Namespaces to include in restore
   Default: "*"
   Required: false
   Example: "demo,kubedb,kubestash"
 
 - ExcludeNamespaces
-  Usage: Namespaces to exclude from backup.
+  Usage: Namespaces to exclude in restore
   Default: ""
   Required: false
   Example: "default,kube-system"
 
 - IncludeResources
-  Usage: Resource types to include in backup.
+  Usage: Resource types and group resources to include in restore
   Default: "*"
   Required: false
   Example: "secrets,configmaps,deployments"
   
 - ExcludeResources
-  Usage: Resource types to exclude from backup
+  Usage: Resource types and group resources to exclude in restore
   Default: ""
   Required: false
-  Example: "persistentvolumeclaims,persistentvolumes"
+  Example: "persistentvolumeclaims,persistentvolumes,endpointslices.discovery.k8s.io"
   
 - OverrideResources
   Usage: Specify whether to override resources while restoring
