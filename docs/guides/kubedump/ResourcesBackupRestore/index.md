@@ -786,17 +786,6 @@ s3-repo-cluster-resources-backup-frequent-backup-1752139981   s3-repo      frequ
 ```
 ---
 
-Now, if we navigate to the S3 bucket, we will see the backed up data stored in the `nipun/cluster-manifests/repository/v1/frequent-backup/manifest` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the` nipun/cluster-manifests/repository/snapshots` directory.
-
-<figure align="center">
-  <img alt="Backup data in S3 Bucket" src="/docs/guides/kubedump/ResourcesBackupRestore/images/s3-snapshots.png">
-  <figcaption align="center">Fig: Backup data in S3 Bucket</figcaption>
-</figure>
-
-> Note: KubeStash stores all dumped data encrypted in backup directory, meaning it remains unreadable until decrypted.
-
----
-
 ### Download the YAMLs
 
 KubeStash provides a [kubectl plugin](/docs/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
