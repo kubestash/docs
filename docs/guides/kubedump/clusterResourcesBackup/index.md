@@ -32,7 +32,13 @@ You have to be familiar with the following custom resources:
 - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
 - [RetentionPolicy](/docs/concepts/crds/retentionpolicy/index.md)
 
-To keep things isolated, we are going to use a separate namespace called `demo`, `demo-a` and `demo-b` throughout this tutorial. Create the namespaces. 
+> Note: YAML files used in this tutorial are stored [here](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples).
+
+---
+
+## Create Resources
+
+To keep things isolated, we are going to use separate namespaces `demo`, `demo-a` and `demo-b` throughout this tutorial. Create the namespaces.
 
 ```bash
 $ kubectl create ns demo
@@ -43,13 +49,7 @@ $ kubectl create ns demo-b
 namespace/demo-b created
 ```
 
-> Note: YAML files used in this tutorial are stored [here](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples).
-
---- 
-
-## Create Resources 
-
-We need to create some resources both namespace scoped and cluster scoped for demonstrating our backup and restore process. For simplification we will be using two `labels` to demonstarte separation of the resources.   
+We need to create some resources both namespace scoped and cluster scoped to demonstrate our backup and restore process. For simplification we will be using two `labels` to demonstarte separation of the resources.   
 
 ---
 
@@ -98,8 +98,8 @@ metadata:
     app: my-app
 type: Opaque
 data:
-  username: "your_username" 
-  password:  "your_password" 
+  username: <your_username>
+  password:  <your_password>
 ---
 apiVersion: v1
 kind: Service
@@ -193,7 +193,7 @@ spec:
             claimName: my-pvc-a
 ```
 
-Let's create the objects of having label `app:my-app` we have shown above,
+Let's create the objects having label `app:my-app` we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/resources-a.yaml
@@ -209,10 +209,10 @@ deployment.apps/my-deployment-a created
 
 **Verify Resource Creation:**
 
-Verify that the Repository specified in the BackupConfiguration has been created using the following command,
+Verify that the resources with label `app=my-app` have been created using the following command,
 
 ```bash
-Every 2.0s: kubectl get replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app   nipun-pc: Thu Jul 10 15:39:45 2025
+Every 2.0s: kubectl get replicaset,secret,configmap,clusterrole,clusterrolebinding,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app   nipun-pc: Thu Jul 10 15:39:45 2025
 
 NAME                                        DESIRED   CURRENT   READY   AGE
 replicaset.apps/my-deployment-a-6bbd894c5   3         3         3       4m47s
@@ -255,7 +255,6 @@ replicaset.apps/my-deployment-a-6bbd894c5   3         3         3       4m47s
 
 --- 
 
-
 For label `app=my-sts` all of the resources will be either in `demo-b` namespace or cluster scoped.   
 
 ---
@@ -265,7 +264,6 @@ For label `app=my-sts` all of the resources will be either in `demo-b` namespace
 Below is the YAML of the resources: 
 
 ```yaml
-
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -302,8 +300,8 @@ metadata:
     app: my-sts
 type: Opaque
 data:
-  username: your_username 
-  password: your_password
+  username: <your_username>
+  password: <your_password>
 ---
 apiVersion: v1
 kind: Service
@@ -413,13 +411,12 @@ clusterrolebinding.rbac.authorization.k8s.io/my-clusterrolebinding-b created
 statefulset.apps/my-statefulset created
 ```
 
-
 **Verify Resource Creation:**
 
-Verify that the Repository specified in the BackupConfiguration has been created using the following command,
+Verify that the resources with label `app=my-sts` have been created using the following command,
 
 ```bash
-Every 2.0s: kubectl get replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,pod -n demo-b -l app=my-sts   nipun-pc: Thu Jul 10 15:40:14 2025
+Every 2.0s: kubectl get secret,configmap,statefulset,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,pod -n demo-b -l app=my-sts   nipun-pc: Thu Jul 10 15:40:14 2025
 
 NAME                 TYPE     DATA   AGE
 secret/my-secret-b   Opaque   2      80m
@@ -465,7 +462,7 @@ Now, we are going backup of the YAMLs of entire cluster to a S3 bucket using Kub
 
 **Create Secret:**
 
-Let's create a Secret named `s3-secret` with access credentials of our desired S3 backend,
+Let's create a Secret named `aws-s3-secret` with access credentials of our desired S3 backend,
 
 ```bash
 $ kubectl create secret generic aws-s3-secret \
@@ -535,7 +532,7 @@ spec:
       from: All
 ```
 
-Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](/docs/concepts/crds/retentionpolicy/index.md).
+>Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](/docs/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -556,13 +553,13 @@ Here, is the YAML of the `ServiceAccount`, `ClusterRole`, and `ClusterRoleBindin
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: cluster-resource-reader-writter
+  name: cluster-resource-reader-writer
   namespace: demo
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: cluster-resource-reader-writter
+  name: cluster-resource-reader-writer
 rules:
 - apiGroups: ["*"]
   resources: ["*"]
@@ -571,14 +568,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cluster-resource-reader-writter
+  name: cluster-resource-reader-writer
 subjects:
 - kind: ServiceAccount
-  name: cluster-resource-reader-writter
+  name: cluster-resource-reader-writer
   namespace: demo
 roleRef:
   kind: ClusterRole
-  name: cluster-resource-reader-writter
+  name: cluster-resource-reader-writer
   apiGroup: rbac.authorization.k8s.io
 ```
 
@@ -586,13 +583,12 @@ Let's create the RBAC resources we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/addons/kubedump/clusterResourcesBackup/examples/rbac.yaml
-serviceaccount/cluster-resource-reader-writter created
-clusterrole.rbac.authorization.k8s.io/cluster-resource-reader-writter created
-clusterrolebinding.rbac.authorization.k8s.io/cluster-resource-reader-writter created
+serviceaccount/cluster-resource-reader-writer created
+clusterrole.rbac.authorization.k8s.io/cluster-resource-reader-writer created
+clusterrolebinding.rbac.authorization.k8s.io/cluster-resource-reader-writer created
 ```
 
 ---
-
 
 ### Backup
 
@@ -657,7 +653,7 @@ spec:
               ORedLabelSelectors: "app:my-app,app:my-sts"
         jobTemplate:
           spec:
-            serviceAccountName: cluster-resource-reader-writter
+            serviceAccountName: cluster-resource-reader-writer
 ```
 
 Here,
@@ -675,14 +671,14 @@ We have introduced some flags for filtering resources while taking backup.
   to filter the resources.
   Default: ""
   Required: false
-  Example: "app:my-app,tier:frontend"
+  Example: "app:my-app,db:postgres,db"
 
 - ORedLabelSelectors
   Usage: A set of labels, at least one of which need to 
   be matched to filter the resources. 
   Default: ""
   Required: false
-  Example: "app:nginx,app:redis"
+  Example: "app:nginx,app:redis,app"
 
 - IncludeClusterResources
   Usage: Specify whether to restore
@@ -912,7 +908,6 @@ arnab@nipun-pc:~/Downloads/azure-repo-cluster-resources-backup-frequent-backup-1
 
 We followed this file structure for backing up manifests of resources: 
 
-
 ``` yaml
 resources/
 ├── <groupResourceClusterScoped>/               # e.g., clusterroles.rbac.authorization.k8s.io
@@ -1028,8 +1023,6 @@ $ kubectl kubestash pause cluster-resources-backup -n demo
 I0710 15:33:36.497053 1445161 pause.go:51] BackupConfiguration demo/cluster-resources-backup has been paused successfully
 ```
 
-
-
 Delete all the resources of we have created so far 
 
 ```bash 
@@ -1055,12 +1048,12 @@ pod "my-deployment-a-6bbd894c5-s72fw" deleted
 Verify deletion:  
 
 ```bash 
-$ kubectl get  replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app
+$ kubectl get  replicaset,secret,configmap,clusterrole,clusterrolebinding,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app
 No resources found
 ```
 
 ```bash
-$ kubectl delete  replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-b -l app=my-sts
+$ kubectl delete  secret,configmap,statefulset,clusterrole,clusterrolebinding,persistentvolumeclaim,service,serviceaccount,pod -n demo-b -l app=my-sts
 secret "my-secret-b" deleted
 configmap "my-config-b" deleted
 statefulset.apps "my-statefulset" deleted
@@ -1077,14 +1070,14 @@ pod "my-statefulset-2" deleted
 Verify deletion: 
 ```bash 
 $ kubectl get replicaset,secret,configmap,
-statefulset,role,rolebinding,clusterrole,clusterrolebinding,
+statefulset,clusterrole,clusterrolebinding,
 persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod 
 -n demo-b -l app=my-sts
 No resources found
 ```
+---
 
-Now apply restoresession to restore your target resources from snapshot. 
-
+Now apply `RestoreSession` to restore your target resources from snapshot.
 
 #### Create RestoreSession
 
@@ -1097,12 +1090,7 @@ metadata:
   name: cluster-resources-restore
   namespace: demo
 spec:
-  dataSource:
-    repository: s3-repo
-    snapshot: latest
-    encryptionSecret:
-      name: encrypt-secret
-      namespace: demo
+...
   addon:
     name: kubedump-addon
     tasks:
@@ -1111,13 +1099,79 @@ spec:
           IncludeClusterResources: "true"
           ExcludeNamespaces: "demo-a"
           IncludeResources: "*"
-          ExcludeResources: ""
-          OverrideResources: "true"
-          RestorePVs: "true"
     jobTemplate:
           spec:
-            serviceAccountName: cluster-resource-reader-writter
+            serviceAccountName: cluster-resource-reader-writer
 ```
+
+### Flags in `manifest-restore` task in KubeDump
+
+We have introduced several flags to filter resources during the restore process.
+
+``` yaml
+- ANDedLabelSelectors
+  Usage: A set of labels, all of which need to be matched
+  to filter the resources.
+  Default: ""
+  Required: false
+  Example: "app:my-app,db:mongo,db"
+
+- ORedLabelSelectors
+  Usage: A set of labels, at least one of which need to
+  be matched to filter the resources.
+  Default: ""
+  Required: false
+  Example: "app:nginx,app:redis"
+
+- IncludeClusterResources
+  Usage: Specify whether to restore
+  cluster scoped resources.
+  Default: "false"
+  Required: false
+  Example: "true"
+
+- IncludeNamespaces
+  Usage: Namespaces to include in backup.
+  Default: "*"
+  Required: false
+  Example: "demo,kubedb,kubestash"
+
+- ExcludeNamespaces
+  Usage: Namespaces to exclude from backup.
+  Default: ""
+  Required: false
+  Example: "default,kube-system"
+
+- IncludeResources
+  Usage: Resource types to include in backup.
+  Default: "*"
+  Required: false
+  Example: "secrets,configmaps,deployments"
+  
+- ExcludeResources
+  Usage: Resource types to exclude from backup
+  Default: ""
+  Required: false
+  Example: "persistentvolumeclaims,persistentvolumes"
+  
+- OverrideResources
+  Usage: Specify whether to override resources while restoring
+  Default: "false"
+  Required: false
+  Example: "false"
+
+- RestorePVs
+  Usage: Specify whether to restore PersistentVolumes
+  Default: "false"
+  Required: false
+  Example: "true"
+
+- StorageClassMappings
+  Usage: Mapping of old to new storage classes
+  Default: ""
+  Required: false
+  Example: "gp2=ebs-sc,standard=fast-storage"
+``` 
 
 Let's create the `RestoreSession` object we have shown above,
 
@@ -1253,37 +1307,42 @@ metadata:
   resourceVersion: ""
 ```
 
-# New in `KubeStash v2025.6.30`: Intelligent and Automatic Cluster-Wide Resource Restoration
+---
 
-Starting from **KubeStash v2025.6.30**, we have introduced an **automatic, dependency-aware mechanism** to restore **entire cluster resources** from backed-up YAMLs.
+## Intelligent and Automatic Cluster-Wide Resource Restoration
 
-## Key Features
+KubeStash includes an **automatic, dependency-aware mechanism** to restore entire cluster resources from backed-up YAMLs — now enhanced with **multi-iteration restores** and **owner reference fixes** for new clusters.
 
-### Built-in Priority and Ordering Logic
-Resources are applied in a well-defined sequence to respect their interdependencies. For example:
+---
 
-- `Namespaces`, `CRDs`, and `RBAC` roles are restored **first**
-- `Secrets`, `ConfigMaps`, and other configurations are restored **before** dependent workloads like `Deployments` or `StatefulSets`
-- Handles `finalizers`, `ownerReferences`, and other metadata correctly
+### Key Features
 
-### Cluster-Wide Support
-This mechanism applies to **all Kubernetes resources** backed up by KubeStash:
+#### Built-in Priority and Ordering Logic
+Resources are restored in a sequence that respects their dependencies.
+Critical building blocks like **CRDs**, **Namespaces**, **StorageClasses**, **PVCs**, **ServiceAccounts**, **Secrets**, and **ConfigMaps** are applied **before** dependent workloads such as **Pods**, **ReplicaSets**, and **Services**.
 
-- Cluster-scoped resources: `ClusterRoles`, `CRDs`, etc.
-- Namespaced resources: `Deployments`, `Services`, `Secrets`, etc.
-- Resources managed by **Helm** and **Kubernetes operators**
+#### Multi-Iteration Restore Process
+Instead of a single-pass restore, KubeStash uses **multiple iterations**.
+This allows dependent resources that initially fail (due to missing prerequisites) to succeed in later passes as their dependencies become available.
 
-### No Manual Intervention Required
+#### Automatic Owner Reference Fixing
+To avoid broken references in a fresh cluster (where resource UIDs differ from the original backup):
+
+1. All resources are initially restored as **orphans** (no owner references)
+2. Once all resources are created, KubeStash **patches valid owner references** with the correct UIDs in the new cluster
+
+This ensures workloads and their dependent resources remain correctly linked without conflicts.
+
+#### No Manual Intervention Required
 No need to write custom scripts or manually define restore orders — everything is handled automatically.
 
 ---
 
-## Why This Matters
+### Why This Matters
+These improvements ensure a **robust, repeatable, and reliable** cluster restoration process.
+Whether restoring a simple setup or a complex production-grade environment, resource dependencies and ownership metadata are handled **safely and automatically** — letting you restore your entire cluster with **confidence and ease**.
 
-With this new feature, KubeStash ensures a **robust and reliable** cluster restoration experience — especially important for complex and production-grade environments where resource dependencies are non-trivial.
-
-Restore your entire cluster with **confidence and ease** using KubeStash `v2025.6.30` and above.
-
+---
 
 ## Cleanup
 
@@ -1292,9 +1351,9 @@ To cleanup the Kubernetes resources created by this tutorial, run:
 ```bash
 kubectl delete -n demo backupconfiguration cluster-resources-backup
 kubectl delete -n demo restoresession cluster-resources-restore
-kubectl delete -n demo serviceaccount cluster-resource-reader-writter
-kubectl delete clusterrole cluster-resource-reader-writter
-kubectl delete clusterrolebinding cluster-resource-reader-writter
+kubectl delete -n demo serviceaccount cluster-resource-reader-writer
+kubectl delete clusterrole cluster-resource-reader-writer
+kubectl delete clusterrolebinding cluster-resource-reader-writer
 kubectl delete retentionPolicy -n demo demo-retention
 kubectl delete -n demo backupstorage azure-storage
 kubectl delete secret -n demo encrypt-secret

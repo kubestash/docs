@@ -34,8 +34,8 @@ metadata:
     app: my-app
 type: Opaque
 data:
-  username: dXNlcg==  # Base64 for "user"
-  password: cGFzc3dvcmQ=  # Base64 for "password"
+  username: <your_username>  # Base64 for "user"
+  password: <your_password>  # Base64 for "password"
 ---
 apiVersion: v1
 kind: Service
