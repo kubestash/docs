@@ -661,6 +661,8 @@ Here,
 - `spec.sessions[*].addon.tasks[*].name` specifies the name of the backup task.
 - `spec.sessions[*].addon.jobTemplate.spec.serviceAccountName`specifies the ServiceAccount name that we have created earlier with cluster-wide resource reading permission.
 
+---
+
 ### Flags in `manifest-backup` task in KubeDump 
 
 We have introduced some flags for filtering resources while taking backup.  
@@ -711,7 +713,6 @@ We have introduced some flags for filtering resources while taking backup.
   Required: false
   Example: "persistentvolumeclaims,persistentvolumes"
 ```
-
 These flags are independent. That means when a resource is backed up all the parameters are checked
 to pass the filter operation.
 
@@ -731,12 +732,15 @@ Conventions that're followed in the parameters:
 1. Resource types have to be in `plural` form for `IncludeResources` or `ExcludeResources` flag. 
 2. Asterisk `*` indicates `all` and `""` indicates `empty`. 
 
+---
+
 Let's create the `BackupConfiguration` object we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/clusterResourcesBackup/examples/backupconfiguration.yaml
 backupconfiguration.core.kubestash.com/cluster-resources-backup created
 ```
+---
 
 #### Verify Backup Setup Successful
 
@@ -793,7 +797,7 @@ cluster-resources-backup-frequent-backup-1752043049           BackupConfiguratio
 
 **Verify Backup:**
 
-When `BackupSession` is created, KubeStash operator creates `Snapshot` for each `Repository` listed in the respective session of the `BackupConfiguration`. Since we have only specified one repository in the session, at this moment we should have one `Snapshot`. 
+When `BackupSession` is created, KubeStash operator creates `Snapshot` for each `Repository` listed in the respective session of the `BackupConfiguration`. Since we have only specified only one repository in the session, at this moment we should have one `Snapshot`. 
 
 Run the following command to check the respective `Snapshot`,
 
@@ -803,6 +807,7 @@ NAME                                                          REPOSITORY   SESSI
 s3-repo-cluster-resources-backup-1752139800                   s3-repo      frequent-backup   2025-07-10T09:30:00Z   Delete            Succeeded   91m
 s3-repo-cluster-resources-backup-frequent-backup-1752139981   s3-repo      frequent-backup   2025-07-10T09:33:01Z   Delete            Succeeded   88m
 ```
+---
 
 Now, if we navigate to the S3 bucket, we will see the backed up data stored in the `nipun/cluster-manifests/repository/v1/frequent-backup/manifest` directory. KubeStash also keeps the backup for `Snapshot` YAMLs, which can be found in the` nipun/cluster-manifests/repository/snapshots` directory.
 
@@ -812,6 +817,8 @@ Now, if we navigate to the S3 bucket, we will see the backed up data stored in t
 </figure>
 
 > Note: KubeStash stores all dumped data encrypted in backup directory, meaning it remains unreadable until decrypted.
+
+---
 
 ### Download the YAMLs
 
@@ -935,6 +942,7 @@ Let's inspect the YAML of `my-statefulset.yaml` file under `demo-b` namespace.
 
 ```yaml
 arnab@nipun-pc:~/Downloads/s3-repo-cluster-resources-backup-frequent-backup-1752139981/manifest/kubestash-tmp/manifest$ cat statefulsets.apps/namespaces/demo-b/my-statefulset.yaml
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1010,6 +1018,8 @@ status:
   updatedReplicas: 3
 ```
 
+---
+
 Now, you can use these YAML files to re-create your desired application.
 
 ## Restore
@@ -1023,8 +1033,7 @@ $ kubectl kubestash pause cluster-resources-backup -n demo
 I0710 15:33:36.497053 1445161 pause.go:51] BackupConfiguration demo/cluster-resources-backup has been paused successfully
 ```
 
-Delete all the resources of we have created so far 
-
+Delete all the resources having label `app=my-app`
 ```bash 
 $ kubectl delete replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app
 replicaset.apps "my-deployment-a-6bbd894c5" deleted
@@ -1052,6 +1061,9 @@ $ kubectl get  replicaset,secret,configmap,clusterrole,clusterrolebinding,persis
 No resources found
 ```
 
+---
+
+Delete all the resources having label `app=my-sts`
 ```bash
 $ kubectl delete  secret,configmap,statefulset,clusterrole,clusterrolebinding,persistentvolumeclaim,service,serviceaccount,pod -n demo-b -l app=my-sts
 secret "my-secret-b" deleted
@@ -1098,11 +1110,12 @@ spec:
         params:
           IncludeClusterResources: "true"
           ExcludeNamespaces: "demo-a"
-          IncludeResources: "*"
+          ExcludeResources: "nodes.metrics.k8s.io,nodes,pods.metrics.k8s.io,metrics.k8s.io,endpointslices.discovery.k8s.io"
     jobTemplate:
           spec:
             serviceAccountName: cluster-resource-reader-writer
 ```
+---
 
 ### Flags in `manifest-restore` task in KubeDump
 
@@ -1313,8 +1326,6 @@ metadata:
 
 KubeStash includes an **automatic, dependency-aware mechanism** to restore entire cluster resources from backed-up YAMLs — now enhanced with **multi-iteration restores** and **owner reference fixes** for new clusters.
 
----
-
 ### Key Features
 
 #### Built-in Priority and Ordering Logic
@@ -1360,4 +1371,7 @@ kubectl delete secret -n demo encrypt-secret
 kubectl delete secret -n demo azure-secret
 kubectl delete secrets,configmaps,services,clusterroles,clusterrolebindings,serviceaccounts,deployments,persistentvolumeclaims,persistentvolumes,pods,replicasets -n demo-a -l app=my-app
 kubectl delete secrets,configmaps,services,clusterroles,clusterrolebindings,serviceaccounts,statefulsets,persistentvolumeclaims,persistentvolumes,pods,replicasets -n demo-b -l app=my-sts
+kubectl delete ns demo
+kubectl delete ns demo-a
+kubectl delete ns demo-b
 ```

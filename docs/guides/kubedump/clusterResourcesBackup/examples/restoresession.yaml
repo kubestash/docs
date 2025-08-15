@@ -18,7 +18,7 @@ spec:
           IncludeClusterResources: "true"
           ExcludeNamespaces: "demo-a"
           IncludeResources: "*"
-          ExcludeResources: ""
+          ExcludeResources: "nodes.metrics.k8s.io,nodes,pods.metrics.k8s.io,metrics.k8s.io,endpointslices.discovery.k8s.io"
           OverrideResources: "true"
           RestorePVs: "true"
     jobTemplate:
