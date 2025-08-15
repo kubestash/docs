@@ -39,4 +39,4 @@ spec:
               ORedLabelSelectors: "app:my-app,app:my-sts"
         jobTemplate:
           spec:
-            serviceAccountName: cluster-resource-reader-writter
+            serviceAccountName: cluster-resource-reader-writer

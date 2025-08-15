@@ -35,8 +35,8 @@ metadata:
     app: my-sts
 type: Opaque
 data:
-  username: dXNlcg== # Base64-encoded "user"
-  password: cGFzc3dvcmQ= # Base64-encoded "password"
+  username: <your_username> # Base64-encoded "user"
+  password: <your_password> # Base64-encoded "password"
 ---
 apiVersion: v1
 kind: Service

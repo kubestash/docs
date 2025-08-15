@@ -23,4 +23,4 @@ spec:
           RestorePVs: "true"
     jobTemplate:
           spec:
-            serviceAccountName: cluster-resource-reader-writter
+            serviceAccountName: cluster-resource-reader-writer
