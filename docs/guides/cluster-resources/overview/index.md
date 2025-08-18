@@ -6,7 +6,7 @@ menu:
     identifier: kubestash-cluster-resources-overview
     name: How does it work?
     parent: kubestash-cluster-resources
-    weight: 10
+    weight: 40
 product_name: KubeStash
 menu_name: docs_{{ .version }}
 section_menu_id: guides

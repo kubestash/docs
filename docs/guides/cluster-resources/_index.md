@@ -5,6 +5,6 @@ menu:
     identifier: kubestash-cluster-resources
     name: Cluster Resources
     parent: guides
-    weight: 80
+    weight: 10
 menu_name: docs_{{ .version }}
 ---
