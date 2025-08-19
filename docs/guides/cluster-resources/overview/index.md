@@ -1,15 +1,15 @@
 ---
-title: KubeDump Overview | KubeStash
-description: How KubeDump Backup Works in KubeStash
+title: "KubeDump Overview | KubeStash"
+description: "How KubeDump Backup Works in KubeStash"
+menu_name: docs_{{ .version }}
+section_menu_id: guides
+product_name: KubeStash
 menu:
   docs_{{ .version }}:
     identifier: kubestash-cluster-resources-overview
-    name: How does it work?
+    name: "How does it work?"
     parent: kubestash-cluster-resources
     weight: 40
-product_name: KubeStash
-menu_name: docs_{{ .version }}
-section_menu_id: guides
 ---
 
 # Backup and Restore Cluster Resources using KubeStash

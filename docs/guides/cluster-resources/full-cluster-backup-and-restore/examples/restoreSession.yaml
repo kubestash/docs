@@ -1,11 +1,11 @@
 apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: cluster-resources-restore
+  name: cluster-restore
   namespace: demo
 spec:
   dataSource:
-    repository: s3-repo
+    repository: azure-repo
     snapshot: latest
     encryptionSecret:
       name: encrypt-secret
@@ -16,11 +16,12 @@ spec:
       - name: manifest-restore
         params:
           IncludeClusterResources: "true"
-          ExcludeNamespaces: "demo-a"
+          IncludeNamespaces: "kubedb,db"
           IncludeResources: "*"
           ExcludeResources: "nodes.metrics.k8s.io,nodes,pods.metrics.k8s.io,endpointslices.discovery.k8s.io"
-          OverrideResources: "true"
-          RestorePVs: "true"
     jobTemplate:
           spec:
-            serviceAccountName: cluster-resource-reader-writer
+            serviceAccountName: cluster-resource-reader-writter
+
+
+

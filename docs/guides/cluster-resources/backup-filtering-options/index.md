@@ -1,16 +1,17 @@
 ---
-title: Backup Filtering Options | KubeStash
-description: 
-menu:
-  docs_{{ .version }}:
-    identifier: kubestash-cluster-backup-filtering-options
-    name: Backup Filtering Options
-    parent: kubestash-cluster-resources
-    weight: 40
-product_name: KubeStash
+title: "Backup Filtering Options | KubeStash"
+description: "Available filtering options for KubeStash backups"
 menu_name: docs_{{ .version }}
 section_menu_id: guides
+product_name: KubeStash
+menu:
+  docs_{{ .version }}:
+    identifier: kubestash-cluster-resources-backup-filtering-options
+    name: "Backup Filtering Options"
+    parent: kubestash-cluster-resources
+    weight: 30
 ---
+
 
 ### Flags in `manifest-backup` task in KubeDump 
 
@@ -22,7 +23,8 @@ We have introduced some flags for filtering resources while taking backup.
   to filter the resources.
   Default: ""
   Required: false
-  Format : "key1:value1,key2:value2,key3,key4..." or `"key1=value1,key2=value2,key3,key4..."`
+  Format : "key1:value1,key2:value2,key3,key4..."
+  # or "key1=value1,key2=value2,key3,key4..."
   Example: "app:my-app,db:postgres,db" 
 ```     
 > If the filter is set to `"key1:value1,key2:value2,key3"` then to pass the filter resources labels has to be something like `"key1:value1,key2:value2,key3:vlaue3, ..."` or `"key1:value1,key2:value2,key3, ..."`. Order of the lables doesn't matter.
@@ -35,7 +37,8 @@ We have introduced some flags for filtering resources while taking backup.
   be matched to filter the resources. 
   Default: ""
   Required: false
-  Format : "key1:value1,key2:value2,key3,key4..." or `"key1=value1,key2=value2,key3,key4..."`
+  Format : "key1:value1,key2:value2,key3,key4..."
+  # or "key1=value1,key2=value2,key3,key4..."
   Example: "app:nginx,app:redis,app"
 ```
 > If the filter is set to `"key1:value1,key2:value2,key3"` then to pass the filter resources labels has to be something like `"key1:value1, ..."` or `"...,key2:value2, ..."` or `"...,key3:value3, ..."` or `"...,key3, ..."`. Order of the labels doesn't matter.
@@ -92,7 +95,7 @@ cluster scoped resources.
   Usage: Resource types and group resources to exclude from backup
   Default: ""
   Required: false
-  Example: "persistentvolumeclaims,persistentvolumes,pods.metrics.k8s.io,metrics.k8s.io"
+  Example: "persistentvolumeclaims,persistentvolumes,pods.metrics.k8s.io,nodes.metrics.k8s.io"
 ``` 
 > If this flag is set to `"resource-a,resource-b,groupResource-a,groupResource-b"` then all these listed `resources/groupResources` won't be included in backup.
 --- 

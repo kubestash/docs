@@ -1,15 +1,15 @@
 ---
-title: Configure Storage Backend and RBAC | KubeStash
-description: 
+title: "Configure Storage Backend and RBAC | KubeStash"
+description: "Guide to configuring storage backend and RBAC for KubeStash"
+menu_name: docs_{{ .version }}
+section_menu_id: guides
+product_name: KubeStash
 menu:
   docs_{{ .version }}:
     identifier: kubestash-cluster-resources-configure-storage
-    name: Configure Storage Backend and RBAC
+    name: "Configure Storage Backend and RBAC"
     parent: kubestash-cluster-resources
-    weight: 40
-product_name: KubeStash
-menu_name: docs_{{ .version }}
-section_menu_id: guides
+    weight: 35
 ---
 
 ## Prepare Backend

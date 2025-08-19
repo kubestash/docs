@@ -1,17 +1,16 @@
 ---
-title: Restore Filtering Options | KubeStash
-description: 
+title: "Restore Filtering Options | KubeStash"
+description: "Available filtering options for KubeStash restores"
+menu_name: docs_{{ .version }}
+section_menu_id: guides
+product_name: KubeStash
 menu:
   docs_{{ .version }}:
     identifier: kubestash-cluster-restore-filtering-options
-    name: Restore Filtering Options
+    name: "Restore Filtering Options"
     parent: kubestash-cluster-resources
-    weight: 40
-product_name: KubeStash
-menu_name: docs_{{ .version }}
-section_menu_id: guides
+    weight: 25
 ---
-
 
 ### Flags in `manifest-backup` task in KubeDump 
 
@@ -93,7 +92,7 @@ cluster scoped resources.
   Usage: Resource types and group resources to exclude from backup
   Default: ""
   Required: false
-  Example: "persistentvolumeclaims,persistentvolumes,pods.metrics.k8s.io,metrics.k8s.io"
+  Example: "persistentvolumeclaims,persistentvolumes,pods.metrics.k8s.io,nodes.metrics.k8s.io"
 ``` 
 > If this flag is set to `"resource-a,resource-b,groupResource-a,groupResource-b"` then all these listed `resources/groupResources` won't be included in restoration.
 

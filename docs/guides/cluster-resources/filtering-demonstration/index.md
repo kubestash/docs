@@ -1,16 +1,15 @@
 ---
-title: Filtering Demonstration | KubeStash
-description: 
-menu:
-  docs_{{ .version }}:
-    identifier: kubestash-cluster-restore-filtering-demonstration
-    name: Filtering Demonstration
-    parent: kubestash-cluster-resources
-    weight: 40
-product_name: KubeStash
+title: "Filtering Demonstration | KubeStash"
+description: "Demonstration of filtering operations in KubeStash"
 menu_name: docs_{{ .version }}
 section_menu_id: guides
-
+product_name: KubeStash
+menu:
+  docs_{{ .version }}:
+    identifier: kubestash-cluster-resources-filtering-demonstration
+    name: "Filtering Demonstration"
+    parent: kubestash-cluster-resources
+    weight: 20
 ---
 
 ## Create Resources
@@ -169,7 +168,7 @@ spec:
         - name: secret-volume-a
           secret:
             secretName: my-secret-a
-        - name: storage-volume-a
+        - name: storage-volume-a`
           persistentVolumeClaim:
             claimName: my-pvc-a
 ```
@@ -863,7 +862,7 @@ spec:
         params:
           IncludeClusterResources: "true"
           ExcludeNamespaces: "demo-a"
-          ExcludeResources: "nodes.metrics.k8s.io,nodes,pods.metrics.k8s.io,metrics.k8s.io,endpointslices.discovery.k8s.io"
+          ExcludeResources: "nodes.metrics.k8s.io,nodes,pods.metrics.k8s.io,endpointslices.discovery.k8s.io"
     jobTemplate:
           spec:
             serviceAccountName: cluster-resource-reader-writer
