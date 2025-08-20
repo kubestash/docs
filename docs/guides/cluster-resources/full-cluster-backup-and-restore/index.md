@@ -654,7 +654,7 @@ kubectl delete -n db mysql.kubedb.com my-mysql
 kubectl delete ns db
 ```
 
-Follow the `KubeDB` [official setup page](https://kubedb.com/docs/latest/setup/install/kubedb/) to uninstall `KubeDB`.
+Follow the `KubeDB` [official setup page](https://kubedb.com/docs/latest/setup/uninstall/kubedb/) to uninstall `KubeDB`.
 
 Follow the `KubeStash` [official setup page](/docs/setup/uninstall/kubestash/) to uninstall `KubeStash`.
 
