@@ -42,7 +42,7 @@ az aks create -g $RG_NAME -n $AKS_NAME --enable-oidc-issuer --enable-workload-id
 
 #### Install `KubeDB` in aks-1 
 
-Follow the `KubeDB` [official setup page] (https://github.com/kubedb/docs/latest/setup/install/kubedb/) for getting a license and installing `KubeDB`. 
+Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/latest/setup/install/kubedb/) for getting a license and installing `KubeDB`.
 
 After that make sure `KubeDB` is up and running in aks-1. 
 ```bash
@@ -126,7 +126,7 @@ data-my-mysql-2   Bound    pvc-fdeccbac-397e-4f9b-bf84-97400f38dbe6   1Gi       
 
 #### Create BackupStorage: 
 
-Please refer to the following [guide](/docs/latest/guides/backends/azure/index.md) to configure Microsoft Azure Backend Storage. 
+Please refer to the following [guide](/docs/guides/backends/azure/index.md) to configure Microsoft Azure Backend Storage.
 
 Example of `BackupStorage`: 
 ```yaml 
@@ -159,9 +159,9 @@ azure-storage   azure      true      Delete                         Ready   8m2s
 
 >Note: Set the `deletionPolicy` of `BackupStorage` to `Delete`. This ensures that snapshots remain accessible from other clusters even if the `BackupStorage` object is deleted.
 
-Please refer to the following [guide](docs/latest/guides/cluster-resources/configure-storage-and-rbac/#create-encryption-secret) to create a secret called `encrypt-secret` with the Restic password.
+Please refer to the following [guide](docs/guides/cluster-resources/configure-storage-and-rbac/#create-encryption-secret) to create a secret called `encrypt-secret` with the Restic password.
 
-Please refer to the following [guide](/docs/latest/guides/cluster-resources/configure-storage-and-rbac/#create-rbac-for-backupconfiguration) to configure the necessary RBAC permissions for `BackupConfiguration`.
+Please refer to the following [guide](/docs/guides/cluster-resources/configure-storage-and-rbac/#create-rbac-for-backupconfiguration) to configure the necessary RBAC permissions for `BackupConfiguration`.
 
 --- 
 
@@ -189,7 +189,7 @@ spec:
       from: All
 ```
 
->Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](/docs/latest/concepts/crds/retentionpolicy/index.md).
+>Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](/docs/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -307,7 +307,7 @@ azure-repo-cluster-resources-backup-frequent-backup-1755596627   azure-repo   fr
 
 #### Download the YAMLs
 
-KubeStash provides a [kubectl plugin](/docs/latest/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
+KubeStash provides a [kubectl plugin](/docs/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
 
 Now, let's download the latest Snapshot from our backed-up data into the `$HOME/Downloads/kubestash` folder of our local machine.
 
@@ -442,7 +442,7 @@ az aks create -g $RG_NAME -n $AKS_NAME --enable-oidc-issuer --enable-workload-id
 
 Since `aks-2` is a new cluster, you need to install `KubeStash` before using it. 
 
-Follow the `KubeStash` [official setup page](/docs/latest/setup/install/kubestash/) for getting a license and installing `KubeStash`. 
+Follow the `KubeStash` [official setup page](/docs/setup/install/kubestash/) for getting a license and installing `KubeStash`.
 
 **Verify KubeStash**: 
 
@@ -461,7 +461,7 @@ kubestash-kubestash-operator-webhook-server-6fb8f5cfb9-scrx8   1/1     Running  
 
 #### Create BackupStorage: 
 
-Please refer to the following [link](/docs/latest/guides/backends/azure/index.md) to configure Microsoft Azure Backend Storage. 
+Please refer to the following [link](/docs/guides/backends/azure/index.md) to configure Microsoft Azure Backend Storage.
 
 Example of `BackupStorage`: 
 ```yaml 
@@ -511,9 +511,9 @@ azure-repo-cluster-resources-backup-frequent-backup-1755596627   azure-repo   fr
 
 ---
 
-Please refer to the following [guide](/docs/latest/guides/cluster-resources/configure-storage-and-rbac/#create-encryption-secret) to create a secret called `encrypt-secret` with the Restic password.
+Please refer to the following [guide](/docs/guides/cluster-resources/configure-storage-and-rbac/#create-encryption-secret) to create a secret called `encrypt-secret` with the Restic password.
 
-Please refer to the following [guide](/docs/latest/guides/cluster-resources/configure-storage-and-rbac/#create-rbac-for-backupconfiguration) to configure the necessary RBAC permissions for `RestoreSession`.
+Please refer to the following [guide](/docs/guides/cluster-resources/configure-storage-and-rbac/#create-rbac-for-backupconfiguration) to configure the necessary RBAC permissions for `RestoreSession`.
 
 --- 
 
@@ -589,7 +589,7 @@ my-mysql   8.1.0              19m
 
 #### Upgrade the KubeDB License for the New Cluster (aks-2): 
 
-Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/latest/setup/install/kubedb/) for getting a license and upgrading the `KubeDB` with that license. 
+Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/latest/setup/install/kubedb/) for getting a license and upgrading the `KubeDB` with that license.
 
 ```bash 
 $ export LICENSE_FILE=/home/arnab/Downloads/kubedb-license-aks-2.txt
@@ -656,6 +656,6 @@ kubectl delete ns db
 
 Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/latest/setup/uninstall/kubedb/) to uninstall `KubeDB`. 
 
-Follow the `KubeStash` [official setup page](/docs/latest/setup/uninstall/kubestash/) to uninstall `KubeStash`. 
+Follow the `KubeStash` [official setup page](/docs/setup/uninstall/kubestash/) to uninstall `KubeStash`.
 
  

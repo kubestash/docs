@@ -430,7 +430,7 @@ pod/my-statefulset-2   1/1     Running   0          80m
 
 ### Configure Storage Backend and RBAC
 
-Please refer to the following [link](https://github.com/kubestash/docs/latest/guides/cluster-resources/configure-storage-and-rbac/index.md) to Configure Storage Backend and RBAC.
+Please refer to the following [link](/docs/guides/cluster-resources/configure-storage-and-rbac/index.md) to Configure Storage Backend and RBAC.
 
 --- 
 
@@ -458,7 +458,7 @@ spec:
       from: All
 ```
 
->Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](https://github.com/kubestash/docs/latest/concepts/crds/retentionpolicy/index.md).
+>Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](/docs/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -572,7 +572,7 @@ s3-repo-cluster-resources-backup-frequent-backup-1752139981   s3-repo      frequ
 
 ### Download the YAMLs
 
-KubeStash provides a [kubectl plugin](https://github.com/kubestash/docs/latest/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
+KubeStash provides a [kubectl plugin](/docs/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
 
 Now, let's download the latest Snapshot from our backed-up data into the `$HOME/Downloads/kubestash` folder of our local machine.
 
