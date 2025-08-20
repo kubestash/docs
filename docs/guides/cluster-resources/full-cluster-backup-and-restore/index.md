@@ -42,7 +42,7 @@ az aks create -g $RG_NAME -n $AKS_NAME --enable-oidc-issuer --enable-workload-id
 
 #### Install `KubeDB` in aks-1 
 
-Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/latest/setup/install/kubedb/) for getting a license and installing `KubeDB`.
+Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/raw/{{< param "info.version" >}}/setup/install/kubedb/) for getting a license and installing `KubeDB`.
 
 After that make sure `KubeDB` is up and running in aks-1. 
 ```bash
@@ -159,7 +159,7 @@ azure-storage   azure      true      Delete                         Ready   8m2s
 
 >Note: Set the `deletionPolicy` of `BackupStorage` to `Delete`. This ensures that snapshots remain accessible from other clusters even if the `BackupStorage` object is deleted.
 
-Please refer to the following [guide](docs/guides/cluster-resources/configure-storage-and-rbac/#create-encryption-secret) to create a secret called `encrypt-secret` with the Restic password.
+Please refer to the following [guide](/docs/guides/cluster-resources/configure-storage-and-rbac/#create-encryption-secret) to create a secret called `encrypt-secret` with the Restic password.
 
 Please refer to the following [guide](/docs/guides/cluster-resources/configure-storage-and-rbac/#create-rbac-for-backupconfiguration) to configure the necessary RBAC permissions for `BackupConfiguration`.
 
@@ -589,7 +589,7 @@ my-mysql   8.1.0              19m
 
 #### Upgrade the KubeDB License for the New Cluster (aks-2): 
 
-Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/latest/setup/install/kubedb/) for getting a license and upgrading the `KubeDB` with that license.
+Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/raw/{{< param "info.version" >}}/setup/install/kubedb/) for getting a license and upgrading the `KubeDB` with that license.
 
 ```bash 
 $ export LICENSE_FILE=/home/arnab/Downloads/kubedb-license-aks-2.txt
@@ -654,7 +654,7 @@ kubectl delete -n db mysql.kubedb.com my-mysql
 kubectl delete ns db
 ```
 
-Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/latest/setup/uninstall/kubedb/) to uninstall `KubeDB`. 
+Follow the `KubeDB` [official setup page](https://github.com/kubedb/docs/raw/{{< param "info.version" >}}/setup/uninstall/kubedb/) to uninstall `KubeDB`. 
 
 Follow the `KubeStash` [official setup page](/docs/setup/uninstall/kubestash/) to uninstall `KubeStash`.
 
