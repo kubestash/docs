@@ -12,95 +12,94 @@ menu:
     weight: 25
 ---
 
-### Flags in `manifest-backup` task in KubeDump 
+### Flags in `manifest-restore` task in KubeDump 
 
-We have introduced some flags for filtering resources while taking backup.  
+To target specific resources in the restore process, we’ve introduced a set of flags that can be configured under the `spec.sessions.addon.tasks.params` section of the `RestoreSession`.
 
 #### ANDedLabelSelectors:
+This flag filters resources based on their labels. You can specify either key-value pairs or just keys. Format with key-value pairs: `key1:value1,key2:value2` or keys only: `key1,key2`.
 ```yaml 
-  Usage: A set of labels, all of which need to be matched
-  to filter the resources.
+  Usage: A set of labels, all of which need to be matched to filter the resources.
   Default: ""
   Required: false
-  Format : "key1:value1,key2:value2,key3,key4..." or "key1=value1,key2=value2,key3,key4..."
+  Format : "key1:value1,key2:value2,key3,key4..." 
+  # or "key1=value1,key2=value2,key3,key4..."
   Example: "app:my-app,db:postgres,db" 
 ```     
-> If the filter is set to `"key1:value1,key2:value2,key3"` then to pass the filter resources labels has to be something like `"key1:value1,key2:value2,key3:vlaue3,..."` or `"key1:value1,key2:value2,key3,..."`. Order of the lables doesn't matter.
 
 ---
 
 #### ORedLabelSelectors:
+This flag filters resources based on their labels. You can specify either key-value pairs or just keys. Format with key-value pairs: `key1:value1,key2:value2` or keys only: `key1,key2`.
 ```yaml 
-  Usage: A set of labels, at least one of which need to 
-  be matched to filter the resources. 
+  Usage: A set of labels, at least one of which need to be matched to filter the resources. 
   Default: ""
   Required: false
-  Format : "key1:value1,key2:value2,key3,key4..." or "key1=value1,key2=value2,key3,key4..."
+  Format : "key1:value1,key2:value2,key3,key4..." 
+  # or "key1=value1,key2=value2,key3,key4..."
   Example: "app:nginx,app:redis,app"
 ```
-> If the filter is set to `"key1:value1,key2:value2,key3"` then to pass the filter resources labels has to be something like `"key1:value1, ..."` or `"...,key2:value2,..."` or `"...,key3:value3,..."` or `"...,key3,..."`. Order of the labels doesn't matter.
 
 ---
 
 #### IncludeClusterResources:
+For restoring up cluster-scoped resources this flag has to be `true`. Even if resources pass all the other flags, they will still be filtered out if this flag is set to `false`.
 ```yaml
-  Usage: Specify whether to backup
-cluster scoped resources.
+  Usage: Specify whether to restore cluster scoped resources.
   Default: "false"
   Required: false
   Example: "true" 
 ``` 
-> For cluster scoped resources this flag has to be true. Even if resources pass all the other flags it will be filtered out if this flag is set to false.
 
 ---
 
 #### IncludeNamespaces:
+A namespace-scoped resource will be restored **only if** its namespace is listed in this flag, or if the flag is set to the default value `*`.
 ```yaml
-  Usage: Namespaces to include in backup.
+  Usage: Namespaces to include in the restore process.
   Default: "*"
   Required: false
   Example: "demo,kubedb,kubestash"
 ```
-> A namespace scoped resource will pass the filter if and only if this flag listed it's namespace or the flag set to default value `*`. That means, if the `IncludeNamespaces` flag contains a list of namespaces like `"namespace-a,namespace-b,namespace-c,..."` then for any namespace scoped resource if it's namespace is not listed in the `IncludeNamespaces` flag then it'll be removed from restoration.
 
 ---
 
 #### ExcludeNamespaces:
+A namespace-scoped resource will be excluded from the restore process if its namespace is listed in this flag.
 ```yaml
-  Usage: Namespaces to exclude from backup.
+  Usage: Namespaces to exclude from the restore process.
   Default: ""
   Required: false
   Example: "default,kube-system"
 ```
-> If this flag is set to `"namespace1,namespace2,namespace3..."` any resources within those namespaces won't be included in restoration.
 
 ---
 
 #### IncludeResources:
+A resource will be included in the restore process only if its `resource` or `groupResource` name (in **plural form**) is listed in this flag, or if the flag is set to the default value `*`. 
 ```yaml
-  Usage: Resource types and group resources to include in backup.
+  Usage: Resource types and group resources to include in the restore process.
   Default: "*"
   Required: false
   Example: "secrets,configmaps,deployments,statefulsets.apps"
 ```
    
-> A resource will pass the filter if and only if this flag listed it's `resource/groupResource` name or the flag set to default value `*`. That means, if the `IncludeResources` flag contains a list of resources like `"resource-a,resource-b,groupResource-a,groupResource-b..."` then for any resource if it's `resource/groupResource` name is not listed in the `IncludeResources` flag then it won't be included in restoration.
 ---
 
 #### ExcludeResources:
+A resource will be excluded from the restore process if its `resource` or `groupResource` name (in **plural form**) is listed in this flag.
 ```yaml 
-  Usage: Resource types and group resources to exclude from backup
+  Usage: Resource types and group resources to exclude from the restore process.
   Default: ""
   Required: false
   Example: "persistentvolumeclaims,persistentvolumes,pods.metrics.k8s.io,nodes.metrics.k8s.io"
 ``` 
-> If this flag is set to `"resource-a,resource-b,groupResource-a,groupResource-b"` then all these listed `resources/groupResources` won't be included in restoration.
 
 --- 
 
 #### RestorePVs:
 ```yaml 
-  Usage: Specify whether to restore PersistentVolumes
+  Usage: Specify whether to restore PersistentVolumes.
   Default: "false"
   Required: false
   Example: "true"
@@ -109,20 +108,22 @@ cluster scoped resources.
 --- 
 
 #### StorageClassMappings:
+This flag is used to remap PersistentVolume `StorageClasses` during restore. For example, if a PV in the backup used the `gp2` StorageClass but the restore cluster does not have `gp2`, you can provide a mapping like `gp2=ebs-sc`. This ensures the PVs are restored with a valid StorageClass in the target cluster. Multiple mappings can be defined as a comma-separated list.
 ```yaml 
-  Usage: Mapping of old to new storage classes
+  Usage: Mapping of old to new storage classes.
   Default: ""
   Required: false
   Format: "oldStorageClass1=newStorageClass1,oldStorageClass2=newStorageClass2,..."
   Example: "gp2=ebs-sc,standard=fast-storage"
 ``` 
->This flag is used to remap PersistentVolume `StorageClasses` during restore. For example, if a PV in the backup used the `gp2` StorageClass but the restore cluster does not have `gp2`, you can provide a mapping like `gp2=ebs-sc`. This ensures the PVs are restored with a valid StorageClass in the target cluster. Multiple mappings can be defined as a comma-separated list.
 
 ---
 
-These flags are **independent**, but they are **evaluated together** during restore. A resource will only be included if it satisfies all the applicable filters.
+### How does Filtering work?
 
-For example: 
+These flags are **independent**, but they are **evaluated together** during restore process. A resource will only be included if it satisfies all the applicable filters.
+
+#### For example: 
 
 Consider a deployment named as `my-deployment` in `demo-a` namespace having label `app=my-app`. It will pass the 
 filter if the flags are set as followed: 
@@ -134,9 +135,9 @@ filter if the flags are set as followed:
 6. `ORedLabelSelectors` contain `app:my-app` in the list or set to default value `""`.
 7. `IncludeClusterResources` flag doesn't matter here as `deployments` are not cluster scoped resources. 
 
-Conventions that're followed in the parameters: 
+#### Conventions of the parameters: 
 1. Resource types have to be in `plural` form for `IncludeResources` or `ExcludeResources` flag. 
-2. Asterisk `*` indicates `all` and `""` indicates `empty`.
+2. Asterisk `*` indicates `all` and `""` indicates `empty`. 
 
 ---
 
@@ -162,4 +163,3 @@ spec:
           spec:
             serviceAccountName: cluster-resource-reader-writer
 ```
----

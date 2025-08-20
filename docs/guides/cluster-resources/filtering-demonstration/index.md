@@ -9,12 +9,17 @@ menu:
     identifier: kubestash-cluster-resources-filtering-demonstration
     name: "Filtering Demonstration"
     parent: kubestash-cluster-resources
-    weight: 20
+    weight: 30
 ---
 
-## Create Resources
 
-To demonstrate filtering operations, we are going to use separate namespaces `demo`, `demo-a` and `demo-b` throughout this tutorial. 
+## Backup and Restore Cluster Resources Using Filtering Operations
+
+This guide will demonstrate how to use filtering operations to take backup and restore cluster resources.
+
+### Create Resources
+
+We are going to use separate namespaces `demo`, `demo-a` and `demo-b` throughout this tutorial. 
 
 Create the namespaces.
 
@@ -27,15 +32,10 @@ $ kubectl create ns demo-b
 namespace/demo-b created
 ```
 
----
-
 We need to create some resources both namespace scoped and cluster scoped to demonstrate our backup and restore process. For simplification we will be using two `labels` to demonstarte separation of the resources.   
 
----
 
 For label `app=my-app` all of the resources will be either in `demo-a` namespace or cluster scoped.     
-
---- 
 
 #### Create Resources Having Label `app=my-app` 
 
@@ -237,8 +237,6 @@ replicaset.apps/my-deployment-a-6bbd894c5   3         3         3       4m47s
 
 For label `app=my-sts` all of the resources will be either in `demo-b` namespace or cluster scoped.   
 
----
-
 #### Create Resources Having Label `app=my-sts` 
 
 Below is the YAML of the resources: 
@@ -379,7 +377,7 @@ spec:
 Let's create the objects of having label `app:my-sts` we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubedump/ResourcesBackupRestore/examples/resources-b.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/cluster-resources/filtering-demonstration/examples/resources-b.yaml
 persistentvolume/my-pv-b created
 persistentvolumeclaim/my-pvc-b created
 configmap/my-config-b created
@@ -432,7 +430,7 @@ pod/my-statefulset-2   1/1     Running   0          80m
 
 ### Configure Storage Backend and RBAC
 
-Please refer to the following [link](/docs/guides/cluster-resources/configure-storage-and-rbac/index.md) to Configure Storage Backend and RBAC.
+Please refer to the following [link](https://github.com/kubestash/docs/latest/guides/cluster-resources/configure-storage-and-rbac/index.md) to Configure Storage Backend and RBAC.
 
 --- 
 
@@ -460,7 +458,7 @@ spec:
       from: All
 ```
 
->Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](/docs/concepts/crds/retentionpolicy/index.md).
+>Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [link](https://github.com/kubestash/docs/latest/concepts/crds/retentionpolicy/index.md).
 
 Let's create the `RetentionPolicy` object that we have shown above,
 
@@ -503,7 +501,6 @@ Let's create the `BackupConfiguration` object we have shown above,
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/cluster-resources/filtering-demonstration/examples/backupconfiguration.yaml
 backupconfiguration.core.kubestash.com/cluster-resources-backup created
 ```
----
 
 #### Verify Backup Setup Successful
 
@@ -570,11 +567,12 @@ NAME                                                          REPOSITORY   SESSI
 s3-repo-cluster-resources-backup-1752139800                   s3-repo      frequent-backup   2025-07-10T09:30:00Z   Delete            Succeeded   91m
 s3-repo-cluster-resources-backup-frequent-backup-1752139981   s3-repo      frequent-backup   2025-07-10T09:33:01Z   Delete            Succeeded   88m
 ```
+
 ---
 
 ### Download the YAMLs
 
-KubeStash provides a [kubectl plugin](/docs/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
+KubeStash provides a [kubectl plugin](https://github.com/kubestash/docs/latest/guides/cli/kubectl-plugin/index.md#download-snapshot) for making it easy to download a snapshot locally.
 
 Now, let's download the latest Snapshot from our backed-up data into the `$HOME/Downloads/kubestash` folder of our local machine.
 
@@ -772,7 +770,7 @@ status:
 
 ---
 
-Now, you can use these YAML files to re-create your desired application.
+Now, you can use these YAML files to **re-create your desired cluster resources**.
 
 ## Restore
 
@@ -785,7 +783,7 @@ $ kubectl kubestash pause cluster-resources-backup -n demo
 I0710 15:33:36.497053 1445161 pause.go:51] BackupConfiguration demo/cluster-resources-backup has been paused successfully
 ```
 
-Delete all the resources having label `app=my-app`
+**Delete all the resources having label `app=my-app`:** 
 ```bash 
 $ kubectl delete replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app
 replicaset.apps "my-deployment-a-6bbd894c5" deleted
@@ -806,16 +804,13 @@ pod "my-deployment-a-6bbd894c5-p992t" deleted
 pod "my-deployment-a-6bbd894c5-s72fw" deleted
 ```
 
-Verify deletion:  
-
+**Verify deletion:**  
 ```bash 
 $ kubectl get  replicaset,secret,configmap,clusterrole,clusterrolebinding,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-a -l app=my-app
 No resources found
 ```
 
----
-
-Delete all the resources having label `app=my-sts`
+**Delete all the resources having label `app=my-sts`:** 
 ```bash
 $ kubectl delete  secret,configmap,statefulset,clusterrole,clusterrolebinding,persistentvolumeclaim,service,serviceaccount,pod -n demo-b -l app=my-sts
 secret "my-secret-b" deleted
@@ -831,7 +826,8 @@ pod "my-statefulset-0" deleted
 pod "my-statefulset-1" deleted
 pod "my-statefulset-2" deleted
 ``` 
-Verify deletion: 
+
+**Verify deletion:** 
 ```bash 
 $ kubectl get replicaset,secret,configmap,
 statefulset,clusterrole,clusterrolebinding,
@@ -839,11 +835,12 @@ persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod
 -n demo-b -l app=my-sts
 No resources found
 ```
+
 ---
 
-Now apply `RestoreSession` to restore your target resources from snapshot.
+Now apply `RestoreSession` to restore your target resources from `snapshot`.
 
-#### Create RestoreSession
+### Create RestoreSession
 
 Below is the YAML for `RestoreSession` object we care going to use to restore the YAMLs and apply those YAMLs to create the lost/deleted cluster resources,
 
@@ -867,7 +864,6 @@ spec:
           spec:
             serviceAccountName: cluster-resource-reader-writer
 ```
----
 
 Let's create the `RestoreSession` object we have shown above,
 
@@ -876,8 +872,7 @@ $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version
 restoresession.core.kubestash.com/cluster-resources-restore created
 ```
 
-Verify the recovery of cluster resources: 
-
+**Verify the recovery of cluster resources:** 
 ```bash 
 Every 2.0s: kubectl get replicaset,secret,configmap,statefulset,role,rolebinding,clusterrole,clusterrolebinding,persistentvolume,persistentvolumeclaim,service,serviceaccount,deployment,pod -n demo-b -l app=my-sts         nipun-pc: Thu Jul 10 11:47:50 2025
 
@@ -911,8 +906,7 @@ pod/my-statefulset-1   1/1     Running   0          36s
 pod/my-statefulset-2   1/1     Running   0          33s
 ```
 
-Inspect the manifest of statefulset: 
-
+**Inspect the manifest of statefulset:**
 ```bash 
 $ kubectl get statefulset -n demo-b -oyaml
 apiVersion: v1
@@ -939,14 +933,7 @@ items:
     replicas: 3
     revisionHistoryLimit: 10
     selector:
-      matchLabels:
-        app: my-sts
-    serviceName: my-service-b
-    template:
-      metadata:
-        creationTimestamp: null
-        labels:
-          app: my-sts
+      matchLabels:docs
       spec:
         containers:
         - image: nginx:latest

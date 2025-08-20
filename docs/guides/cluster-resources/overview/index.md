@@ -9,7 +9,7 @@ menu:
     identifier: kubestash-cluster-resources-overview
     name: "How does it work?"
     parent: kubestash-cluster-resources
-    weight: 40
+    weight: 15
 ---
 
 # Backup and Restore Cluster Resources using KubeStash
@@ -29,8 +29,8 @@ This guide will show you how KubeStash backs up and restores manifests of cluste
 The following diagram shows how KubeStash takes backup of the manifests of cluster resources. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
-   <img alt="KubeStash Backup Flow" src="images/backup_overview.svg">
-    <figcaption align="center">Fig: Backup process of Workload volumes in KubeStash</figcaption>
+   <img alt="KubeStash Backup Flow" src="images/kubedump-overview.svg">
+    <figcaption align="center">Fig: Backup process of cluster resources in KubeStash</figcaption>
 </figure>
 
 The backup process consists of the following steps:
@@ -45,7 +45,7 @@ The backup process consists of the following steps:
 
 5. KubeStash operator watches for `BackupConfiguration` objects.
 
-6. Once the KubeStash operator finds a `BackupConfiguration` object, it creates `Repository` with the information specified in the `BackupConfiguration`.
+6. Once the KubeStash operator finds a `BackupConfiguration` object, it creates `Repository` with the information specified in the `BackupConfiguration`. For targeting backup cluster resources, the params section under the `addon.tasks` provides multiple filtering options.
 
 7. KubeStash operator watches for `Repository` custom resources. When it finds the `Repository` object, it Initializes `Repository` by uploading `repository.yaml` file into the `spec.sessions[*].repositories[*].directory` path specified in `BackupConfiguration`.
 
@@ -59,11 +59,9 @@ The backup process consists of the following steps:
 
 12. Then it resolves the respective `Addon` and `Function` and prepares backup `Job`(s) definition.
 
-13. Then, it mounts the targeted workload volume(s) into the `Job`(s) and creates it/them.
+13. The backup `Job`(s) collect and store the cluster resource's manifests.
 
-14. The `Job`(s) takes backup of the targeted workload.
-
-15. After the backup process is completed, the backup `Job`(s) updates the `status.components[*]` field of the `Snapshot` resources with backup information of the target application components.
+14. After the backup process is completed, the backup `Job`(s) updates the `status.components[*]` field of the `Snapshot` resources with backup information of the target manifest components.
 
 ---
 
@@ -72,8 +70,8 @@ The backup process consists of the following steps:
 The following diagram shows how KubeStash restores cluster resources from backed up manifests. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
-   <img alt="KubeStash Restore Flow" src="images/restore_overview.svg">
-    <figcaption align="center">Fig: Restore process of Workload volumes in KubeStash</figcaption>
+   <img alt="KubeStash Restore Flow" src="images/kubedump-restore.svg">
+    <figcaption align="center">Fig: Restore process of cluster-resources in KubeStash</figcaption>
 </figure>
 
 The restore process consists of the following steps:
@@ -84,6 +82,6 @@ The restore process consists of the following steps:
 
 3. When it finds a `RestoreSession` custom resource, it resolves the respective `Addon` and `Function` and prepares a restore `Job`(s) definition.
 
-4. The restore `Job`(s) restores the backed-up data into the targeted workload volume(s).
+4. The restore `Job`(s) apply the backed-up manifests to recreate the cluster resources.
 
-5. Finally, when the restore process is completed, the `Job`(s) updates the `status.components[*]` field of the `RestoreSession` with restore information of the target application components.
+5. Finally, when the restore process is completed, the `Job`(s) updates the `status.components[*]` field of the `RestoreSession` with restore information of the target manifest components.
