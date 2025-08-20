@@ -29,7 +29,7 @@ This guide will show you how KubeStash backs up and restores manifests of cluste
 The following diagram shows how KubeStash takes backup of the manifests of cluster resources. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
-   <img alt="KubeStash Backup Flow" src="images/kubedump-overview.svg">
+   <img alt="KubeStash Backup Flow" src="images/kubedump-backup.svg">
     <figcaption align="center">Fig: Backup process of cluster resources in KubeStash</figcaption>
 </figure>
 
