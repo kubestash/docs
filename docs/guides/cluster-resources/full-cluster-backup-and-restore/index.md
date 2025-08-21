@@ -543,7 +543,7 @@ spec:
           spec:
             serviceAccountName: cluster-resource-reader-writter
 ```
----
+> Note: Azure may restrict certain resources or API groups. If this happens, exclude them using the `ExcludeResources` parameter when applying the `RestoreSession`.
 
 Let's create the `RestoreSession` object we have shown above,
 
@@ -559,7 +559,6 @@ $ kubectl get restoresession -n demo
 NAME              REPOSITORY   PHASE       DURATION   AGE
 cluster-restore   azure-repo   Succeeded   31s        54s
 ```
-> Note: Azure may restrict certain resources or API groups. If this happens, exclude them using the `ExcludeResources` parameter when applying the `RestoreSession`.
 
 
 **Verify `KubeDB` restoration**: 
