@@ -860,7 +860,6 @@ spec:
         params:
           IncludeClusterResources: "true"
           ExcludeNamespaces: "demo-a"
-          ExcludeResources: "nodes.metrics.k8s.io,nodes,pods.metrics.k8s.io,endpointslices.discovery.k8s.io"
     jobTemplate:
           spec:
             serviceAccountName: cluster-resource-reader-writer
