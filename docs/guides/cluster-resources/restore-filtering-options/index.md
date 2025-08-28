@@ -97,6 +97,16 @@ A resource will be excluded from the restore process if its `resource` or `group
 
 --- 
 
+#### OverrideResources:
+This flag controls whether existing resources in the cluster should be **overwritten** during the restore process.
+```yaml
+Usage: Specify whether to override existing resources while restoring.
+Default: "false"
+Required: false
+Example: "true"
+```
+---
+
 #### RestorePVs:
 ```yaml 
   Usage: Specify whether to restore PersistentVolumes.

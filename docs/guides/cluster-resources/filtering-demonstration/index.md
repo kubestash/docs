@@ -480,6 +480,7 @@ metadata:
   name: cluster-resources-backup
   namespace: demo
 spec:
+...
       addon:
         name: kubedump-addon
         tasks:

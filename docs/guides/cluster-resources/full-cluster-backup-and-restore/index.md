@@ -217,7 +217,8 @@ kind: BackupConfiguration
 metadata:                                                      
   name: cluster-resources-backup                               
   namespace: demo                                              
-spec:                                                                              
+spec:
+...
       addon:                                                   
         name: kubedump-addon                                   
         tasks:                                                 
@@ -530,6 +531,7 @@ metadata:
   name: cluster-restore
   namespace: demo
 spec:
+...
   addon:
     name: kubedump-addon
     tasks:
@@ -591,11 +593,12 @@ my-mysql   8.1.0              19m
 Follow the `KubeDB` [official setup page](https://kubedb.com/docs/latest/setup/install/kubedb/) for getting a license and upgrading the `KubeDB` with that license.
 
 ```bash 
-$ export LICENSE_FILE=/home/arnab/Downloads/kubedb-license-aks-2.txt
+$ export LICENSE_FILE=/path/to/aks-2/kubedb-license.txt
 $ helm upgrade kubedb oci://ghcr.io/appscode-charts/kubedb \
         --version <kubedb-version> \
         --namespace kubedb  \
         --set-file global.license=$LICENSE_FILE \
+        --reuse-values \
         --wait --burst-limit=10000 --debug
 ```
 ---
