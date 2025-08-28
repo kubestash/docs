@@ -504,17 +504,19 @@ $ kubectl get snapshots.storage.kubestash.com -n demo
 NAME                                                             REPOSITORY   SESSION           SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
 azure-repo-cluster-resources-backup-frequent-backup-1755596627   azure-repo   frequent-backup   2025-08-19T09:43:47Z   Delete            Succeeded   7m13s
 ```
-
->Note: 
 - The `deletionPolicy` of `BackupStorage` must be set to `Delete` to make snapshots accessible from other clusters.
 
 - The `storageAccount`, `prefix`, and `container` values must match those of the `BackupStorage` used in cluster aks-1.
 
 ---
 
+**Create Encryption Secret:**
 Please refer to the following [guide](/docs/guides/cluster-resources/configure-storage-and-rbac/#create-encryption-secret) to create a secret called `encrypt-secret` with the Restic password.
 
-Please refer to the following [guide](/docs/guides/cluster-resources/configure-storage-and-rbac/#create-rbac-for-backupconfiguration) to configure the necessary RBAC permissions for `RestoreSession`.
+---
+
+**RBAC Permissions for `RestoreSession`:**
+Please refer to the following [guide](/docs/guides/cluster-resources/configure-storage-and-rbac/#create-rbac-for-backupconfiguration) to configure the necessary `RBAC` permissions for `RestoreSession`.
 
 --- 
 
