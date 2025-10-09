@@ -542,12 +542,12 @@ spec:
           IncludeClusterResources: "true"
           IncludeNamespaces: "kubedb,db"
           IncludeResources: "*"
-          ExcludeResources: "nodes.metrics.k8s.io,nodes,pods.metrics.k8s.io,endpointslices.discovery.k8s.io" 
     jobTemplate:
           spec:
             serviceAccountName: cluster-resource-reader-writter
 ```
-> Note: Azure may restrict certain resources or API groups. If this happens, exclude them using the `ExcludeResources` parameter when applying the `RestoreSession`.
+> Note: Azure may restrict the creation of certain resources or API groups. If this happens, exclude them using the `ExcludeResources` parameter when applying the `RestoreSession`.
+By default, KubeStash excludes some of these, such as `nodes`, `nodes.metrics.k8s.io`, `pods.metrics.k8s.io`, and `endpointslices.discovery.k8s.io`.
 
 Let's create the `RestoreSession` object we have shown above,
 
