@@ -1,0 +1,27 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: cluster-restore
+  namespace: demo
+spec:
+  dataSource:
+    repository: azure-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret
+      namespace: demo
+  addon:
+    name: kubedump-addon
+    tasks:
+      - name: manifest-restore
+        params:
+          IncludeClusterResources: "true"
+          IncludeNamespaces: "kubedb,db"
+          IncludeResources: "*"
+          ExcludeResources: "nodes.metrics.k8s.io,nodes,pods.metrics.k8s.io,endpointslices.discovery.k8s.io"
+    jobTemplate:
+          spec:
+            serviceAccountName: cluster-resource-reader-writter
+
+
+

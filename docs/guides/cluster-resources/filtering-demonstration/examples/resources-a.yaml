@@ -1,0 +1,129 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc-a
+  namespace: demo-a
+  labels:
+    app: my-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: "longhorn"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config-a
+  namespace: demo-a
+  labels:
+    app: my-app
+data:
+  app.properties: |
+    greeting.message=Hello, World!
+    app.version=1.0.0
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret-a
+  namespace: demo-a
+  labels:
+    app: my-app
+type: Opaque
+data:
+  username: <your_username>  # Base64 for "user"
+  password: <your_password>  # Base64 for "password"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service-a
+  namespace: demo-a
+  labels:
+    app: my-app
+spec:
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-serviceaccount-a
+  namespace: demo-a
+  labels:
+    app: my-app
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: my-clusterrole-a
+  labels:
+    app: my-app
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-clusterrolebinding-a
+  labels:
+    app: my-app
+subjects:
+  - kind: ServiceAccount
+    name: my-serviceaccount-a
+    namespace: demo-a
+roleRef:
+  kind: ClusterRole
+  name: my-clusterrole-a
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment-a
+  namespace: demo-a
+  labels:
+    app: my-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      serviceAccountName: my-serviceaccount-a
+      containers:
+        - name: my-container-a
+          image: nginx:latest
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config-volume-a
+              mountPath: /etc/config
+            - name: secret-volume-a
+              mountPath: /etc/secret
+            - name: storage-volume-a
+              mountPath: /data
+      volumes:
+        - name: config-volume-a
+          configMap:
+            name: my-config-a
+        - name: secret-volume-a
+          secret:
+            secretName: my-secret-a
+        - name: storage-volume-a
+          persistentVolumeClaim:
+            claimName: my-pvc-a
