@@ -546,8 +546,7 @@ spec:
           spec:
             serviceAccountName: cluster-resource-reader-writter
 ```
-> Note: Azure may restrict the creation of certain resources or API groups. If this happens, exclude them using the `ExcludeResources` parameter when applying the `RestoreSession`.
-By default, KubeStash excludes some of these, such as `nodes`, `nodes.metrics.k8s.io`, `pods.metrics.k8s.io`, and `endpointslices.discovery.k8s.io`.
+> Note: Azure may restrict the creation of certain resources or API groups. If this happens, exclude them using the `ExcludeResources` parameter when applying the `RestoreSession`. By default, KubeStash excludes resources that **do not support the create verb** from backup and restore operations. Additionally `nodes` and `endpointslices.discovery.k8s.io` are excluded.
 
 Let's create the `RestoreSession` object we have shown above,
 
