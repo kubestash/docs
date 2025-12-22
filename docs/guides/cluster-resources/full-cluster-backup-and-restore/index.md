@@ -24,7 +24,7 @@ In `aks-1`, **KubeDB** will be installed in the `kubedb` namespace, and a **MySQ
 
 Later, using the backed-up `snapshot`, we will restore both **KubeDB** and the **MySQL** database in `aks-2`. After the restore, we will verify that the database is up and running, provisioned by KubeDB, in the **completely new cluster** (`aks-2`).
 
-### Keep in mind:
+#### Keep in mind:
 Cluster resource backup only captures the YAML manifests of Kubernetes resources. It does **not** include volume data or database data.
 
 To back up volumes and database data, refer to the following guides:
