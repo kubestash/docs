@@ -29,8 +29,8 @@ Later, using the backed-up `snapshot`, we will restore both **KubeDB** and the *
 To back up volumes and database data, refer to the following guides:
 
 * **PVC Volumes:** [PVC Volume Backup & Restore](/docs/guides/volumes/pvc/index.md)
- * **Workload Volumes:** [Workload Volume Backup & Restore](/docs/guides/workloads/overview/index.md)
-* **KubeDB Managed Databases:** [MySQL Backup & Restore using KubeStash](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/overview/)
+* **Workload Volumes:** [Workload Volume Backup & Restore](/docs/guides/workloads/overview/index.md)
+* **KubeDB Managed Databases:** e.g., [MySQL Backup & Restore using KubeStash](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/overview/). For other databases (PostgreSQL, MongoDB, etc.), see [KubeDB documentation](https://kubedb.com/docs/latest/guides/)
 
 --- 
 
