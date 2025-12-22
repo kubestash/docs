@@ -24,6 +24,14 @@ In `aks-1`, **KubeDB** will be installed in the `kubedb` namespace, and a **MySQ
 
 Later, using the backed-up `snapshot`, we will restore both **KubeDB** and the **MySQL** database in `aks-2`. After the restore, we will verify that the database is up and running, provisioned by KubeDB, in the **completely new cluster** (`aks-2`).
 
+**Keep in mind:** Cluster resource backup only captures the YAML manifests of Kubernetes resources. It does **not** include volume data or database data.
+
+To back up volumes and database data, refer to the following guides:
+
+* **PVC Volumes:** [PVC Volume Backup & Restore](/docs/guides/volumes/pvc/index.md)
+ * **Workload Volumes:** [Workload Volume Backup & Restore](/docs/guides/workloads/overview/index.md)
+* **KubeDB Managed Databases:** [MySQL Backup & Restore using KubeStash](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/overview/)
+
 --- 
 
 ### Backup Process in Cluster `aks-1`
@@ -119,8 +127,6 @@ data-my-mysql-0   Bound    pvc-019b31b3-d08e-43b5-855d-9c152ce6c701   1Gi       
 data-my-mysql-1   Bound    pvc-c36b8673-7ef1-404f-bf54-92accfc22c71   1Gi        RWO            default        <unset>                 39m
 data-my-mysql-2   Bound    pvc-fdeccbac-397e-4f9b-bf84-97400f38dbe6   1Gi        RWO            default        <unset>                 38m
 ```
-
-> Note: This section covers **cluster resource backup & restore only** (YAML manifests), not application data backup & restore. **For database data backup & restoration:** Refer to the guide section of **KubeDB** documentation.  For example, see the [KubeDB MySQL Backup/Restore Guide](https://kubedb.com/docs/v2025.10.17/guides/mysql/backup/kubestash/overview/) for MySQL database backup and restoration. **For workload's volumes backup & restore:** Refer to the [Workload's Volumes Backup & Restore](/docs/guides/workloads/overview/) section of the KubeStash guide.
 
 ---
 
@@ -648,7 +654,9 @@ data-my-mysql-1   Bound    pvc-50d7c598-af6d-444d-9c63-a0d7fd97a04c   1Gi       
 data-my-mysql-2   Bound    pvc-34530543-4b06-4c36-900f-75cccaa643f0   1Gi        RWO            default        <unset>                 103m
 ```
 
-> Note: All PVCs are `Bound`, confirming successful restoration of **KubeDB** and **MySQL** cluster resources (YAML manifests only). The actual database data is **not** restored in this process.  To restore database data, see the **KubeDB** [MySQL Backup/Restore Guide](https://kubedb.com/docs/v2025.10.17/guides/mysql/backup/kubestash/overview/).
+> Note: All PVCs are `Bound`, confirming successful restoration of **KubeDB** and **MySQL** cluster resources (YAML manifests only). The actual database data is **not** restored in this process. To do that, you need to take database backup and restore it separately.
+>
+> Please follow the guide for MySQL Logical Backup and Restore:  [MySQL Backup & Restore using KubeStash](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/logical/)
 
 ## Cleanup
 
