@@ -24,6 +24,15 @@ In `aks-1`, **KubeDB** will be installed in the `kubedb` namespace, and a **MySQ
 
 Later, using the backed-up `snapshot`, we will restore both **KubeDB** and the **MySQL** database in `aks-2`. After the restore, we will verify that the database is up and running, provisioned by KubeDB, in the **completely new cluster** (`aks-2`).
 
+#### Keep in mind:
+Cluster resource backup only captures the YAML manifests of Kubernetes resources. It does **not** include volume data or database data.
+
+To back up volumes and database data, refer to the following guides:
+
+* **PVC Volumes:** [PVC Volume Backup & Restore](/docs/guides/volumes/pvc/index.md)
+* **Workload's Volumes:** [Workload's Volumes Backup & Restore](/docs/guides/workloads/overview/index.md)
+* **KubeDB Managed Databases:** [MySQL Backup & Restore using KubeStash](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/overview/). For other databases (PostgreSQL, MongoDB, etc.), see [KubeDB documentation](https://kubedb.com/docs/latest/guides/)
+
 --- 
 
 ### Backup Process in Cluster `aks-1`
@@ -646,7 +655,9 @@ data-my-mysql-1   Bound    pvc-50d7c598-af6d-444d-9c63-a0d7fd97a04c   1Gi       
 data-my-mysql-2   Bound    pvc-34530543-4b06-4c36-900f-75cccaa643f0   1Gi        RWO            default        <unset>                 103m
 ```
 
->Note: All PVCs are in `Bound` state, which indicates that `KubeDB` and the `MySQL` database have been successfully restored.
+> Note: All PVCs are `Bound`, confirming successful restoration of **KubeDB** and **MySQL** cluster resources (YAML manifests only). The actual database data is **not** restored in this process. To do that, you need to take database backup and restore it separately.
+>
+> Please follow the guide for MySQL Logical Backup and Restore:  [MySQL Backup & Restore using KubeStash](https://kubedb.com/docs/latest/guides/mysql/backup/kubestash/logical/)
 
 ## Cleanup
 
