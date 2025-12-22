@@ -9,7 +9,7 @@ menu:
     identifier: kubestash-cluster-resources-configure-storage
     name: "Configure Storage Backend and RBAC"
     parent: kubestash-cluster-resources
-    weight: 19
+    weight: 20
 ---
 
 ## Prepare Backend

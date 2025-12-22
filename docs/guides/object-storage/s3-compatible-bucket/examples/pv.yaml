@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: fuse-pv
+  namespace: demo
+spec:
+  storageClassName: csi-s3
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  claimRef:
+    namespace: demo
+    name: fuse-pvc
+  csi:
+    driver: ru.yandex.s3.csi
+    controllerPublishSecretRef:
+      name: csi-s3-secret
+      namespace: demo
+    nodePublishSecretRef:
+      name: csi-s3-secret
+      namespace: csi-s3
+    nodeStageSecretRef:
+      name: csi-s3-secret
+      namespace: csi-s3
+    volumeAttributes:
+      capacity: 10Gi
+      mounter: geesefs
+      options: --memory-limit 1000 --dir-mode 0777 --file-mode 0666
+    volumeHandle: kubestash/fuse

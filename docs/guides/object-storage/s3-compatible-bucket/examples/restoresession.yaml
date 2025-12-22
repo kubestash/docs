@@ -1,25 +1,21 @@
 apiVersion: core.kubestash.com/v1alpha1
 kind: RestoreSession
 metadata:
-  name: sample-restore
+  name: s3-bucket-restore
   namespace: demo
 spec:
   target:
-    apiGroup: apps
-    kind: DaemonSet
-    name: rs-demo
+    apiGroup:
+    kind: PersistentVolumeClaim
+    name: fuse-pvc
     namespace: demo
   dataSource:
-    repository: gcs-demo-repo
+    repository: gcs-repository
     snapshot: latest
     encryptionSecret:
       name: encrypt-secret
       namespace: demo
   addon:
-    name: workload-addon
-    jobTemplate:
-      spec:
-        securityContext:
-          runAsUser: 0
+    name: pvc-addon
     tasks:
       - name: logical-backup-restore
