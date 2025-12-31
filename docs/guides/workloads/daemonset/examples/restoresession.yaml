@@ -17,9 +17,5 @@ spec:
       namespace: demo
   addon:
     name: workload-addon
-    jobTemplate:
-      spec:
-        securityContext:
-          runAsUser: 0
     tasks:
       - name: logical-backup-restore
