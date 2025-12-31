@@ -730,6 +730,8 @@ $ kubectl exec -it -n demo fuse-demo-7794cc7994-qhqg6 -- ls /source/data
 # Empty output - all files deleted
 ```
 
+Files are now deleted from the S3 bucket. Now, we will restore the data from the backup snapshot.
+
 **Create RestoreSession:**
 
 Now, we are going to create a `RestoreSession` object to restore the backed up data into the desired PVC.
@@ -744,99 +746,75 @@ metadata:
   namespace: demo
 spec:
   target:
-    apiGroup: apps
-    kind: Deployment
-    name: fuse-demo
+    apiGroup:
+    kind: PersistentVolumeClaim
+    name: fuse-pvc
     namespace: demo
   dataSource:
-    repository: s3-bucket-repo
+    repository: gcs-repository
     snapshot: latest
     encryptionSecret:
       name: encrypt-secret
       namespace: demo
   addon:
-    name: workload-addon
+    name: pvc-addon
     tasks:
       - name: logical-backup-restore
-        params:
-          paths: /source/data
 ```
 
-Let's create the RestoreSession:
+- `spec.target` refers to the targeted PVC where the data will be restored.
+- `spec.dataSource.repository` specifies the name of the `Repository` from which the data will be restored.
+- `spec.dataSource.snapshot` specifies that we want to restore the latest snapshot of the `gcs-repository`.
+- `spec.dataSource.encryptionSecret` specifies the encryption secret for `Restic Repository` used during backup. It will be used to decrypting the backup data.
+
+Let's create the `RestoreSession` object that we have shown above,
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/restoresession.yaml
 restoresession.core.kubestash.com/s3-bucket-restore created
 ```
 
-### Step 3: Verify Restore
+**Wait for RestoreSession to Succeed:**
 
-**Wait for RestoreSession to Complete:**
+Once, you have created the `RestoreSession` object, KubeStash will create restore Job. Wait for the restore process to complete.
+
+You can watch the `RestoreSession` phase using the following command,
 
 ```bash
-$ kubectl get restoresession -n demo
-NAME                 REPOSITORY          PHASE       DURATION   AGE
-s3-bucket-restore    s3-bucket-repo      Succeeded   8s         1m
+$ watch -n 1 kubectl get restoresession -n demo
+Every 1.0s: kubectl get restoresession -n demo                                                                        anisur-pc: Wed Dec 31 12:44:50 2025
+
+NAME                REPOSITORY       PHASE       DURATION   AGE
+s3-bucket-restore   gcs-repository   Succeeded   7s         6m11s
+
+
 ```
+From the output of the above command, the `Succeeded` phase indicates that the restore process has been completed successfully.
+
 
 **Verify Restored Data:**
 
-Now, let's verify that the data has been restored successfully:
+Let's verify if the deleted files have been restored successfully into the PVC. We are going to exec into individual pod and check whether the sample data exist or not.
 
 ```bash
 $ kubectl exec -it -n demo fuse-demo-7794cc7994-qwn9m -- ls /source/data
 file_1.txt  file_2.txt  file_3.txt  file_4.txt  file_5.txt
 ```
 
-Excellent! All files have been successfully restored.
+Excellent! All files have been successfully restored. Files are also restored in the S3 bucket.
 
 ## Cleanup
 
 To cleanup the resources created in this tutorial:
 
 ```bash
-# Delete RestoreSession
 $ kubectl delete restoresession -n demo s3-bucket-restore
-
-# Delete BackupConfiguration
 $ kubectl delete backupconfiguration -n demo s3-bucket-backup
-
-# Delete Repository
-$ kubectl delete repository -n demo --all
-
-# Delete RetentionPolicy
 $ kubectl delete retentionpolicy -n demo demo-retention
-
-# Delete BackupStorage
 $ kubectl delete backupstorage -n demo s3-backend-storage
-
-# Delete Deployment
 $ kubectl delete deployment -n demo fuse-demo
-
-# Delete PVC and PV
 $ kubectl delete pvc -n demo fuse-pvc
 $ kubectl delete pv fuse-pv
-
-# Delete Secrets
-$ kubectl delete secret -n demo s3-config s3-storage-secret encrypt-secret
-
-# Delete namespace
+$ kubectl delete secret -n demo gcs-secret encrypt-secret
 $ kubectl delete namespace demo
 ```
-
-## Summary
-
-In this tutorial, we demonstrated:
-
-1. How to install an S3-compatible CSI driver to mount S3 buckets as Kubernetes volumes
-2. How to mount a specific S3 bucket prefix as a PersistentVolume and use it in a Deployment
-3. How to configure KubeStash to backup data from the mounted S3 bucket to a different backend storage
-4. How to restore the backed-up data when needed
-
-This approach allows you to:
-- Protect your S3-compatible object storage data with regular automated backups
-- Store backups in a different location for disaster recovery
-- Easily restore data in case of accidental deletion or corruption
-- Maintain backup retention policies and encryption for security
-
-The same methodology can be applied to any S3-compatible storage provider (DigitalOcean Spaces, MinIO, Wasabi, Linode, etc.) by simply adjusting the endpoint URLs and credentials.
