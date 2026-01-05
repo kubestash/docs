@@ -12,4 +12,4 @@ spec:
     last: 5
   usagePolicy:
     allowedNamespaces:
-      from: Same
+      from: All

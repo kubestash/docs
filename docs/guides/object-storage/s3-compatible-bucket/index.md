@@ -276,7 +276,7 @@ spec:
   accessModes:
     - ReadWriteMany
   claimRef:
-    namespace: csi-s3
+    namespace: demo
     name: fuse-pvc
   csi:
     driver: ru.yandex.s3.csi
@@ -361,12 +361,16 @@ spec:
     metadata:
       labels:
         app: fuse-demo
-      name: busybox
+      name: ubuntu
     spec:
       containers:
-        - image: busybox
+        - image: ubuntu:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              sleep infinity
           imagePullPolicy: IfNotPresent
-          name: busybox
+          name: ubuntu
           volumeMounts:
             - mountPath: /source/data
               name: source-data
@@ -478,7 +482,7 @@ spec:
     last: 5
   usagePolicy:
     allowedNamespaces:
-      from: Same
+      from: All
 ```
 
 Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from all namespaces.For more details on configuring it for specific namespaces, please refer to the following [RetentionPolicy usage policy](/docs/concepts/crds/retentionpolicy/index.md).
@@ -546,7 +550,6 @@ spec:
           encryptionSecret:
             name: encrypt-secret
             namespace: demo
-          deletionPolicy: WipeOut
       addon:
         name: pvc-addon
         tasks:
@@ -604,7 +607,7 @@ trigger-s3-bucket-backup-frequent-backup   */5 * * * *   <none>     False     0 
 Now, wait for the next backup schedule. You can watch for `BackupSession` CR using the following command,
 
 ```bash
-$ watch -n 1 kubectl get backupsessions.core.kubestash.com -n demo -l=kubestash.com/invoker-name=nfs-pvc-backup
+$ watch -n 1 kubectl get backupsessions.core.kubestash.com -n demo -l=kubestash.com/invoker-name=s3-bucket-backup
 
 NAME                                          INVOKER-TYPE          INVOKER-NAME       PHASE       DURATION   AGE
 s3-bucket-backup-frequent-backup-1766732073   BackupConfiguration   s3-bucket-backup   Succeeded   40s        112s
@@ -811,10 +814,9 @@ To cleanup the resources created in this tutorial:
 $ kubectl delete restoresession -n demo s3-bucket-restore
 $ kubectl delete backupconfiguration -n demo s3-bucket-backup
 $ kubectl delete retentionpolicy -n demo demo-retention
-$ kubectl delete backupstorage -n demo s3-backend-storage
+$ kubectl delete backupstorage -n demo s3-storage
 $ kubectl delete deployment -n demo fuse-demo
 $ kubectl delete pvc -n demo fuse-pvc
 $ kubectl delete pv fuse-pv
 $ kubectl delete secret -n demo gcs-secret encrypt-secret
-$ kubectl delete namespace demo
 ```

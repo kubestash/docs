@@ -79,7 +79,7 @@ The backup process consists of the following steps:
 
 ## How Restore Process Works
 
-Restore process is pretty much strait forward, you can restore to any PVC (Provisioned by any CSI Driver). The following diagram shows how KubeStash restores backed up data inside a workload. Open the image in a new tab to see the enlarged version.
+Restore process is pretty much straight forward; you can restore to any PVC (Provisioned by any CSI Driver). The following diagram shows how KubeStash restores backed up data inside a workload. Open the image in a new tab to see the enlarged version.
 
 <figure align="center">
    <img alt="KubeStash Restore Flow" src="images/restore_overview.svg">
