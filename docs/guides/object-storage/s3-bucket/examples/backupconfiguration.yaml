@@ -1,0 +1,41 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: s3-bucket-backup
+  namespace: demo
+spec:
+  target:
+    apiGroup:
+    kind: PersistentVolumeClaim
+    name: fuse-pvc
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        namespace: demo
+        name: gcs-storage
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: frequent-backup
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: gcs-repository
+          backend: gcs-backend
+          directory: /fuse-bucket-data
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+          deletionPolicy: Retain
+      addon:
+        name: pvc-addon
+        tasks:
+          - name: logical-backup
+        jobTemplate:
+          spec:
+            securityContext:
+              fsGroup: 100

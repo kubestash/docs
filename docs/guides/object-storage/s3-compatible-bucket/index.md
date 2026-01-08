@@ -407,9 +407,9 @@ Great! The S3 bucket data is now successfully mounted to the Deployment pod. Now
 
 ### Prepare Backend Storage
 
-We need a backend storage where KubeStash will store the backup snapshots. This should be different from your source S3 storage. We'll use another S3-compatible storage or a different cloud provider.
+We need a backend storage where KubeStash will store the backup snapshots. This should be different from your source S3 storage. We can use another S3-compatible storage or a different cloud provider.
 
-We are going to use a GCS bucket in KubeStash. For this, we have to create a `Secret` with necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+We are going to use a GCS bucket. For this, we have to create a `Secret` with necessary credentials and a `BackupStorage` object. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
 
 > For GCS backend, if the bucket does not exist, KubeStash needs `Storage Object Admin` role permissions to create the bucket. For more details, please check the following [guide](/docs/guides/backends/gcs/index.md).
 
@@ -728,7 +728,7 @@ This section will demonstrate how to restore the backed-up data from the snapsho
 At first, let's simulate a disaster scenario. Let's delete the files from the S3 bucket:
 
 ```bash
-$ kubectl exec -it -n demo fuse-demo-7794cc7994-qhqg6 -- rm -rf /source/data/*
+$ kubectl exec -it -n demo fuse-demo-7794cc7994-qhqg6 -- rm -rf /source/data/
 $ kubectl exec -it -n demo fuse-demo-7794cc7994-qhqg6 -- ls /source/data
 # Empty output - all files deleted
 ```
