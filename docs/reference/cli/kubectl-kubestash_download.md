@@ -23,13 +23,12 @@ kubectl-kubestash download [flags]
 ### Options
 
 ```
-      --components strings       List of components to restore
-      --destination string       Destination path where components will be restored.
-      --docker-registry string   Docker image registry for restic cli (default "restic")
-      --exclude strings          List of pattern for directory/file to ignore during restore
-  -h, --help                     help for download
-      --image-tag string         Restic docker image tag (default "latest")
-      --include strings          List of pattern for directory/file to restore
+      --components strings   List of components to restore
+      --destination string   Destination path where components will be restored.
+      --exclude strings      List of pattern for directory/file to ignore during restore
+  -h, --help                 help for download
+      --image string         Restic docker image (default "ghcr.io/appscode-images/restic:0.18.1")
+      --include strings      List of pattern for directory/file to restore
 ```
 
 ### Options inherited from parent commands
