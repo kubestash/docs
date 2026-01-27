@@ -3,7 +3,7 @@ title: Backup & Restore of S3-Compatible Object Storage | KubeStash
 description: A comprehensive guide showing how to backup and restore data from S3-compatible object storage buckets using KubeStash.
 menu:
   docs_{{ .version }}:
-    identifier: s3-compatible-bucket
+    identifier: s3-compatible
     name: S3-Compatible Object Storage
     parent: object-storage
     weight: 20
@@ -50,7 +50,7 @@ $ kubectl create ns demo
 namespace/demo created
 ```
 
-> **Note:** YAML files used in this tutorial are stored in [docs/guides/object-storage/s3-compatible-bucket/examples](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples) directory of [kubestash/docs](https://github.com/kubestash/docs) repository.
+> **Note:** YAML files used in this tutorial are stored in [docs/guides/object-storage/s3-compatible/examples](https://github.com/kubestash/docs/tree/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples) directory of [kubestash/docs](https://github.com/kubestash/docs) repository.
 
 ## Backup S3-Compatible Object Storage
 
@@ -229,7 +229,7 @@ spec:
 Let's create the pod we have shown above:
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/random-data-uploader-pod.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/random-data-uploader-pod.yaml
 pod/random-uploader created
 ```
 
@@ -308,7 +308,7 @@ spec:
 Let's create the PV:
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/pv.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/pv.yaml
 persistentvolume/fuse-pv created
 ```
 
@@ -334,7 +334,7 @@ spec:
 Let's create the PVC:
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/pvc.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/pvc.yaml
 persistentvolumeclaim/fuse-pvc created
 ```
 
@@ -384,7 +384,7 @@ spec:
 Let's create the Deployment:
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/deployment.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/deployment.yaml
 deployment.apps/fuse-demo created
 ```
 
@@ -455,7 +455,7 @@ spec:
 Let's create the `BackupStorage` object that we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/backupstorage.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/backupstorage.yaml
 backupstorage.storage.kubestash.com/gcs-storage created
 ```
 
@@ -490,7 +490,7 @@ Notice the `spec.usagePolicy` that allows referencing the `RetentionPolicy` from
 Let's create the `RetentionPolicy` object that we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/retentionpolicy.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/retentionpolicy.yaml
 retentionpolicy.storage.kubestash.com/demo-retention created
 ```
 
@@ -558,7 +558,7 @@ spec:
 Now, let's create the BackupConfiguration:
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/backupconfiguration.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/backupconfiguration.yaml
 backupconfiguration.core.kubestash.com/s3-bucket-backup created
 ```
 
@@ -773,7 +773,7 @@ spec:
 Let's create the `RestoreSession` object that we have shown above,
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/restoresession.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/restoresession.yaml
 restoresession.core.kubestash.com/s3-bucket-restore created
 ```
 

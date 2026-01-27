@@ -4,7 +4,7 @@ description: A comprehensive guide showing how to backup and restore data from S
 menu:
   docs_{{ .version }}:
     identifier: s3-bucket
-    name: S3 Object Storage
+    name: AWS S3 Object Storage
     parent: object-storage
     weight: 10
 product_name: kubestash
@@ -519,7 +519,7 @@ spec:
 Now, let's create the BackupConfiguration:
 
 ```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible-bucket/examples/backupconfiguration.yaml
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/object-storage/s3-compatible/examples/backupconfiguration.yaml
 backupconfiguration.core.kubestash.com/s3-bucket-backup created
 ```
 
