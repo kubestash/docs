@@ -6,7 +6,7 @@ menu:
     identifier: aws-s3
     name: AWS S3 Object Storage
     parent: object-storage
-    weight: 10
+    weight: 20
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: guides

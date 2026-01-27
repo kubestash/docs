@@ -6,7 +6,7 @@ menu:
     identifier: s3-compatible
     name: S3-Compatible Object Storage
     parent: object-storage
-    weight: 20
+    weight: 30
 product_name: kubestash
 menu_name: docs_{{ .version }}
 section_menu_id: guides
