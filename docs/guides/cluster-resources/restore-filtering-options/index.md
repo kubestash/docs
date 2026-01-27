@@ -9,7 +9,7 @@ menu:
     identifier: kubestash-cluster-restore-filtering-options
     name: "Restore Filtering Options"
     parent: kubestash-cluster-resources
-    weight: 25
+    weight: 40
 ---
 
 ### Flags in `manifest-restore` task in KubeDump 

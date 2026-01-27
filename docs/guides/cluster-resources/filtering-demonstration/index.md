@@ -9,7 +9,7 @@ menu:
     identifier: kubestash-cluster-resources-filtering-demonstration
     name: "Filtering Demonstration"
     parent: kubestash-cluster-resources
-    weight: 30
+    weight: 50
 ---
 
 

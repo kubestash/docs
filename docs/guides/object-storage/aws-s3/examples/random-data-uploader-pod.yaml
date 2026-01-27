@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: random-uploader
+  namespace: demo
+spec:
+  restartPolicy: Never
+  containers:
+    - name: uploader
+      image: amazon/aws-cli:latest
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: s3-config
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: s3-config
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_REGION
+          valueFrom:
+            secretKeyRef:
+              name: s3-config
+              key: AWS_REGION
+        - name: S3_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: s3-config
+              key: S3_BUCKET
+        - name: S3_PREFIX
+          valueFrom:
+            secretKeyRef:
+              name: s3-config
+              key: PREFIX
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          set -eu
+          mkdir -p /tmp/random
+      
+          for i in $(seq 1 5); do
+            FILE="/tmp/random/file_${i}.txt"
+            head -c 2048 /dev/urandom | base64 > "$FILE"
+            echo "Generated: $(basename "$FILE")"
+      
+            KEY="${S3_PREFIX}/$(basename "$FILE")"
+            if ! aws s3 ls "s3://${S3_BUCKET}/${KEY}" \
+                --region "${AWS_REGION}" >/dev/null 2>&1; then
+              aws s3 cp "$FILE" "s3://${S3_BUCKET}/${KEY}" \
+                --region "${AWS_REGION}"
+              echo "Uploaded: ${KEY}"
+            else
+              echo "Skip (exists): ${KEY}"
+            fi
+          done
+      
+          echo "🎉 Done uploading random files."

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: fuse-pv
+spec:
+  capacity:
+    storage: 10Gi # ignored, required
+  accessModes:
+    - ReadWriteMany # supported options: ReadWriteMany / ReadOnlyMany
+  claimRef:
+    namespace: demo
+    name: fuse-pvc
+  mountOptions:
+    - prefix fuse/
+    - region us-east-2
+    - allow-other
+    - allow-delete
+    - uid=100
+    - gid=100
+  csi:
+    driver: s3.csi.aws.com # required
+    volumeHandle: s3-csi-driver-volume
+    volumeAttributes:
+      bucketName: kubestash
