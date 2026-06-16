@@ -18,7 +18,7 @@ There are two ways to deploy KubeStash in [OpenShift](https://www.redhat.com/en/
 
 ### Option A: Standard chart with OpenShift values
 
-Use the same `kubestash` chart shown above and enable the OpenShift distribution values. This switches the operator to UBI-based images and applies the SecurityContextConstraints and other OpenShift-specific tweaks:
+Use the standard [`kubestash` chart](/docs/setup/install/kubestash/helm/) and enable the OpenShift distribution values. This switches the operator to UBI-based images and applies the SecurityContextConstraints and other OpenShift-specific tweaks:
 
 ```bash
 $ helm install kubestash oci://ghcr.io/appscode-charts/kubestash \
@@ -65,4 +65,4 @@ $ helm install kubestash oci://ghcr.io/appscode-charts/kubestash-certified \
         --wait --burst-limit=10000 --debug
 ```
 
-Once installed, follow the [verify the installation](/docs/setup/install/kubestash/configuration/) steps to confirm the operator and Addon catalogs are running.
+Once installed, follow the [Common Configuration](/docs/setup/install/kubestash/configuration/) steps to verify the operator and Addon catalogs are running.

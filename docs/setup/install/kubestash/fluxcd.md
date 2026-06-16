@@ -138,4 +138,4 @@ Notes:
 - `ace-user-roles.enabled: false` is set on the KubeStash HelmRelease because the `ace-user-roles` chart is already managed by its own HelmRelease (step 2).
 - FluxCD's `helm-controller` reconciles by re-running `helm upgrade`, so unlike ArgoCD you do not need to declare `ignoreDifferences` for the operator's rotating TLS certs and webhook CA bundles.
 
-Once all three HelmReleases report `Ready`, follow the [verify the installation](/docs/setup/install/kubestash/configuration/) steps.
+Once all three HelmReleases report `Ready`, follow the [Common Configuration](/docs/setup/install/kubestash/configuration/) steps to verify the installation.

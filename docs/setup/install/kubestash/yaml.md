@@ -14,7 +14,7 @@ section_menu_id: setup
 
 # Using YAML
 
-If you prefer to not use Helm, you can generate YAMLs from KubeStash chart and deploy using `kubectl`. Here we are going to show the prodecure using Helm 3.
+If you prefer to not use Helm, you can generate YAMLs from KubeStash chart and deploy using `kubectl`. Here we are going to show the procedure using Helm 3.
 
 ```bash
 $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash \
