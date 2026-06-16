@@ -65,7 +65,7 @@ metadata:
   namespace: demo
 spec:
   target:
-    apiGroup:
+    apiGroup: ""
     kind: Deployment
     name: kubestash-demo
     namespace: demo

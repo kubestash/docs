@@ -223,7 +223,7 @@ metadata:
   namespace: demo
 spec:
   target:
-    apiGroup:
+    apiGroup: ""
     kind: PersistentVolumeClaim
     name:  target-pvc
     namespace: demo

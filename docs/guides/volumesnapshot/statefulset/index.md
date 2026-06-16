@@ -442,8 +442,7 @@ metadata:
   creationTimestamp: "2024-01-16T11:40:01Z"
   name: gcs-repository-statefulset-volumshot-frequent-backup-1705405201
   namespace: demo
-spec:
-  ---
+spec: {}
 status:
   components:
     volumesnapshot-pod-0:
@@ -453,22 +452,21 @@ status:
         - hostPath: /source/data
           pvcName: source-data-kubestash-demo-0
           volumeSnapshotName: source-data-kubestash-demo-0-1705405201
-      volumesnapshot-pod-1:
-        driver: VolumeSnapshotter
-        phase: Succeeded
-        volumeSnapshotterStats:
-          - hostPath: /source/data
-            pvcName: source-data-kubestash-demo-1
-            volumeSnapshotName: source-data-kubestash-demo-1-1705405201
-      volumesnapshot-pod-2:
-        driver: VolumeSnapshotter
-        phase: Succeeded
-        volumeSnapshotterStats:
-          - hostPath: /source/data
-            pvcName: source-data-kubestash-demo-2
-            volumeSnapshotName: source-data-kubestash-demo-2-1705405201
-  conditions:
-    ---
+    volumesnapshot-pod-1:
+      driver: VolumeSnapshotter
+      phase: Succeeded
+      volumeSnapshotterStats:
+        - hostPath: /source/data
+          pvcName: source-data-kubestash-demo-1
+          volumeSnapshotName: source-data-kubestash-demo-1-1705405201
+    volumesnapshot-pod-2:
+      driver: VolumeSnapshotter
+      phase: Succeeded
+      volumeSnapshotterStats:
+        - hostPath: /source/data
+          pvcName: source-data-kubestash-demo-2
+          volumeSnapshotName: source-data-kubestash-demo-2-1705405201
+  conditions: []
   phase: Succeeded
   snapshotTime: "2024-01-16T11:40:45Z"
   totalComponents: 3

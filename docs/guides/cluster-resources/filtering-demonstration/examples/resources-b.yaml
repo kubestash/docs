@@ -34,9 +34,9 @@ metadata:
   labels:
     app: my-sts
 type: Opaque
-data:
-  username: <your_username> # Base64-encoded "user"
-  password: <your_password> # Base64-encoded "password"
+stringData:
+  username: <your_username>
+  password: <your_password>
 ---
 apiVersion: v1
 kind: Service

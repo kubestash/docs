@@ -313,7 +313,7 @@ metadata:
   namespace: demo
 spec:
   target:
-    apiGroup:
+    apiGroup: ""
     kind: PersistentVolumeClaim
     name:  nfs-pvc
     namespace: demo
@@ -525,7 +525,7 @@ metadata:
   namespace: demo
 spec:
   target:
-    apiGroup:
+    apiGroup: ""
     kind: PersistentVolumeClaim
     name: nfs-pvc
     namespace: demo

@@ -481,7 +481,7 @@ metadata:
   namespace: demo
 spec:
   target:
-    apiGroup:
+    apiGroup: ""
     kind: PersistentVolumeClaim
     name: fuse-pvc
     namespace: demo
@@ -707,7 +707,7 @@ metadata:
   namespace: demo
 spec:
   target:
-    apiGroup:
+    apiGroup: ""
     kind: PersistentVolumeClaim
     name: fuse-pvc
     namespace: demo

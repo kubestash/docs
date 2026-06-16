@@ -38,7 +38,10 @@ spec:
       tasks:
       - name: logical-backup-restore
   sessionHistoryLimit: 2
-  schedule: "*/5 * * * *"
+  scheduler:
+    schedule: "*/5 * * * *"
+    jobTemplate:
+      backoffLimit: 1
   type: RestoreOnly
 ```
 
@@ -66,7 +69,10 @@ spec:
       tasks:
       - name: logical-backup-restore
   sessionHistoryLimit: 2
-  schedule: "*/5 * * * *"
+  scheduler:
+    schedule: "*/5 * * * *"
+    jobTemplate:
+      backoffLimit: 1
   type: Query
   query:
     mySQL:
@@ -264,7 +270,10 @@ spec:
       tasks:
       - name: logical-backup-restore
   sessionHistoryLimit: 2
-  schedule: "*/5 * * * *"
+  scheduler:
+    schedule: "*/5 * * * *"
+    jobTemplate:
+      backoffLimit: 1
   volumes:
   - name: config-vol
     configMap:
