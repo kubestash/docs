@@ -489,4 +489,4 @@ spec:
       - name: logical-backup-restore
 ```
 
-> Note: You can configure additional runtime settings for restore jobs within the `addon.jobTemplate.spec` sections. For further details, please refer to the [reference](https://kubestash.com/docs/v2025.3.24/concepts/crds/restoresession/#podtemplate-spec).
+> Note: You can configure additional runtime settings for restore jobs within the `addon.jobTemplate.spec` sections. For further details, please refer to the [reference](/docs/concepts/crds/restoresession/#podtemplate-spec).
