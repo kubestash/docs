@@ -26,19 +26,19 @@ This guide will give you how you can take backup and restore your externally man
 - At first, you need to have a Kubernetes cluster, and the `kubectl` command-line tool must be configured to communicate with your cluster. If you do not already have a cluster, you can create one by using `Minikube` or `Kind`.
 - Install `kubedb-kubestash-catalog` in your cluster following the steps [here](https://github.com/kubedb/installer/tree/master/charts/kubedb-kubestash-catalog).
 - Install `KubeStash` in your cluster following the steps [here](/docs/setup/install/kubestash/).
-- Install KubeStash `kubectl` plugin following the steps [here](https://kubestash.com/docs/latest/setup/install/kubectl-plugin/).
+- Install KubeStash `kubectl` plugin following the steps [here](/docs/setup/install/kubectl-plugin/).
 - If you are not familiar with how KubeStash backup and restore PostgreSQL databases, please check the following guide [here](/docs/addons/postgres/overview/index.md).
 
 You should be familiar with the following `KubeStash` concepts:
 
-- [BackupStorage](https://kubestash.com/docs/latest/concepts/crds/backupstorage/)
-- [BackupConfiguration](https://kubestash.com/docs/latest/concepts/crds/backupconfiguration/)
+- [BackupStorage](/docs/concepts/crds/backupstorage/)
+- [BackupConfiguration](/docs/concepts/crds/backupconfiguration/)
 - [AppBinding](https://kubedb.com/docs/v2024.9.30/guides/postgres/concepts/appbinding/)
-- [BackupSession](https://kubestash.com/docs/latest/concepts/crds/backupsession/)
-- [RestoreSession](https://kubestash.com/docs/latest/concepts/crds/restoresession/)
-- [Addon](https://kubestash.com/docs/latest/concepts/crds/addon/)
-- [Function](https://kubestash.com/docs/latest/concepts/crds/function/)
-- [Task](https://kubestash.com/docs/latest/concepts/crds/addon/#task-specification)
+- [BackupSession](/docs/concepts/crds/backupsession/)
+- [RestoreSession](/docs/concepts/crds/restoresession/)
+- [Addon](/docs/concepts/crds/addon/)
+- [Function](/docs/concepts/crds/function/)
+- [Task](/docs/concepts/crds/addon/#task-specification)
 
 To keep everything isolated, we are going to use a separate namespace called `demo` throughout this tutorial.
 
@@ -194,7 +194,7 @@ Now, we are ready to backup the database.
 
 ### Prepare Backend
 
-We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a `BackupStorage` CR to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](https://kubestash.com/docs/latest/guides/backends/overview/).
+We are going to store our backed up data into a GCS bucket. We have to create a Secret with necessary credentials and a `BackupStorage` CR to use this backend. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/).
 
 **Create Secret:**
 
