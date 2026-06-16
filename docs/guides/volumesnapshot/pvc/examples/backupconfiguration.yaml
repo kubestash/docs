@@ -5,7 +5,7 @@ metadata:
   namespace: demo
 spec:
   target:
-    apiGroup:
+    apiGroup: ""
     kind: PersistentVolumeClaim
     name:  source-pvc
     namespace: demo

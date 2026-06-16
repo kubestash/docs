@@ -34,7 +34,7 @@ jobs:
 
       - name: Check links
         run: |
-          liche -r docs -d $(pwd) -c 10 -p -h -l -x '^(.*/docs/{{<.*>}}/.*|.*github.com.*|.*api.slack.com.*|.*askapache.com.*|.*twitter.com.*|.*dev.mysql.com.*|.*linux.die.net.*)$'
+          liche -r docs -d $(pwd) -c 10 -p -h -l -x '^(.*/docs/{{<.*>}}/.*|.*github.com.*|.*api.slack.com.*|.*askapache.com.*|.*twitter.com.*|.*dev.mysql.com.*|.*linux.die.net.*|.*helm.sh.*|.*aws.amazon.com.*)$'
 
       - name: Create Kubernetes cluster
         id: kind
@@ -51,19 +51,20 @@ jobs:
           echo
           echo "install helm 3"
           curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
-          
           echo "install kubestash-crds chart"
-#          sleep 10
-#          kubectl get pods -A
-#          kubectl create -f https://github.com/kubestash/installer/raw/verification/crds/kubestash-crds.yaml || true
-#          kubectl get crds
-#          kubectl create -f https://github.com/kubedb/installer/raw/master/crds/kubedb-crds.yaml
-
           helm repo add appscode https://charts.appscode.com/stable/
           helm repo update
-#          helm install kmodules-crds appscode/kmodules-crds
-          kubectl create -f https://github.com/kubestash/installer/raw/master/crds/kubestash-crds.yaml
+          kubectl create -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.crds.yaml
+          kubectl create -f https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.75.0/stripped-down-crds.yaml
+          kubectl create -f https://github.com/kmodules/custom-resources/raw/release-1.25/crds/appcatalog.appscode.com_appbindings.yaml
+          kubectl create -f https://github.com/argoproj/argo-cd/raw/v3.4.3/manifests/crds/application-crd.yaml
+          kubectl create -f https://github.com/fluxcd/helm-controller/raw/v1.3.0/config/crd/bases/helm.toolkit.fluxcd.io_helmreleases.yaml
+          kubectl create -f https://github.com/fluxcd/source-controller/raw/v1.6.2/config/crd/bases/source.toolkit.fluxcd.io_helmrepositories.yaml
           kubectl create -f https://github.com/kubedb/installer/raw/master/crds/kubedb-crds.yaml
+          kubectl create -f https://github.com/kubernetes-csi/external-snapshotter/raw/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
+          kubectl create -f https://github.com/kubernetes-csi/external-snapshotter/raw/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+          kubectl create -f https://github.com/kubestash/installer/raw/master/crds/kubestash-crds.yaml
+          
 
       - name: Check codespan schema
         run: |

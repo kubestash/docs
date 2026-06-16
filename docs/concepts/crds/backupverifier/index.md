@@ -47,7 +47,10 @@ spec:
       kind: MySQL
       name: sample-mysql
       namespace: verify
-  schedule: '*/5 * * * *'
+  scheduler:
+    schedule: '*/5 * * * *'
+    jobTemplate:
+      backoffLimit: 1
   script:
     location: /tmp/config/test.sh
   sessionHistoryLimit: 2

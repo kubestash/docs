@@ -52,6 +52,8 @@ spec:
     - name: demo-session
       scheduler:
         schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
       repositories:
         - name: gcs-demo-repo
           backend: gcs-backend
@@ -107,6 +109,8 @@ spec:
     - name: demo-session
       scheduler:
         schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
       repositories:
         - name: gcs-demo-repo
           backend: gcs-backend
@@ -159,6 +163,8 @@ spec:
     - name: demo-session
       scheduler:
         schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
       repositories:
         - name: gcs-demo-repo
           backend: gcs-backend
@@ -214,6 +220,8 @@ spec:
     - name: demo-session
       scheduler:
         schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
       repositories:
         - name: gcs-demo-repo
           backend: gcs-backend
@@ -260,6 +268,8 @@ spec:
     - name: demo-session
       scheduler:
         schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
       repositories:
         - name: gcs-demo-repo
           backend: gcs-backend

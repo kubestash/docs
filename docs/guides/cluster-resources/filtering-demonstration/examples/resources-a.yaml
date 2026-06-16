@@ -33,9 +33,9 @@ metadata:
   labels:
     app: my-app
 type: Opaque
-data:
-  username: <your_username>  # Base64 for "user"
-  password: <your_password>  # Base64 for "password"
+stringData:
+  username: <your_username>
+  password: <your_password>
 ---
 apiVersion: v1
 kind: Service

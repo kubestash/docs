@@ -160,7 +160,6 @@ metadata:
   name: cluster-resources-restore
   namespace: demo
 spec:
-...
   addon:
     name: kubedump-addon
     tasks:

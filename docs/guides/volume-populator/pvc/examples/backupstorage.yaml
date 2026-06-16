@@ -9,7 +9,7 @@ spec:
     gcs:
       bucket: kubestash-qa
       prefix: demo
-      secret: gcs-secret
+      secretName: gcs-secret
   usagePolicy:
     allowedNamespaces:
       from: All
