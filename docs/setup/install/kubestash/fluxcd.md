@@ -106,6 +106,8 @@ spec:
       token: '****************************************'
 ```
 
+> **Note:** You can find the latest `license-proxyserver` chart version from the [chart repository](https://github.com/appscode-cloud/installer/tree/master/charts/license-proxyserver) and set it under the `spec.chart.spec.version` field above.
+
 ### 4. Install KubeStash
 
 ```yaml

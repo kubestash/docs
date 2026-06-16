@@ -18,15 +18,16 @@ The steps below apply regardless of which [installation method](/docs/setup/inst
 
 ## Verify installation
 
-To check if KubeStash operator pods have started, run the following command:
+To check if KubeStash operator and webhook pods have started, run the following command:
 
 ```bash
-$ kubectl get pods --all-namespaces -l app.kubernetes.io/name=kubestash-operator --watch
-NAMESPACE     NAME                                           READY   STATUS    RESTARTS   AGE
-stash         kubestash-kubestash-operator-fcd8bf7c6-psjs6   2/2     Running   0          5m49s
+$ kubectl get pods -n stash -l app.kubernetes.io/instance=kubestash --watch
+NAME                                                           READY   STATUS    RESTARTS   AGE
+kubestash-kubestash-operator-fcd8bf7c6-psjs6                   2/2     Running   0          5m49s
+kubestash-kubestash-operator-webhook-server-6fb8f5cfb9-scrx8   1/1     Running   0          5m49s
 ```
 
-Once the operator pod is running, you can cancel the above command by typing `Ctrl+C`.
+Once the operator and webhook pods are running, you can cancel the above command by typing `Ctrl+C`.
 
 Now, to confirm CRD groups have been registered by the operator, run the following command:
 ```bash
@@ -55,6 +56,7 @@ $ kubectl get addons.addons.kubestash.com
 NAME             AGE
 kubedump-addon   7m1s
 pvc-addon        7m1s
+vault-addon      7m1s
 workload-addon   7m1s
 ```
 
