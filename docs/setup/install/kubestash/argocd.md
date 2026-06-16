@@ -184,4 +184,4 @@ Notes:
 - `ace-user-roles.enabled: false` is set on the KubeStash Application because the `ace-user-roles` chart is already managed by its own Application (step 1).
 - The `ignoreDifferences` entries cover the webhook CA bundles, operator TLS secret and the reload annotation that KubeStash flips when its configuration changes. Without them ArgoCD would report the Application as out-of-sync after every reconciliation.
 
-Once all three Applications are healthy, follow the [Common Configuration](/docs/setup/install/kubestash/configuration/) steps to verify the installation.
+Once all three Applications are healthy, follow the [Common Configuration](/docs/setup/install/kubestash/configuration.md) steps to verify the installation.

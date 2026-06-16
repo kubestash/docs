@@ -24,13 +24,13 @@ Download a FREE license from [AppsCode License Server](https://appscode.com/issu
 
 KubeStash can be installed in several ways. Pick the one that fits your workflow:
 
-- [Helm 3](/docs/setup/install/kubestash/helm/) — recommended for most users.
-- [YAML](/docs/setup/install/kubestash/yaml/) — render manifests and apply with `kubectl`.
-- [ArgoCD](/docs/setup/install/kubestash/argocd/) — GitOps via ArgoCD `Application` resources.
-- [FluxCD](/docs/setup/install/kubestash/fluxcd/) — GitOps via the Flux Helm Controller.
-- [OpenShift](/docs/setup/install/kubestash/openshift/) — standard chart or Red Hat certified chart.
+- [Helm 3](/docs/setup/install/kubestash/helm.md) — recommended for most users.
+- [YAML](/docs/setup/install/kubestash/yaml.md) — render manifests and apply with `kubectl`.
+- [ArgoCD](/docs/setup/install/kubestash/argocd.md) — GitOps via ArgoCD `Application` resources.
+- [FluxCD](/docs/setup/install/kubestash/fluxcd.md) — GitOps via the Flux Helm Controller.
+- [OpenShift](/docs/setup/install/kubestash/openshift.md) — standard chart or Red Hat certified chart.
 
-After installing, see [Common Configuration](/docs/setup/install/kubestash/configuration/) to verify the installation.
+After installing, see [Common Configuration](/docs/setup/install/kubestash/configuration.md) to verify the installation.
 
 ## Purchase KubeStash License
 

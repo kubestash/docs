@@ -25,4 +25,4 @@ $ helm template kubestash oci://ghcr.io/appscode-charts/kubestash \
 
 To see the detailed configuration options, visit [here](https://github.com/kubestash/installer/tree/master/charts/kubestash).
 
-Next: [verify the installation](/docs/setup/install/kubestash/configuration/).
+Next: [verify the installation](/docs/setup/install/kubestash/configuration.md).
