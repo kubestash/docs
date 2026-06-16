@@ -35,7 +35,7 @@ Concept explains some significant aspect of KubeStash. This is where you can lea
 Setup contains instruction for installing, uninstalling, and upgrading KubeStash.
 
 - **Install KubeStash:** Provides installation instructions for KubeStash and its various components.
-  - [KubeStash](/docs/setup/install/kubestash/index.md): Provides installation instructions for KubeStash.
+  - [KubeStash](/docs/setup/install/kubestash/_index.md): Provides installation instructions for KubeStash.
   - [kubeStash kubectl Plugin](/docs/setup/install/kubectl-plugin/index.md): Provides installation instructions for KubeStash `kubectl` plugin.
   - [Troubleshooting](/docs/setup/install/troubleshooting/index.md): Provides troubleshooting guide for various installation problems.
 - **Uninstall KubeStash:** Provides uninstallation instructions for KubeStash and its various components.
