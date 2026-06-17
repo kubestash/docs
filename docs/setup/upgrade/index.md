@@ -31,7 +31,7 @@ $ kubectl apply -f https://github.com/kubestash/installer/raw/{{< param "info.ve
 
 #### 2. Upgrade Kubestash Operator
 
-Now, upgrade the KubeStash helm chart using the following command. You can find the latest installation guide [here]().
+Now, upgrade the KubeStash helm chart using the following command. You can find the latest installation guide here.
 
 ```bash
 helm upgrade kubestash oci://ghcr.io/appscode-charts/kubestash \
