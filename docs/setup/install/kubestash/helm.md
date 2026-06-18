@@ -14,7 +14,7 @@ section_menu_id: setup
 
 # Using Helm 3
 
-KubeStash can be installed via [Helm](https://helm.sh/) using the [chart](https://github.com/kubestash/installer/tree/master/charts/kubestash) from [AppsCode Charts Repository](https://github.com/appscode/charts). To install the chart with the release name `kubestash`:
+KubeStash can be installed via [Helm](https://helm.sh/) using the [chart](https://github.com/kubestash/installer/tree/{{< param "info.version" >}}/charts/kubestash) from [AppsCode Charts Repository](https://github.com/appscode/charts). To install the chart with the release name `kubestash`:
 
 ```bash
 $ helm install kubestash oci://ghcr.io/appscode-charts/kubestash \
@@ -39,12 +39,12 @@ KubeStash pulls every image from two `ghcr.io` namespaces. Mirror them into your
 
 The Helm chart itself is published at `ghcr.io/appscode-charts/kubestash`.
 
-The installer repository ships helper scripts under [`catalog`](https://github.com/kubestash/installer/tree/master/catalog) that copy every required image into your registry. They download [`crane`](https://github.com/google/go-containerregistry) automatically and copy each image to `${IMAGE_REGISTRY}/<original-repository-path>`, preserving the upstream path. Choose the workflow that matches your network.
+The installer repository ships helper scripts under [`catalog`](https://github.com/kubestash/installer/tree/{{< param "info.version" >}}/catalog) that copy every required image into your registry. They download [`crane`](https://github.com/google/go-containerregistry) automatically and copy each image to `${IMAGE_REGISTRY}/<original-repository-path>`, preserving the upstream path. Choose the workflow that matches your network.
 
 If the machine running the script can reach both `ghcr.io` and your private registry, copy everything directly:
 
 ```bash
-wget https://github.com/kubestash/installer/raw/master/catalog/copy-images.sh
+wget https://github.com/kubestash/installer/raw/{{< param "info.version" >}}/catalog/copy-images.sh
 chmod +x copy-images.sh
 export IMAGE_REGISTRY=registry.example.com
 ./copy-images.sh
@@ -54,12 +54,12 @@ If the cluster is fully air-gapped, run the export script on an internet-connect
 
 ```bash
 # On an internet-connected machine
-wget https://github.com/kubestash/installer/raw/master/catalog/export-images.sh
+wget https://github.com/kubestash/installer/raw/{{< param "info.version" >}}/catalog/export-images.sh
 chmod +x export-images.sh
 ./export-images.sh   # produces images.tar.gz
 
 # Inside the air-gapped network, after copying images.tar.gz across
-wget https://github.com/kubestash/installer/raw/master/catalog/import-images.sh
+wget https://github.com/kubestash/installer/raw/{{< param "info.version" >}}/catalog/import-images.sh
 chmod +x import-images.sh
 export IMAGE_REGISTRY=registry.example.com
 ./import-images.sh images.tar.gz
@@ -100,7 +100,7 @@ $ helm upgrade -i kubestash oci://registry.example.com/appscode-charts/kubestash
 
 ### 4. Image list for pre-seeded registries
 
-If your registry cannot mirror an entire namespace (for example, because of storage limits), mirror only the images you need. The [installer repository](https://github.com/kubestash/installer/tree/master/catalog) publishes the full list at `catalog/imagelist.yaml`, generated from the same chart. KubeStash is compact: the complete set is the operator, the `kubectl-nonroot` helper, and the backup or restore addon functions, all under `ghcr.io`:
+If your registry cannot mirror an entire namespace (for example, because of storage limits), mirror only the images you need. The [installer repository](https://github.com/kubestash/installer/tree/{{< param "info.version" >}}/catalog) publishes the full list at `catalog/imagelist.yaml`, generated from the same chart. KubeStash is compact: the complete set is the operator, the `kubectl-nonroot` helper, and the backup or restore addon functions, all under `ghcr.io`:
 
 ```
 ghcr.io/appscode/kubectl-nonroot
@@ -115,6 +115,6 @@ ghcr.io/kubestash/workload
 
 Run the verification command in step 2 (or read `catalog/imagelist.yaml`) to capture the exact image tags for your chart version.
 
-To see the detailed configuration options, visit [here](https://github.com/kubestash/installer/tree/master/charts/kubestash).
+To see the detailed configuration options, visit [here](https://github.com/kubestash/installer/tree/{{< param "info.version" >}}/charts/kubestash).
 
 Next: [verify the installation](/docs/setup/install/kubestash/configuration.md).
