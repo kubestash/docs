@@ -51,7 +51,7 @@ az aks create -g $RG_NAME -n $AKS_NAME --enable-oidc-issuer --enable-workload-id
 
 #### Install `KubeDB` in aks-1 
 
-Follow the `KubeDB` [official setup page](https://kubedb.com/docs/latest/setup/install/kubedb/) for getting a license and installing `KubeDB`.
+Follow the `KubeDB` [official setup page](https://kubedb.com/docs/latest/setup/) for getting a license and installing `KubeDB`.
 
 After that make sure `KubeDB` is up and running in aks-1. 
 ```bash
@@ -600,7 +600,7 @@ my-mysql   8.1.0              19m
 
 #### Upgrade the KubeDB License for the New Cluster (aks-2): 
 
-Follow the `KubeDB` [official setup page](https://kubedb.com/docs/latest/setup/install/kubedb/) for getting a license and upgrading the `KubeDB` with that license.
+Follow the `KubeDB` [official setup page](https://kubedb.com/docs/latest/setup/) for getting a license and upgrading the `KubeDB` with that license.
 
 ```bash 
 $ export LICENSE_FILE=/path/to/aks-2/kubedb-license.txt
