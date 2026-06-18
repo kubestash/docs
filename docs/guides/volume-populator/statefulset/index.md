@@ -403,10 +403,11 @@ status:
       path: repository/v1/demo-session/dump-pod-0
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 4e881fdd20afb49e1baab37654cc18d440dc2f90ad61c9077956ea4561bd41dd
-        size: 13 B
-        uploaded: 1.046 KiB
+      - summary:
+          hostPath: /source/data
+          id: 4e881fdd20afb49e1baab37654cc18d440dc2f90ad61c9077956ea4561bd41dd
+          size: 13 B
+          uploaded: 1.046 KiB
       size: 803 B
     dump-pod-1:
       driver: Restic
@@ -415,10 +416,11 @@ status:
       path: repository/v1/demo-session/dump-pod-1
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 16a414187d554e1713c0a6363d904837998dc7f7d600d7c635a04c61dc1b5467
-        size: 13 B
-        uploaded: 1.046 KiB
+      - summary:
+          hostPath: /source/data
+          id: 16a414187d554e1713c0a6363d904837998dc7f7d600d7c635a04c61dc1b5467
+          size: 13 B
+          uploaded: 1.046 KiB
       size: 803 B
     dump-pod-2:
       driver: Restic
@@ -427,10 +429,11 @@ status:
       path: repository/v1/demo-session/dump-pod-2
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 9dc9efd5e9adfd0154eca48433cc57aa09bca018d970e9530769326c9783905c
-        size: 13 B
-        uploaded: 1.046 KiB
+      - summary:
+          hostPath: /source/data
+          id: 9dc9efd5e9adfd0154eca48433cc57aa09bca018d970e9530769326c9783905c
+          size: 13 B
+          uploaded: 1.046 KiB
       size: 798 B
   ...
 ```
