@@ -451,10 +451,11 @@ status:
       path: repository/v1/frequent-backup/pod-0
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 07abd0bd6d28406141709d01b343dba35fea3198321cd60dbe1710088c239153
-        size: 26 B
-        uploaded: 1.397 KiB
+      - summary:
+          hostPath: /source/data
+          id: 07abd0bd6d28406141709d01b343dba35fea3198321cd60dbe1710088c239153
+          size: 26 B
+          uploaded: 1.397 KiB
       size: 848 B
     dump-pod-1:
       driver: Restic
@@ -463,10 +464,11 @@ status:
       path: repository/v1/frequent-backup/pod-1
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 06d34f5fa7a2251408a7d846fb0616d5156a387106fe344854ab4a095c79bfa3
-        size: 26 B
-        uploaded: 1.397 KiB
+      - summary:
+          hostPath: /source/data
+          id: 06d34f5fa7a2251408a7d846fb0616d5156a387106fe344854ab4a095c79bfa3
+          size: 26 B
+          uploaded: 1.397 KiB
       size: 849 B
     dump-pod-2:
       driver: Restic
@@ -475,10 +477,11 @@ status:
       path: repository/v1/frequent-backup/pod-2
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: caa69ec25c20fcfe26624ecd30032054b0b68789ada42f2c8eb8554e60d5fc3a
-        size: 26 B
-        uploaded: 1.395 KiB
+      - summary:
+          hostPath: /source/data
+          id: caa69ec25c20fcfe26624ecd30032054b0b68789ada42f2c8eb8554e60d5fc3a
+          size: 26 B
+          uploaded: 1.395 KiB
       size: 850 B
  ...
 ```
@@ -701,14 +704,16 @@ status:
       path: repository/v1/frequent-backup/deployment
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data-1
-        id: ac086307614333b6af56e0b70c23fc1d4990552d3b414e947e2f86c23e74e9af
-        size: 0 B
-        uploaded: 994 B
-      - hostPath: /source/data-2
-        id: 61060b3e893f53400fd4f36e9e692267d883d1220184eb6a6fcaf51cb8f7d41d
-        size: 0 B
-        uploaded: 994 B
+      - summary:
+          hostPath: /source/data-1
+          id: ac086307614333b6af56e0b70c23fc1d4990552d3b414e947e2f86c23e74e9af
+          size: 0 B
+          uploaded: 994 B
+      - summary:
+          hostPath: /source/data-2
+          id: 61060b3e893f53400fd4f36e9e692267d883d1220184eb6a6fcaf51cb8f7d41d
+          size: 0 B
+          uploaded: 994 B
       size: 1.386 KiB
   ...
 ```
@@ -895,10 +900,11 @@ status:
       path: repository/v1/frequent-backup/kind-control-plane
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 9a682fd821d7ee19770d5f8db34b5fff57252088d7351d883979675e8b6b5340
-        size: 12 B
-        uploaded: 1.049 KiB
+      - summary:
+          hostPath: /source/data
+          id: 9a682fd821d7ee19770d5f8db34b5fff57252088d7351d883979675e8b6b5340
+          size: 12 B
+          uploaded: 1.049 KiB
       size: 804 B
   ...
 ```
