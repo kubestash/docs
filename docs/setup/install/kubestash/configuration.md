@@ -16,6 +16,46 @@ section_menu_id: setup
 
 The steps below apply regardless of which [installation method](/docs/setup/install/kubestash/) you used.
 
+## Network Policy
+
+KubeStash can optionally generate NetworkPolicies that restrict traffic to and from the KubeStash operator and webhook server pods so only the required communication is allowed. This is disabled by default. Enable it through `global.networkPolicy`:
+
+```yaml
+global:
+  # Controls the network policy creation
+  networkPolicy:
+    enabled: false
+    # flavor selects which network policy API is used.
+    # Accepted values: "kubernetes" (default) or "cilium".
+    flavor: kubernetes
+```
+
+Set `enabled: true` to create the policies. The `flavor` field selects which API the generated policies target: `kubernetes` (the built-in `networking.k8s.io` `NetworkPolicy`, the default) or `cilium` (Cilium's `CiliumNetworkPolicy`, for clusters running the Cilium CNI).
+
+Enable it inline with `--set`:
+
+```bash
+$ helm upgrade -i kubestash oci://ghcr.io/appscode-charts/kubestash \
+        --version {{< param "info.version" >}} \
+        --namespace stash --create-namespace \
+        --set-file global.license=/path/to/the/license.txt \
+        --set global.networkPolicy.enabled=true \
+        --set global.networkPolicy.flavor=kubernetes \
+        --wait --burst-limit=10000 --debug
+```
+
+### Required network communication
+
+KubeStash can run fully disconnected from the internet, as long as every required image is cached in a registry the cluster can reach (see the [offline installation guide](/docs/setup/install/kubestash/helm.md)).
+
+Within the cluster, the following paths must stay open. When `global.networkPolicy.enabled` is `true`, the generated policies allow exactly these; if you maintain your own policies, make sure to permit them yourself:
+
+1. KubeStash operator to the kube-apiserver.
+2. KubeStash operator to DNS.
+3. kube-apiserver to the webhook server, for the mutating, validating, and conversion webhook endpoints.
+
+In addition, backup and restore jobs need to reach the workloads they protect and the object storage backend (S3, MinIO, and similar).
+
 ## Verify installation
 
 To check if KubeStash operator and webhook pods have started, run the following command:
