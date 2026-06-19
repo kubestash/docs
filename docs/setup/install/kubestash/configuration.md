@@ -46,7 +46,7 @@ $ helm upgrade -i kubestash oci://ghcr.io/appscode-charts/kubestash \
 
 ### Required network communication
 
-KubeStash does not need any connectivity outside the cluster. It can run fully disconnected from the internet, as long as every required image is cached in a registry the cluster can reach (see the [offline installation guide](/docs/setup/install/kubestash/helm.md)).
+KubeStash can run fully disconnected from the internet, as long as every required image is cached in a registry the cluster can reach (see the [offline installation guide](/docs/setup/install/kubestash/helm.md)).
 
 Within the cluster, the following paths must stay open. When `global.networkPolicy.enabled` is `true`, the generated policies allow exactly these; if you maintain your own policies, make sure to permit them yourself:
 
