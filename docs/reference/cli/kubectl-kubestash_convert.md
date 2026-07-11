@@ -19,9 +19,11 @@ kubectl-kubestash convert [flags]
 ### Options
 
 ```
-  -h, --help                help for convert
-      --source-dir string   Source directory.
-      --target-dir string   Target directory.
+      --encryption-secret-name string        Name of the encryption Secret to reference in the converted resources.
+      --encryption-secret-namespace string   Namespace of the encryption Secret to reference in the converted resources.
+  -h, --help                                 help for convert
+      --source-dir string                    Source directory.
+      --target-dir string                    Target directory.
 ```
 
 ### Options inherited from parent commands
