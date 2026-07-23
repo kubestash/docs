@@ -16,6 +16,10 @@ section_menu_id: setup
 
 There are two ways to deploy KubeStash in [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift). Use Option A for the standard upstream chart, or Option B if you require the Red Hat OpenShift certified chart (for example, to satisfy a Red Hat OpenShift certification requirement).
 
+## Get a Free License
+
+Download a FREE license from [AppsCode License Server](https://appscode.com/issue-license?p=stash) before you begin. You can also automate this from your CI/CD pipeline using the [offline license server](https://github.com/appscode/offline-license-server#offline-license-server).
+
 ### Option A: Standard chart with OpenShift values
 
 Use the standard [`kubestash` chart](/docs/setup/install/kubestash/helm.md) and enable the OpenShift distribution values. This switches the operator to UBI-based images and applies the SecurityContextConstraints and other OpenShift-specific tweaks:

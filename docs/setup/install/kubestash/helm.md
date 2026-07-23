@@ -16,6 +16,10 @@ section_menu_id: setup
 
 KubeStash can be installed via [Helm](https://helm.sh/) using the [chart](https://github.com/kubestash/installer/tree/{{< param "info.version" >}}/charts/kubestash) from [AppsCode Charts Repository](https://github.com/appscode/charts). To install the chart with the release name `kubestash`:
 
+## Get a Free License
+
+Download a FREE license from [AppsCode License Server](https://appscode.com/issue-license?p=stash) before you begin. You can also automate this from your CI/CD pipeline using the [offline license server](https://github.com/appscode/offline-license-server#offline-license-server).
+
 ```bash
 $ helm install kubestash oci://ghcr.io/appscode-charts/kubestash \
         --version {{< param "info.version" >}} \
