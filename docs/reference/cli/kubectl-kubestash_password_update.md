@@ -20,7 +20,9 @@ kubectl-kubestash password update [flags]
 
 ```
   -h, --help                       help for update
+      --new-password string        New password for the restic repository (inline). Note: this exposes the password in shell history and the process list; prefer --new-password-stdin or --new-password-file
       --new-password-file string   File from which to read the new password
+      --new-password-stdin         Read the new password from stdin (e.g. echo '<password>' | kubectl kubestash pw update ...)
       --paths strings              List of component paths (restic repositories) to update the password
 ```
 

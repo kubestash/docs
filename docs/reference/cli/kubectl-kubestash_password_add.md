@@ -21,7 +21,9 @@ kubectl-kubestash password add [flags]
 ```
   -h, --help                       help for add
       --host string                Host for the new key
+      --new-password string        New password for the restic repository (inline). Note: this exposes the password in shell history and the process list; prefer --new-password-stdin or --new-password-file
       --new-password-file string   File from which to read the new password
+      --new-password-stdin         Read the new password from stdin (e.g. echo '<password>' | kubectl kubestash pw add ...)
       --paths strings              List of component paths (restic repositories) to add the new password
       --user string                User for the new key
 ```
