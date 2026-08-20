@@ -37,3 +37,4 @@ section_menu_id: concepts
 | Auto Backup                                                                             | Share backup configuration across workloads using templates. Enable backup for a target application via annotation.                    | 
 | Point-In-Time Recovery (PITR)                                                           | Restore a set of files from a time in the past.                                                                                        |
 | Role Based Access Control (RBAC)                                                        |                                                                                                                                        |
+| Complete Transaction History with Point-in-Time Recovery                                | Complete transaction history via continuous WAL / binlog archiving. Point-in-Time Recovery (PITR) to any second within the retention window. |
