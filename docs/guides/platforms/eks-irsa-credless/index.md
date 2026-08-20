@@ -576,9 +576,10 @@ status:
       integrity: true
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        size: 1.4 GiB
-        uploaded: 982.7 MiB
+      - summary:
+          hostPath: /source/data
+          size: 1.4 GiB
+          uploaded: 982.7 MiB
       size: 1.4 GiB
     dump-ip-192-168-16-32.us-east-1.compute.internal:
       driver: Restic
@@ -586,9 +587,10 @@ status:
       integrity: true
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        size: 512 MiB
-        uploaded: 367.9 MiB
+      - summary:
+          hostPath: /source/data
+          size: 512 MiB
+          uploaded: 367.9 MiB
       size: 512 MiB
     dump-ip-192-168-53-129.us-east-1.compute.internal:
       driver: Restic
@@ -596,9 +598,10 @@ status:
       integrity: true
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        size: 524 MiB
-        uploaded: 1.21 GiB
+      - summary:
+          hostPath: /source/data
+          size: 524 MiB
+          uploaded: 1.21 GiB
       size: 524 MiB
 ```
 

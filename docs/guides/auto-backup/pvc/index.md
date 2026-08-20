@@ -588,10 +588,11 @@ status:
       path: repository/v1/frequent-backup/pvc
       phase: Succeeded
       resticStats:
-      - hostPath: /kubestash-data
-        id: 960ca348fab17a73b9acf8168a8bb564b1b60bc13bfa163d705f38ee77aefcd2
-        size: 36 B
-        uploaded: 3.633 KiB
+      - summary:
+          hostPath: /kubestash-data
+          id: 960ca348fab17a73b9acf8168a8bb564b1b60bc13bfa163d705f38ee77aefcd2
+          size: 36 B
+          uploaded: 3.633 KiB
       size: 2.287 KiB
   ...
 ```

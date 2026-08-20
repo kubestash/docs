@@ -693,10 +693,11 @@ status:
       path: repository/v1/frequent-backup/dump
       phase: Succeeded
       resticStats:
-      - hostPath: /kubestash-data
-        id: 32bf38606023ddf9808b7dc5f98cde1da49a71583b0f0ffac3b0cb367478c66b
-        size: 13.516 KiB
-        uploaded: 16.197 KiB
+      - summary:
+          hostPath: /kubestash-data
+          id: 32bf38606023ddf9808b7dc5f98cde1da49a71583b0f0ffac3b0cb367478c66b
+          size: 13.516 KiB
+          uploaded: 16.197 KiB
       size: 14.694 KiB
   conditions:
   - lastTransitionTime: "2025-12-26T06:56:03Z"

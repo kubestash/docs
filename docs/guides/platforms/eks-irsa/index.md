@@ -409,10 +409,11 @@ status:
       path: repository/v1/demo-session/ip-192-168-2-154.us-west-1.compute.internal
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: f9a71dd2a53e0d109c995af85c2e6c9ade91db592e120cb11405ea2fd0d072f3
-        size: 12 B
-        uploaded: 1.054 KiB
+      - summary:
+          hostPath: /source/data
+          id: f9a71dd2a53e0d109c995af85c2e6c9ade91db592e120cb11405ea2fd0d072f3
+          size: 12 B
+          uploaded: 1.054 KiB
       size: 809 B
     dump-ip-192-168-16-32.us-west-1.compute.internal:
       driver: Restic
@@ -421,10 +422,11 @@ status:
       path: repository/v1/demo-session/ip-192-168-16-32.us-west-1.compute.internal
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 5b52d5b09b133953259daf1a50e730cc5e32cc903bcd7a380518cc4ca2d1f8a6
-        size: 12 B
-        uploaded: 1.049 KiB
+      - summary:
+          hostPath: /source/data
+          id: 5b52d5b09b133953259daf1a50e730cc5e32cc903bcd7a380518cc4ca2d1f8a6
+          size: 12 B
+          uploaded: 1.049 KiB
       size: 809 B
     dump-ip-192-168-53-129.us-west-1.compute.internal:
       driver: Restic
@@ -433,10 +435,11 @@ status:
       path: repository/v1/demo-session/ip-192-168-53-129.us-west-1.compute.internal
       phase: Succeeded
       resticStats:
-      - hostPath: /source/data
-        id: 6c057583ab4fdacaa3616fdb4c10db8b49c4575533367b56ae53d62700be10e0
-        size: 12 B
-        uploaded: 1.050 KiB
+      - summary:
+          hostPath: /source/data
+          id: 6c057583ab4fdacaa3616fdb4c10db8b49c4575533367b56ae53d62700be10e0
+          size: 12 B
+          uploaded: 1.050 KiB
       size: 807 B
   ...
 ```

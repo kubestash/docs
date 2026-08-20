@@ -355,10 +355,11 @@ status:
       path: repository/v1/demo-session/dump-kind-control-plane
       phase: Succeeded
       resticStats:
-        - hostPath: /source/data
-          id: 7f0d8dee7e27e869ffa3f4e2b4cf095d8e485d9c12dbceb5d8f5933e034cce0e
-          size: 12 B
-          uploaded: 1.043 KiB
+        - summary:
+            hostPath: /source/data
+            id: 7f0d8dee7e27e869ffa3f4e2b4cf095d8e485d9c12dbceb5d8f5933e034cce0e
+            size: 12 B
+            uploaded: 1.043 KiB
       size: 805 B
   ...
 ```

@@ -22,19 +22,21 @@ jobs:
 
       - name: Install link checker
         run: |
-          curl -fsSL -o liche https://github.com/appscodelabs/liche/releases/download/v0.1.0/liche-linux-amd64
-          chmod +x liche
-          sudo mv liche /usr/local/bin/liche
+          curl -fsSL -o lychee.tar.gz https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf lychee.tar.gz --strip-components=1
+          chmod +x lychee
+          sudo mv lychee /usr/local/bin/lychee
+          rm lychee.tar.gz
 
       - name: Install codespan schema checker
         run: |
-          curl -fsSL -o codespan-schema-checker https://github.com/kmodules/codespan-schema-checker/releases/download/v0.0.1/codespan-schema-checker-linux-amd64
+          curl -fsSL -o codespan-schema-checker https://github.com/kmodules/codespan-schema-checker/releases/download/v0.1.7/codespan-schema-checker-linux-amd64
           chmod +x codespan-schema-checker
           sudo mv codespan-schema-checker /usr/local/bin/codespan-schema-checker
 
       - name: Check links
         run: |
-          liche -r docs -d $(pwd) -c 10 -p -h -l -x '^(.*/docs/{{<.*>}}/.*|.*github.com.*|.*api.slack.com.*|.*askapache.com.*|.*twitter.com.*|.*dev.mysql.com.*|.*linux.die.net.*|.*helm.sh.*|.*aws.amazon.com.*|.*sigs.k8s.io.*|.*git.k8s.io.*)$'
+          lychee --root-dir $(pwd) --max-concurrency 10 --exclude '^(.*/docs/\{\{<.*>\}\}/.*|.*github.com.*|.*api.slack.com.*|.*askapache.com.*|.*twitter.com.*|.*dev.mysql.com.*|.*linux.die.net.*|.*helm.sh.*|.*aws.amazon.com.*|.*sigs.k8s.io.*|.*git.k8s.io.*|.*localhost.*|.*kubedb.com.*)$' 'docs/**/*.md'
 
       - name: Create Kubernetes cluster
         id: kind
@@ -64,7 +66,6 @@ jobs:
           kubectl create -f https://github.com/kubernetes-csi/external-snapshotter/raw/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
           kubectl create -f https://github.com/kubernetes-csi/external-snapshotter/raw/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
           kubectl create -f https://github.com/kubestash/installer/raw/master/crds/kubestash-crds.yaml
-          
 
       - name: Check codespan schema
         run: |

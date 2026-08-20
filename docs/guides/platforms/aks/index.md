@@ -463,10 +463,11 @@ status:
       path: repository/v1/demo-session/dump
       phase: Succeeded
       resticStats:
-        - hostPath: /source/data
-          id: c5a88e95e476161b3594ffb2630513a4d3a59007419f618e2aae62995e118eca
-          size: 11 B
-          uploaded: 1.041 KiB
+        - summary:
+            hostPath: /source/data
+            id: c5a88e95e476161b3594ffb2630513a4d3a59007419f618e2aae62995e118eca
+            size: 11 B
+            uploaded: 1.041 KiB
       size: 801 B
   ...
 ```
