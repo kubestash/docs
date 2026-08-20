@@ -60,6 +60,13 @@ Backing up a running VM therefore requires CSI snapshot support with a default `
 
 ## How Backup Process Works
 
+The following diagram shows how KubeStash takes backup of a `VirtualMachine`. Open the image in a new tab to see the enlarged version.
+
+<figure align="center">
+   <img alt="KubeStash VirtualMachine Backup Flow" src="images/backup_overview.svg">
+    <figcaption align="center">Fig: Backup process of a VirtualMachine in KubeStash</figcaption>
+</figure>
+
 The backup process consists of the following steps:
 
 1. At first, a user creates a `Secret`. This secret holds the credentials to access the backend where the backed up data will be stored.
@@ -97,6 +104,13 @@ The backup process consists of the following steps:
 17. After the backup process is completed, the `Job`(s) update the `status.components[*]` field of the `Snapshot` resource with backup information of the target components, and the temporary PVCs, the `VirtualMachineSnapshot` and the worker `Job`s are cleaned up.
 
 ## How Restore Process Works
+
+The following diagram shows how KubeStash restores a backed up `VirtualMachine`. Open the image in a new tab to see the enlarged version.
+
+<figure align="center">
+   <img alt="KubeStash VirtualMachine Restore Flow" src="images/restore_overview.svg">
+    <figcaption align="center">Fig: Restore process of a VirtualMachine in KubeStash</figcaption>
+</figure>
 
 The restore process consists of the following steps:
 
