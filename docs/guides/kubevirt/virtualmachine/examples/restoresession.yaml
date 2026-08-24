@@ -11,6 +11,6 @@ spec:
       name: encrypt-secret
       namespace: demo
   addon:
-    name: kubevirt-addon
+    name: kubevirt
     tasks:
       - name: logical-restore

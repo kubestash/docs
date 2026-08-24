@@ -283,7 +283,7 @@ spec:
             name: encrypt-secret
             namespace: demo
       addon:
-        name: kubevirt-addon
+        name: kubevirt
         tasks:
           - name: logical-backup
       retryConfig:
@@ -470,7 +470,7 @@ spec:
       name: encrypt-secret
       namespace: demo
   addon:
-    name: kubevirt-addon
+    name: kubevirt
     tasks:
       - name: logical-restore
 ```
@@ -562,7 +562,7 @@ Since each disk is a separate component, you can restore a subset instead of the
 
 ```yaml
   addon:
-    name: kubevirt-addon
+    name: kubevirt
     tasks:
       - name: logical-restore
         params:
