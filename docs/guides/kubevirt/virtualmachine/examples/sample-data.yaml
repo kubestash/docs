@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kubestash-demo-data-writer
+  namespace: demo
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: writer
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "kubestash-root-sample-data" > /root-disk/sample.txt
+              echo "kubestash-data-sample-data" > /data-disk/sample.txt
+              sha256sum /root-disk/sample.txt /data-disk/sample.txt
+              sync
+          volumeMounts:
+            - { name: root, mountPath: /root-disk }
+            - { name: data, mountPath: /data-disk }
+      volumes:
+        - name: root
+          persistentVolumeClaim:
+            claimName: kubestash-demo-vm-root
+        - name: data
+          persistentVolumeClaim:
+            claimName: kubestash-demo-vm-data

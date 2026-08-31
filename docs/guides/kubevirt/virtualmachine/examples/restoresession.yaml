@@ -1,0 +1,16 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: sample-vm-restore
+  namespace: demo
+spec:
+  dataSource:
+    repository: gcs-vm-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encrypt-secret
+      namespace: demo
+  addon:
+    name: kubevirt
+    tasks:
+      - name: logical-restore
