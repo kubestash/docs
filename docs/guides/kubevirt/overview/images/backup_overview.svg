@@ -1,0 +1,112 @@
+<svg version="1.1" viewBox="0 0 960 540" width="960" height="540" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#5f6368"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#326ce5"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#7b3fb5"/>
+    </marker>
+  </defs>
+  <rect width="960" height="540" fill="#ffffff"/>
+
+  <!-- lane titles -->
+  <text x="118" y="34" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle">User</text>
+  <text x="352" y="34" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle">KubeStash Operator</text>
+  <text x="606" y="34" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle">Backup Job (kubevirt-plugin)</text>
+  <text x="866" y="34" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle">Backend</text>
+  <line x1="20" y1="44" x2="940" y2="44" stroke="#dadce0" stroke-width="1"/>
+
+  <!-- USER -->
+  <rect x="22" y="64" width="192" height="52" rx="6" fill="#e8f0fe" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="118" y="84" font-size="12.5" font-weight="bold" fill="#174ea6" text-anchor="middle">BackupConfiguration</text>
+  <text x="118" y="101" font-size="11" fill="#3c4043" text-anchor="middle">target: kubevirt.io/VirtualMachine</text>
+
+  <rect x="22" y="128" width="192" height="46" rx="6" fill="#e8f0fe" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="118" y="147" font-size="12.5" font-weight="bold" fill="#174ea6" text-anchor="middle">BackupStorage</text>
+  <text x="118" y="163" font-size="11" fill="#3c4043" text-anchor="middle">+ credential Secret</text>
+
+  <rect x="22" y="186" width="192" height="40" rx="6" fill="#f1f3f4" stroke="#9aa0a6" stroke-width="1.2"/>
+  <text x="118" y="211" font-size="11.5" fill="#3c4043" text-anchor="middle">RetentionPolicy</text>
+
+  <!-- OPERATOR -->
+  <rect x="240" y="64" width="224" height="230" rx="8" fill="#fafafa" stroke="#9aa0a6" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <rect x="256" y="80" width="192" height="38" rx="6" fill="#e8f0fe" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="352" y="104" font-size="12" fill="#174ea6" text-anchor="middle">Repository (initialized)</text>
+  <rect x="256" y="128" width="192" height="38" rx="6" fill="#e8f0fe" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="352" y="152" font-size="12" fill="#174ea6" text-anchor="middle">CronJob per session</text>
+  <rect x="256" y="176" width="192" height="38" rx="6" fill="#e8f0fe" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="352" y="200" font-size="12" fill="#174ea6" text-anchor="middle">BackupSession</text>
+  <rect x="256" y="224" width="192" height="54" rx="6" fill="#e6f4ea" stroke="#137333" stroke-width="1.5"/>
+  <text x="352" y="244" font-size="12" font-weight="bold" fill="#0d652d" text-anchor="middle">Snapshot</text>
+  <text x="352" y="261" font-size="10.5" fill="#3c4043" text-anchor="middle">one per Repository;</text>
+  <text x="352" y="273" font-size="10.5" fill="#3c4043" text-anchor="middle">components registered up front</text>
+
+  <!-- BACKUP JOB -->
+  <rect x="486" y="64" width="240" height="230" rx="8" fill="#fafafa" stroke="#9aa0a6" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <rect x="500" y="80" width="212" height="86" rx="6" fill="#e6f4ea" stroke="#137333" stroke-width="1.5"/>
+  <text x="606" y="99" font-size="12" font-weight="bold" fill="#0d652d" text-anchor="middle">1. Walk the VM graph</text>
+  <text x="606" y="116" font-size="10.5" fill="#3c4043" text-anchor="middle">VM, DataVolumes, PVCs, Secrets,</text>
+  <text x="606" y="129" font-size="10.5" fill="#3c4043" text-anchor="middle">ConfigMaps, ServiceAccounts,</text>
+  <text x="606" y="142" font-size="10.5" fill="#3c4043" text-anchor="middle">ControllerRevisions</text>
+  <text x="606" y="158" font-size="10.5" font-style="italic" fill="#5f6368" text-anchor="middle">sanitize + CDI annotations</text>
+
+  <rect x="500" y="178" width="212" height="46" rx="6" fill="#fff4e5" stroke="#e8710a" stroke-width="1.5"/>
+  <text x="606" y="196" font-size="12" font-weight="bold" fill="#b06000" text-anchor="middle">2. Cut the point-in-time</text>
+  <text x="606" y="213" font-size="10.5" fill="#3c4043" text-anchor="middle">stopped: mount disk PVCs directly</text>
+
+  <rect x="500" y="234" width="212" height="46" rx="6" fill="#fff4e5" stroke="#e8710a" stroke-width="1.5"/>
+  <text x="606" y="252" font-size="12" font-weight="bold" fill="#b06000" text-anchor="middle">3. One worker Job per disk</text>
+  <text x="606" y="269" font-size="10.5" fill="#3c4043" text-anchor="middle">streams the disk with restic</text>
+
+  <!-- BACKEND -->
+  <rect x="750" y="64" width="188" height="230" rx="8" fill="#f8f9fa" stroke="#5f6368" stroke-width="1.5"/>
+  <text x="844" y="88" font-size="12" font-weight="bold" fill="#202124" text-anchor="middle">Snapshot components</text>
+  <rect x="766" y="100" width="156" height="34" rx="5" fill="#e6f4ea" stroke="#137333" stroke-width="1.2"/>
+  <text x="844" y="121" font-size="11.5" fill="#0d652d" text-anchor="middle">manifest</text>
+  <rect x="766" y="142" width="156" height="34" rx="5" fill="#fff4e5" stroke="#e8710a" stroke-width="1.2"/>
+  <text x="844" y="163" font-size="11.5" fill="#b06000" text-anchor="middle">volume-&lt;pvc-1&gt;</text>
+  <rect x="766" y="184" width="156" height="34" rx="5" fill="#fff4e5" stroke="#e8710a" stroke-width="1.2"/>
+  <text x="844" y="205" font-size="11.5" fill="#b06000" text-anchor="middle">volume-&lt;pvc-2&gt;</text>
+  <text x="844" y="240" font-size="10.5" fill="#5f6368" text-anchor="middle">encrypted, deduplicated</text>
+  <text x="844" y="254" font-size="10.5" fill="#5f6368" text-anchor="middle">restic repository</text>
+  <text x="844" y="276" font-size="10.5" font-style="italic" fill="#5f6368" text-anchor="middle">Succeeded only if every</text>
+  <text x="844" y="288" font-size="10.5" font-style="italic" fill="#5f6368" text-anchor="middle">component succeeded</text>
+
+  <!-- KUBEVIRT LANE -->
+  <rect x="240" y="330" width="486" height="176" rx="8" fill="#f6f2fb" stroke="#7b3fb5" stroke-width="1.5"/>
+  <text x="483" y="354" font-size="13" font-weight="bold" fill="#5b2a91" text-anchor="middle">Running VirtualMachine — KubeVirt owns the freeze</text>
+
+  <rect x="258" y="368" width="132" height="60" rx="6" fill="#ffffff" stroke="#7b3fb5" stroke-width="1.3"/>
+  <text x="324" y="391" font-size="11.5" font-weight="bold" fill="#5b2a91" text-anchor="middle">VirtualMachine</text>
+  <text x="324" y="408" font-size="10.5" fill="#3c4043" text-anchor="middle">+ VirtualMachineInstance</text>
+  <text x="324" y="421" font-size="10.5" fill="#3c4043" text-anchor="middle">holds the disks (RWO)</text>
+
+  <rect x="414" y="368" width="140" height="60" rx="6" fill="#ffffff" stroke="#7b3fb5" stroke-width="1.3"/>
+  <text x="484" y="388" font-size="11.5" font-weight="bold" fill="#5b2a91" text-anchor="middle">VirtualMachineSnapshot</text>
+  <text x="484" y="404" font-size="10.5" fill="#3c4043" text-anchor="middle">freeze guest FS →</text>
+  <text x="484" y="417" font-size="10.5" fill="#3c4043" text-anchor="middle">snapshot → unfreeze</text>
+
+  <rect x="578" y="368" width="132" height="60" rx="6" fill="#ffffff" stroke="#7b3fb5" stroke-width="1.3"/>
+  <text x="644" y="388" font-size="11.5" font-weight="bold" fill="#5b2a91" text-anchor="middle">VolumeSnapshot</text>
+  <text x="644" y="404" font-size="10.5" fill="#3c4043" text-anchor="middle">one per disk →</text>
+  <text x="644" y="417" font-size="10.5" fill="#3c4043" text-anchor="middle">temporary PVC clone</text>
+
+  <text x="483" y="452" font-size="10.5" fill="#5f6368" text-anchor="middle">qemu-guest-agent present → filesystem-consistent · absent → crash-consistent (warning)</text>
+  <text x="483" y="470" font-size="10.5" fill="#5f6368" text-anchor="middle">Temporary PVCs and the VirtualMachineSnapshot are deleted after the upload.</text>
+  <text x="483" y="492" font-size="10.5" font-style="italic" fill="#5f6368" text-anchor="middle">A stopped VirtualMachine skips this lane entirely — its disks are already at rest.</text>
+
+  <!-- arrows -->
+  <line x1="214" y1="90" x2="252" y2="90" stroke="#326ce5" stroke-width="1.6" marker-end="url(#arrowBlue)"/>
+  <line x1="214" y1="151" x2="252" y2="141" stroke="#326ce5" stroke-width="1.6" marker-end="url(#arrowBlue)"/>
+  <line x1="214" y1="206" x2="252" y2="196" stroke="#9aa0a6" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <line x1="464" y1="180" x2="496" y2="180" stroke="#326ce5" stroke-width="1.6" marker-end="url(#arrowBlue)"/>
+  <text x="480" y="172" font-size="10" fill="#5f6368" text-anchor="middle">creates</text>
+  <line x1="726" y1="120" x2="762" y2="117" stroke="#137333" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="726" y1="258" x2="762" y2="200" stroke="#e8710a" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="606" y1="294" x2="606" y2="326" stroke="#7b3fb5" stroke-width="1.6" marker-end="url(#arrowPurple)"/>
+  <line x1="390" y1="398" x2="410" y2="398" stroke="#7b3fb5" stroke-width="1.4" marker-end="url(#arrowPurple)"/>
+  <line x1="554" y1="398" x2="574" y2="398" stroke="#7b3fb5" stroke-width="1.4" marker-end="url(#arrowPurple)"/>
+</svg>

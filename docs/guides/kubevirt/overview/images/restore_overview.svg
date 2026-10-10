@@ -1,0 +1,101 @@
+<svg version="1.1" viewBox="0 0 960 540" width="960" height="540" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#5f6368"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#326ce5"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#e8710a"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#137333"/>
+    </marker>
+  </defs>
+  <rect width="960" height="540" fill="#ffffff"/>
+
+  <text x="112" y="34" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle">User</text>
+  <text x="340" y="34" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle">KubeStash Operator</text>
+  <text x="606" y="34" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle">Restore Job (kubevirt-plugin)</text>
+  <text x="866" y="34" font-size="14" font-weight="bold" fill="#202124" text-anchor="middle">Result</text>
+  <line x1="20" y1="44" x2="940" y2="44" stroke="#dadce0" stroke-width="1"/>
+
+  <!-- USER -->
+  <rect x="22" y="64" width="180" height="70" rx="6" fill="#e8f0fe" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="112" y="84" font-size="12.5" font-weight="bold" fill="#174ea6" text-anchor="middle">RestoreSession</text>
+  <text x="112" y="101" font-size="10.5" fill="#3c4043" text-anchor="middle">dataSource: repository</text>
+  <text x="112" y="114" font-size="10.5" fill="#3c4043" text-anchor="middle">+ snapshot</text>
+  <text x="112" y="128" font-size="10.5" font-weight="bold" fill="#b06000" text-anchor="middle">no spec.target</text>
+
+  <rect x="22" y="232" width="180" height="62" rx="6" fill="#f8f9fa" stroke="#5f6368" stroke-width="1.4"/>
+  <text x="112" y="254" font-size="12" font-weight="bold" fill="#202124" text-anchor="middle">Backend</text>
+  <text x="112" y="271" font-size="10.5" fill="#3c4043" text-anchor="middle">manifest + volume-&lt;pvc&gt;</text>
+  <text x="112" y="284" font-size="10.5" fill="#3c4043" text-anchor="middle">components</text>
+
+  <!-- OPERATOR -->
+  <rect x="240" y="64" width="200" height="144" rx="8" fill="#fafafa" stroke="#9aa0a6" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <rect x="256" y="82" width="168" height="46" rx="6" fill="#e8f0fe" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="340" y="102" font-size="11.5" fill="#174ea6" text-anchor="middle">resolve Addon</text>
+  <text x="340" y="118" font-size="11.5" fill="#174ea6" text-anchor="middle">and Function</text>
+  <rect x="256" y="140" width="168" height="50" rx="6" fill="#e8f0fe" stroke="#326ce5" stroke-width="1.5"/>
+  <text x="340" y="160" font-size="11.5" fill="#174ea6" text-anchor="middle">create restore Job</text>
+  <text x="340" y="177" font-size="10.5" fill="#3c4043" text-anchor="middle">a nil target is treated as found</text>
+
+  <!-- RESTORE JOB -->
+  <rect x="470" y="64" width="272" height="260" rx="8" fill="#fafafa" stroke="#9aa0a6" stroke-width="1.2" stroke-dasharray="4 3"/>
+
+  <rect x="486" y="82" width="240" height="96" rx="6" fill="#fff4e5" stroke="#e8710a" stroke-width="1.5"/>
+  <text x="606" y="101" font-size="12" font-weight="bold" fill="#b06000" text-anchor="middle">1. Restore the disks first</text>
+  <text x="606" y="119" font-size="10.5" fill="#3c4043" text-anchor="middle">create destination PVCs from the</text>
+  <text x="606" y="132" font-size="10.5" fill="#3c4043" text-anchor="middle">backed up manifests</text>
+  <text x="606" y="149" font-size="10.5" fill="#3c4043" text-anchor="middle">one worker Job per disk streams</text>
+  <text x="606" y="162" font-size="10.5" fill="#3c4043" text-anchor="middle">its data back with restic</text>
+
+  <rect x="486" y="190" width="240" height="118" rx="6" fill="#e6f4ea" stroke="#137333" stroke-width="1.5"/>
+  <text x="606" y="209" font-size="12" font-weight="bold" fill="#0d652d" text-anchor="middle">2. Then apply the manifests</text>
+  <text x="606" y="227" font-size="10.5" fill="#3c4043" text-anchor="middle">ServiceAccount → Secret → ConfigMap</text>
+  <text x="606" y="240" font-size="10.5" fill="#3c4043" text-anchor="middle">→ ControllerRevision → PVC</text>
+  <text x="606" y="253" font-size="10.5" fill="#3c4043" text-anchor="middle">→ DataVolume → VirtualMachine</text>
+  <text x="606" y="271" font-size="10.5" font-style="italic" fill="#5f6368" text-anchor="middle">VirtualMachineInstance and</text>
+  <text x="606" y="284" font-size="10.5" font-style="italic" fill="#5f6368" text-anchor="middle">virt-launcher Pods are never applied</text>
+  <text x="606" y="300" font-size="10.5" font-weight="bold" fill="#b06000" text-anchor="middle">a failed disk stops the VM being applied</text>
+
+  <!-- RESULT -->
+  <rect x="766" y="64" width="172" height="96" rx="6" fill="#e6f4ea" stroke="#137333" stroke-width="1.5"/>
+  <text x="852" y="86" font-size="12" font-weight="bold" fill="#0d652d" text-anchor="middle">CDI adopts the PVCs</text>
+  <text x="852" y="105" font-size="10.5" fill="#3c4043" text-anchor="middle">populatedFor annotation</text>
+  <text x="852" y="118" font-size="10.5" fill="#3c4043" text-anchor="middle">on each restored PVC</text>
+  <text x="852" y="136" font-size="10.5" fill="#3c4043" text-anchor="middle">DataVolumes go Succeeded</text>
+  <text x="852" y="149" font-size="10.5" fill="#3c4043" text-anchor="middle">without re-importing</text>
+
+  <rect x="766" y="172" width="172" height="76" rx="6" fill="#f6f2fb" stroke="#7b3fb5" stroke-width="1.5"/>
+  <text x="852" y="194" font-size="12" font-weight="bold" fill="#5b2a91" text-anchor="middle">VirtualMachine</text>
+  <text x="852" y="212" font-size="10.5" fill="#3c4043" text-anchor="middle">restored, Stopped</text>
+  <text x="852" y="225" font-size="10.5" fill="#3c4043" text-anchor="middle">start it to boot</text>
+  <text x="852" y="240" font-size="10.5" font-style="italic" fill="#5f6368" text-anchor="middle">cold boot</text>
+
+  <rect x="766" y="260" width="172" height="64" rx="6" fill="#f6f2fb" stroke="#7b3fb5" stroke-width="1.5"/>
+  <text x="852" y="281" font-size="11.5" font-weight="bold" fill="#5b2a91" text-anchor="middle">On start, KubeVirt creates</text>
+  <text x="852" y="298" font-size="10.5" fill="#3c4043" text-anchor="middle">the VirtualMachineInstance</text>
+  <text x="852" y="311" font-size="10.5" fill="#3c4043" text-anchor="middle">and its virt-launcher Pod</text>
+
+  <!-- WHY ORDER MATTERS -->
+  <rect x="240" y="360" width="698" height="146" rx="8" fill="#f8f9fa" stroke="#9aa0a6" stroke-width="1.3"/>
+  <text x="589" y="384" font-size="13" font-weight="bold" fill="#202124" text-anchor="middle">Why the disks are restored before the manifests</text>
+  <text x="589" y="410" font-size="11" fill="#3c4043" text-anchor="middle">When a DataVolume is applied, CDI decides whether to import its contents. A PVC that already exists and carries</text>
+  <text x="589" y="426" font-size="11" fill="#3c4043" text-anchor="middle">cdi.kubevirt.io/storage.populatedFor is adopted as-is, so the restored disk data is kept.</text>
+  <text x="589" y="450" font-size="11" fill="#3c4043" text-anchor="middle">Applying the DataVolume first would let CDI start importing from the original source and overwrite what was restored,</text>
+  <text x="589" y="466" font-size="11" fill="#3c4043" text-anchor="middle">so the restore Job never applies the VirtualMachine until every disk component has succeeded.</text>
+  <text x="589" y="490" font-size="10.5" font-style="italic" fill="#5f6368" text-anchor="middle">A disk whose DataVolume was still importing at backup time has no volume component — CDI simply imports it again.</text>
+
+  <!-- arrows -->
+  <line x1="202" y1="99" x2="252" y2="99" stroke="#326ce5" stroke-width="1.6" marker-end="url(#arrowBlue)"/>
+  <line x1="202" y1="263" x2="464" y2="263" stroke="#5f6368" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#arrow)"/>
+  <text x="333" y="255" font-size="10.5" fill="#5f6368" text-anchor="middle">reads the Snapshot components</text>
+  <line x1="440" y1="150" x2="480" y2="130" stroke="#326ce5" stroke-width="1.6" marker-end="url(#arrowBlue)"/>
+  <line x1="726" y1="130" x2="760" y2="118" stroke="#e8710a" stroke-width="1.6" marker-end="url(#arrowOrange)"/>
+  <line x1="726" y1="240" x2="760" y2="210" stroke="#137333" stroke-width="1.6" marker-end="url(#arrowGreen)"/>
+  <line x1="852" y1="248" x2="852" y2="256" stroke="#7b3fb5" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <line x1="606" y1="324" x2="606" y2="356" stroke="#9aa0a6" stroke-width="1.4" marker-end="url(#arrow)"/>
+</svg>

@@ -1,0 +1,131 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubestash-demo-sa
+  namespace: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubestash-demo-config
+  namespace: demo
+data:
+  app.conf: |
+    greeting=hello-from-configmap
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubestash-demo-cloudinit
+  namespace: demo
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    password: kubestash
+    chpasswd: { expire: False }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubestash-demo-sshkey
+  namespace: demo
+type: Opaque
+stringData:
+  key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABexamplekeyforkubestashdemo demo@kubestash"
+---
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: kubestash-demo-vm-root
+  namespace: demo
+  annotations:
+    cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+spec:
+  source:
+    blank: {}
+  storage:
+    accessModes: ["ReadWriteOnce"]
+    volumeMode: Filesystem
+    resources:
+      requests:
+        storage: 1Gi
+---
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: kubestash-demo-vm-data
+  namespace: demo
+  annotations:
+    cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+spec:
+  source:
+    blank: {}
+  storage:
+    accessModes: ["ReadWriteOnce"]
+    volumeMode: Filesystem
+    resources:
+      requests:
+        storage: 1Gi
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: kubestash-demo-vm
+  namespace: demo
+spec:
+  runStrategy: Halted
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: kubestash-demo-vm
+    spec:
+      accessCredentials:
+        - sshPublicKey:
+            source:
+              secret:
+                secretName: kubestash-demo-sshkey
+            propagationMethod:
+              noCloud: {}
+      domain:
+        cpu:
+          cores: 1
+        resources:
+          requests:
+            memory: 256Mi
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+            - name: datadisk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+            - name: configdisk
+              serial: CONFIG
+              disk:
+                bus: virtio
+            - name: sadisk
+              serial: SA
+              disk:
+                bus: virtio
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: kubestash-demo-vm-root
+        - name: datadisk
+          dataVolume:
+            name: kubestash-demo-vm-data
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            secretRef:
+              name: kubestash-demo-cloudinit
+        - name: configdisk
+          configMap:
+            name: kubestash-demo-config
+        - name: sadisk
+          serviceAccount:
+            serviceAccountName: kubestash-demo-sa

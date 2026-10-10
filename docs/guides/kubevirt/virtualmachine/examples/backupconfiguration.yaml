@@ -1,0 +1,39 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: sample-vm-backup
+  namespace: demo
+spec:
+  target:
+    apiGroup: kubevirt.io
+    kind: VirtualMachine
+    name: kubestash-demo-vm
+    namespace: demo
+  backends:
+    - name: gcs-backend
+      storageRef:
+        name: gcs-storage
+        namespace: demo
+      retentionPolicy:
+        name: demo-retention
+        namespace: demo
+  sessions:
+    - name: demo-session
+      scheduler:
+        schedule: "*/5 * * * *"
+        jobTemplate:
+          backoffLimit: 1
+      repositories:
+        - name: gcs-vm-repo
+          backend: gcs-backend
+          directory: /vm
+          encryptionSecret:
+            name: encrypt-secret
+            namespace: demo
+      addon:
+        name: kubevirt
+        tasks:
+          - name: logical-backup
+      retryConfig:
+        maxRetry: 2
+        delay: 1m
