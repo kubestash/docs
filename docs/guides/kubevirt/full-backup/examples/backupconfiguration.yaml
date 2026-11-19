@@ -1,0 +1,36 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: BackupConfiguration
+metadata:
+  name: vmtest-backup
+  namespace: demo
+spec:
+  target:
+    apiGroup: kubevirt.io
+    kind: VirtualMachine
+    name: vmtest
+    namespace: demo
+  backends:
+  - name: s3-backend
+    storageRef:
+      name: s3-storage
+      namespace: demo
+    retentionPolicy:
+      name: demo-retention
+      namespace: demo
+  sessions:
+  - name: daily
+    scheduler:
+      schedule: "0 2 * * *"
+      jobTemplate:
+        backoffLimit: 1
+    repositories:
+    - name: vmtest-repo
+      backend: s3-backend
+      directory: /vmtest
+      encryptionSecret:
+        name: encryption-secret
+        namespace: demo
+    addon:
+      name: kubevirt
+      tasks:
+      - name: logical-backup
