@@ -72,7 +72,7 @@ KubeStash backs up a VM using the `kubevirt` addon. One backup run stores two th
   - [RestoreSession](/docs/concepts/crds/restoresession/index.md)
   - [RetentionPolicy](/docs/concepts/crds/retentionpolicy/index.md)
 
-To keep everything isolated, we are going to use a namespace called `demo` for the VM, its backup and the backend, and a second one, `demo-restore`, for the cross-namespace restore at the end.
+To keep everything isolated, we are going to use a namespace called `demo` for the VM, its backup and the backend.
 
 ```bash
 $ kubectl create ns demo
@@ -152,7 +152,7 @@ persistentvolumeclaim/vmtest-root   Bound    pvc-79803ad3-3cd7-4b3e-91c8-16123ba
 
 **Write some data into the VM:**
 
-Now, let's write a file inside the VM so we can check it after the restore. CirrOS needs a few minutes to boot on an emulated node. While it boots, you will see lines like `failed 4/20: up 41.48. request failed` on the console. That is CirrOS looking for a cloud metadata service that does not exist here; it gives up after about four minutes and shows the login prompt.
+Now, let's write a file inside the VM so we can check it after the restore.
 
 ```bash
 $ virtctl -n demo console vmtest
@@ -182,7 +182,7 @@ secret/s3-secret created
 
 **Create BackupStorage:**
 
-Below is the YAML of the `BackupStorage` CR we are going to create. The `usagePolicy` allows every namespace to use it, which the cross-namespace restore at the end needs:
+Below is the YAML of the `BackupStorage` CR we are going to create. The `usagePolicy` allows every namespace to use it:
 
 ```yaml
 apiVersion: storage.kubestash.com/v1alpha1
@@ -271,7 +271,7 @@ spec:
   sessions:
   - name: daily
     scheduler:
-      schedule: "*/10 * * * *"
+      schedule: "0 2 * * *"
       jobTemplate:
         backoffLimit: 1
     repositories:
@@ -290,10 +290,8 @@ spec:
 Here,
 
 - `spec.target` is the VM to back up.
-- `spec.sessions[*].scheduler.schedule` is a cron expression. We use every 10 minutes so you can watch several runs. For a real VM you would use something like `0 2 * * *`.
+- `spec.sessions[*].scheduler.schedule` is a cron expression. Here, the backup runs every day at 02:00.
 - `spec.sessions[*].addon.tasks` uses the `logical-backup` task, which backs up the manifest and every disk of the VM in one task.
-
-> The `kubevirt` addon takes a `backupMode` parameter for running VMs. Its default is `vmsnapshot` (the CSI snapshot path described above), and we use the default here.
 
 ```bash
 $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubevirt/full-backup/examples/backupconfiguration.yaml
@@ -308,7 +306,7 @@ Ready
 
 $ kubectl -n demo get cronjob
 NAME                         SCHEDULE       TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
-trigger-vmtest-backup-daily  */10 * * * *   <none>     False     0        <none>          5s
+trigger-vmtest-backup-daily  0 2 * * *     <none>     False     0        <none>          5s
 ```
 
 KubeStash creates a CronJob that triggers a `BackupSession` on each schedule. It also triggers **one backup immediately** when the `BackupConfiguration` becomes ready, so you do not have to wait for the first scheduled time.
@@ -329,10 +327,6 @@ vmtest-backup-daily-1795083228        BackupConfiguration   vmtest-backup   Succ
 $ kubectl get snapshots.storage.kubestash.com -n demo
 NAME                                           REPOSITORY    SESSION   SNAPSHOT-TIME          DELETION-POLICY   PHASE       AGE
 vmtest-repo-vmtest-backup-daily-1795083228     vmtest-repo   daily     2026-11-19T10:13:58Z   Delete            Succeeded   10m
-
-$ kubectl get repository -n demo
-NAME          INTEGRITY   SNAPSHOT-COUNT   SIZE         PHASE   LAST-SUCCESSFUL-BACKUP   AGE
-vmtest-repo   true        1                16.735 MiB   Ready   10m                      10m
 ```
 
 The `Snapshot` lists the two parts that were stored:
@@ -356,7 +350,7 @@ The `RestoreSession` can use one of two sets of tasks:
 
 | Tasks | What it does |
 |---|---|
-| `volume-restore` and `manifest-restore` | Restores into a **new name** and, optionally, a **different namespace**. The original VM is not touched. |
+| `volume-restore` and `manifest-restore` | Restores into a **new name**. The original VM is not touched. |
 | `logical-restore` | Restores under the **original name**. The original VM must be deleted first. |
 
 Do not set `spec.target` on the `RestoreSession`: the VM does not exist yet when the restore starts.
@@ -482,79 +476,15 @@ $ cat /home/cirros/note.txt
 hello from the full-backup test
 ```
 
-### Restore into a Different Namespace
-
-The `RestoreSession` can live in another namespace and read the `Repository` from the namespace where it was created, using `spec.dataSource.namespace`. Three things are needed in the target namespace:
-
-1. The namespace must be allowed by the `usagePolicy` of the `BackupStorage`. Ours allows all namespaces.
-2. An encryption Secret with the **same password** as the source one.
-3. The `RestoreSession` itself.
-
-```bash
-$ kubectl create ns demo-restore
-namespace/demo-restore created
-
-$ kubectl -n demo-restore create secret generic encryption-secret --from-literal=RESTIC_PASSWORD='<your-password>'
-secret/encryption-secret created
-```
-
-Below is the YAML of the `RestoreSession`:
-
-```yaml
-apiVersion: core.kubestash.com/v1alpha1
-kind: RestoreSession
-metadata:
-  name: vmtest-restore-xns
-  namespace: demo-restore
-spec:
-  dataSource:
-    namespace: demo
-    repository: vmtest-repo
-    snapshot: latest
-    encryptionSecret:
-      name: encryption-secret
-      namespace: demo-restore
-  addon:
-    name: kubevirt
-    tasks:
-    - name: volume-restore
-      params:
-        targetName: vmtest-xns
-        targetNamespace: demo-restore
-    - name: manifest-restore
-      params:
-        targetName: vmtest-xns
-        targetNamespace: demo-restore
-```
-
-```bash
-$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubevirt/full-backup/examples/restoresession-cross-namespace.yaml
-restoresession.core.kubestash.com/vmtest-restore-xns created
-
-$ kubectl get restoresessions.core.kubestash.com -n demo-restore
-NAME                 REPOSITORY    PHASE       DURATION   AGE
-vmtest-restore-xns   vmtest-repo   Succeeded   1m21s      114s
-
-$ kubectl -n demo-restore get vm,pvc,dv
-NAME                                   AGE   STATUS    READY
-virtualmachine.kubevirt.io/vmtest-xns  40s   Running   True
-
-NAME                                    STATUS   VOLUME                                     CAPACITY   STORAGECLASS
-persistentvolumeclaim/vmtest-xns-root   Bound    pvc-9b012d3f-415b-4b06-b0a9-ff8c957e1117   5Gi        longhorn
-```
-
-
 ## Cleaning Up
 
 ```bash
 kubectl delete -n demo backupconfiguration vmtest-backup
 kubectl delete -n demo restoresession --all
-kubectl delete -n demo-restore restoresession --all
 kubectl delete -n demo vm --all
-kubectl delete -n demo-restore vm --all
 kubectl delete -n demo backupstorage s3-storage
 kubectl delete -n demo retentionpolicy demo-retention
-kubectl delete ns demo demo-restore
+kubectl delete ns demo
 ```
 
 > The `BackupStorage` in this guide has `deletionPolicy: WipeOut`. Deleting it removes the backed up data from the bucket, under the `prefix` you set.

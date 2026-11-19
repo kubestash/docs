@@ -20,7 +20,7 @@ spec:
   sessions:
   - name: daily
     scheduler:
-      schedule: "*/10 * * * *"
+      schedule: "0 2 * * *"
       jobTemplate:
         backoffLimit: 1
     repositories:
