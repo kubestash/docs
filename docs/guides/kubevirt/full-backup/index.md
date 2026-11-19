@@ -169,7 +169,46 @@ Press `Ctrl+]` to leave the console. The `sync` makes sure the file is on the di
 
 ## Prepare Backend
 
-This guide assumes you already have a `BackupStorage` named `s3-storage` in the `demo` namespace, in the same namespace as the VM. To create one for your own backend, follow the backend configuration doc [here](/docs/guides/backends/overview/index.md).
+We are going to store the backed up data in an S3 bucket. If you want to use a different backend, please read the respective backend configuration doc from [here](/docs/guides/backends/overview/index.md).
+
+**Create Secret:**
+
+```bash
+$ kubectl create secret generic -n demo s3-secret \
+    --from-literal=AWS_ACCESS_KEY_ID='<your-access-key-id>' \
+    --from-literal=AWS_SECRET_ACCESS_KEY='<your-secret-access-key>'
+secret/s3-secret created
+```
+
+**Create BackupStorage:**
+
+Below is the YAML of the `BackupStorage` CR we are going to create. The `usagePolicy` allows every namespace to use it, which the cross-namespace restore at the end needs:
+
+```yaml
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
+metadata:
+  name: s3-storage
+  namespace: demo
+spec:
+  storage:
+    provider: s3
+    s3:
+      bucket: kubestash-qa
+      endpoint: https://s3.us-east-2.amazonaws.com
+      region: us-east-2
+      prefix: demo
+      secretName: s3-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: All
+  deletionPolicy: WipeOut
+```
+
+```bash
+$ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubevirt/full-backup/examples/backupstorage.yaml
+backupstorage.storage.kubestash.com/s3-storage created
+```
 
 **Create RetentionPolicy:**
 
@@ -447,7 +486,7 @@ hello from the full-backup test
 
 The `RestoreSession` can live in another namespace and read the `Repository` from the namespace where it was created, using `spec.dataSource.namespace`. Three things are needed in the target namespace:
 
-1. The namespace must be allowed by the `usagePolicy` of the `BackupStorage`. The `RetentionPolicy` above allows all namespaces.
+1. The namespace must be allowed by the `usagePolicy` of the `BackupStorage`. Ours allows all namespaces.
 2. An encryption Secret with the **same password** as the source one.
 3. The `RestoreSession` itself.
 
@@ -513,5 +552,9 @@ kubectl delete -n demo restoresession --all
 kubectl delete -n demo-restore restoresession --all
 kubectl delete -n demo vm --all
 kubectl delete -n demo-restore vm --all
+kubectl delete -n demo backupstorage s3-storage
+kubectl delete -n demo retentionpolicy demo-retention
 kubectl delete ns demo demo-restore
 ```
+
+> The `BackupStorage` in this guide has `deletionPolicy: WipeOut`. Deleting it removes the backed up data from the bucket, under the `prefix` you set.
