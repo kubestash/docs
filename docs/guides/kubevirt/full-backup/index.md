@@ -23,20 +23,13 @@ KubeStash backs up a VM using the `kubevirt` addon. One backup run stores two th
 - **manifest**: the `VirtualMachine` definition.
 - **volume**: the contents of every disk of the VM.
 
-Every run is a **full backup** of the VM: the whole disk is read each time. The backend is a [restic](https://restic.net/) repository, so data that has not changed since an earlier run is not uploaded again, and the stored size stays small.
-
-How the disk is read depends on the VM state:
-
-- **Running VM (hot backup).** The addon asks KubeVirt for a `VirtualMachineSnapshot`, which creates a CSI `VolumeSnapshot` of each disk. The data is read from the snapshots, so the VM is not stopped. This needs a CSI driver with snapshot support and a default `VolumeSnapshotClass`.
-- **Stopped VM (cold backup).** No snapshot is needed. The addon reads the disk volumes directly.
-
 ## Before You Begin
 
 - You need a Kubernetes cluster and a `kubectl` configured to talk to it.
 
 - Install KubeStash in your cluster following the steps [here](/docs/setup/README.md).
 
-- Install [KubeVirt](https://kubevirt.io/user-guide/cluster_admin/installation/) and [CDI](https://github.com/kubevirt/containerized-data-importer). For hot backup, KubeVirt needs the `Snapshot` feature gate:
+- Install [KubeVirt](https://kubevirt.io/user-guide/cluster_admin/installation/) and [CDI](https://github.com/kubevirt/containerized-data-importer). KubeVirt needs the `Snapshot` feature gate to back up a running VM:
 
   ```bash
   $ kubectl -n kubevirt get kubevirt kubevirt -o jsonpath='{.spec.configuration.developerConfiguration.featureGates}'
@@ -45,7 +38,7 @@ How the disk is read depends on the VM state:
 
   If your cluster has no hardware virtualization (for example, a test cluster in a VM), set `spec.configuration.developerConfiguration.useEmulation: true` in the `KubeVirt` resource. Everything in this guide works that way, but VMs boot slowly.
 
-- For hot backup you need a CSI driver that supports volume snapshots, with the snapshot CRDs and snapshot controller installed. In this guide we use [Longhorn](https://longhorn.io/docs/latest/deploy/install/), which provides the StorageClass `longhorn`. The `kubevirt` addon takes the `VolumeSnapshotClass` that KubeVirt picks for each disk's StorageClass, so mark one as default:
+- To back up a running VM you need a CSI driver that supports volume snapshots, with the snapshot CRDs and snapshot controller installed. In this guide we use [Longhorn](https://longhorn.io/docs/latest/deploy/install/), which provides the StorageClass `longhorn`. The `kubevirt` addon takes the `VolumeSnapshotClass` that KubeVirt picks for each disk's StorageClass, so mark one as default:
 
   ```bash
   $ kubectl get volumesnapshotclass
@@ -346,7 +339,7 @@ KubeStash creates a CronJob that triggers a `BackupSession` on each schedule. It
 $ watch kubectl get backupsessions.core.kubestash.com,snapshots.storage.kubestash.com -n demo
 ```
 
-The first `BackupSession`, taken while the VM was running (hot backup), finished like this:
+The first `BackupSession`, taken while the VM was running, finished like this:
 
 ```bash
 $ kubectl get backupsessions.core.kubestash.com -n demo
@@ -375,32 +368,6 @@ $ kubectl -n demo get snapshot vmtest-repo-vmtest-backup-daily-1795083228 -o jso
 
 The disk is 4.55 GiB read, but only 38 MiB is stored, because most of a fresh CirrOS disk is empty.
 
-**Backup of a stopped VM:**
-
-A stopped VM is backed up without a snapshot. Let's add a second file, stop the VM and wait for the next scheduled run.
-
-```bash
-$ virtctl -n demo console vmtest
-$ echo "second file, written before the cold backup" > /home/cirros/note2.txt
-$ sync
-
-$ virtctl -n demo stop vmtest
-$ kubectl -n demo get vm
-NAME     AGE   STATUS    READY
-vmtest   77m   Stopped   False
-```
-
-After the next scheduled time:
-
-```bash
-$ kubectl get backupsessions.core.kubestash.com -n demo
-NAME                             INVOKER-TYPE          INVOKER-NAME    PHASE       DURATION   AGE
-vmtest-backup-daily-1795083228   BackupConfiguration   vmtest-backup   Succeeded   1m42s      78m
-vmtest-backup-daily-1795087800   BackupConfiguration   vmtest-backup   Succeeded   1m8s       2m
-```
-
-The second run took less time and uploaded only 5.1 MiB, because restic had already stored most of the disk. After this run there was no `VirtualMachineSnapshot` left in the namespace.
-
 ## Restore
 
 A restore recreates the VM (manifest and disks) from a `Snapshot` of the repository. With `snapshot: latest` it uses the newest one. You can also give a `Snapshot` name from `kubectl get snapshots -n demo`. Note that `latest` moves on: it always means the newest snapshot at the time you create the `RestoreSession`.
@@ -414,7 +381,7 @@ The `RestoreSession` can use one of two sets of tasks:
 
 Do not set `spec.target` on the `RestoreSession`: the VM does not exist yet when the restore starts.
 
-A restored VM has the same run state as the VM had when it was backed up. A VM that was backed up while stopped comes back stopped, and you have to start it yourself.
+A restored VM comes back in the run state it had when it was backed up. If it was stopped, start it with `virtctl start`.
 
 ### Restore into a New VM
 
@@ -478,14 +445,6 @@ $ cat /home/cirros/note.txt
 hello from the full-backup test
 ```
 
-When we restored the snapshot of the stopped VM the same way (a `RestoreSession` with the snapshot name set and `targetName: vmtest-restored-cold`), the new VM came back `Stopped`. After `virtctl -n demo start vmtest-restored-cold` and the boot, both files were there:
-
-```bash
-$ cat /home/cirros/note.txt /home/cirros/note2.txt
-hello from the full-backup test
-second file, written before the cold backup
-```
-
 ### Restore Over the Original VM
 
 To restore under the original name, delete the VM first. Its disk belongs to the VM through `dataVolumeTemplates`, so the PVC and DataVolume are deleted with it, and nothing is left to get in the way:
@@ -539,9 +498,8 @@ The VM is back under its original name with a new disk. The `BackupConfiguration
 ```bash
 $ virtctl -n demo start vmtest
 $ virtctl -n demo console vmtest
-$ cat /home/cirros/note.txt /home/cirros/note2.txt
+$ cat /home/cirros/note.txt
 hello from the full-backup test
-second file, written before the cold backup
 ```
 
 ### Restore into a Different Namespace
@@ -605,7 +563,6 @@ NAME                                    STATUS   VOLUME                         
 persistentvolumeclaim/vmtest-xns-root   Bound    pvc-9b012d3f-415b-4b06-b0a9-ff8c957e1117   5Gi        longhorn
 ```
 
-This VM came back `Running` because the newest snapshot (`latest`) had been taken while the restored `vmtest` was running again.
 
 ## Cleaning Up
 
