@@ -13,10 +13,10 @@ spec:
   - name: s3-backend
     storageRef:
       name: s3-storage
-      namespace: storage
+      namespace: demo
     retentionPolicy:
       name: demo-retention
-      namespace: storage
+      namespace: demo
   sessions:
   - name: daily
     scheduler:
