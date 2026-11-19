@@ -1,0 +1,24 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: RestoreSession
+metadata:
+  name: vmtest-restore-xns
+  namespace: demo-restore
+spec:
+  dataSource:
+    namespace: demo
+    repository: vmtest-repo
+    snapshot: latest
+    encryptionSecret:
+      name: encryption-secret
+      namespace: demo-restore
+  addon:
+    name: kubevirt
+    tasks:
+    - name: volume-restore
+      params:
+        targetName: vmtest-xns
+        targetNamespace: demo-restore
+    - name: manifest-restore
+      params:
+        targetName: vmtest-xns
+        targetNamespace: demo-restore

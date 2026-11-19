@@ -1,0 +1,23 @@
+apiVersion: storage.kubestash.com/v1alpha1
+kind: BackupStorage
+metadata:
+  name: s3-storage
+  namespace: storage
+spec:
+  storage:
+    provider: s3
+    s3:
+      bucket: kubestash-qa
+      endpoint: https://s3.us-east-2.amazonaws.com
+      region: us-east-2
+      prefix: demo
+      secretName: s3-secret
+  usagePolicy:
+    allowedNamespaces:
+      from: Selector
+      selector:
+        matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: ["demo", "demo-restore"]
+  deletionPolicy: WipeOut
