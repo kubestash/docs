@@ -14,14 +14,7 @@ section_menu_id: guides
 
 # Backup & Restore a KubeVirt VirtualMachine using KubeStash
 
-This guide will show you how to use KubeStash to take full backups of a [KubeVirt](https://kubevirt.io/) `VirtualMachine` (VM) and how to restore it, either as a new VM or over the original one.
-
-## How It Works
-
-KubeStash backs up a VM using the `kubevirt` addon. One backup run stores two things in the backend:
-
-- **manifest**: the `VirtualMachine` definition.
-- **volume**: the contents of every disk of the VM.
+This guide will show you how to use KubeStash to take full backups of a [KubeVirt](https://kubevirt.io/) `VirtualMachine` (VM) and how to restore it.
 
 ## Before You Begin
 
@@ -36,22 +29,34 @@ KubeStash backs up a VM using the `kubevirt` addon. One backup run stores two th
   ["Snapshot","VMExport","UtilityVolumes","IncrementalBackup"]
   ```
 
-  If your cluster has no hardware virtualization (for example, a test cluster in a VM), set `spec.configuration.developerConfiguration.useEmulation: true` in the `KubeVirt` resource. Everything in this guide works that way, but VMs boot slowly.
+  If your cluster has no hardware virtualization (for example, a test cluster in a VM), set `spec.configuration.developerConfiguration.useEmulation: true` in the `KubeVirt` resource.
 
-- To back up a running VM you need a CSI driver that supports volume snapshots, with the snapshot CRDs and snapshot controller installed. In this guide we use [Longhorn](https://longhorn.io/docs/latest/deploy/install/), which provides the StorageClass `longhorn`. The `kubevirt` addon takes the `VolumeSnapshotClass` that KubeVirt picks for each disk's StorageClass, so mark one as default:
+- Ensure a `VolumeSnapshotClass` exists. Backing up a running VM needs a CSI driver that supports volume snapshots, with a `VolumeSnapshotClass` for it.
 
   ```bash
-  $ kubectl get volumesnapshotclass
-  No resources found
+  $ kubectl get volumesnapshotclasses
+  NAME                    DRIVER               DELETIONPOLICY   AGE
+  longhorn-snapshot-vsc   driver.longhorn.io   Delete           7d22h
   ```
 
-  Below is the YAML of the `VolumeSnapshotClass` we are going to create:
+  If there is none, you can use [Longhorn](https://longhorn.io/docs/latest/deploy/install/) or any other CSI driver with snapshot support. To install Longhorn:
+
+  ```bash
+  $ helm repo add longhorn https://charts.longhorn.io
+  $ helm repo update
+  $ helm install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace
+  ...
+  $ kubectl get pod -n longhorn-system
+  ...
+  ```
+
+  Then create a `VolumeSnapshotClass` for it. Below is the YAML we are going to use:
 
   ```yaml
   apiVersion: snapshot.storage.k8s.io/v1
   kind: VolumeSnapshotClass
   metadata:
-    name: longhorn-snapshot
+    name: longhorn-snapshot-vsc
     annotations:
       snapshot.storage.kubernetes.io/is-default-class: "true"
   driver: driver.longhorn.io
@@ -62,7 +67,7 @@ KubeStash backs up a VM using the `kubevirt` addon. One backup run stores two th
 
   ```bash
   $ kubectl apply -f https://github.com/kubestash/docs/raw/{{< param "info.version" >}}/docs/guides/kubevirt/full-backup/examples/volumesnapshotclass.yaml
-  volumesnapshotclass.snapshot.storage.k8s.io/longhorn-snapshot created
+  volumesnapshotclass.snapshot.storage.k8s.io/longhorn-snapshot-vsc created
   ```
 
 - You should be familiar with the following KubeStash concepts:

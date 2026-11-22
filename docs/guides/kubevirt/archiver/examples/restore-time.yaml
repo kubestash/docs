@@ -1,0 +1,13 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: KubeVirtArchiverRestore
+metadata:
+  name: vmtest-restore-time
+  namespace: demo
+spec:
+  source:
+    repositoryRef:
+      name: vmtest-d1fa4628-605e-4543-921c-5c59921ed036-full
+  target:
+    name: vmtest-restored-time
+  recoveryPoint:
+    targetTime: "2026-11-22T05:00:00Z"

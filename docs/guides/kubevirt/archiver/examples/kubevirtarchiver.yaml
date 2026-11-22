@@ -1,0 +1,32 @@
+apiVersion: core.kubestash.com/v1alpha1
+kind: KubeVirtArchiver
+metadata:
+  name: vmtest-archiver
+  namespace: demo
+spec:
+  virtualMachines:
+    namespaces:
+      from: Same
+    selector:
+      matchLabels:
+        archive: enabled
+  backupStorage:
+    ref:
+      name: s3-storage
+      namespace: demo
+  encryptionSecret:
+    name: encryption-secret
+    namespace: demo
+  retentionPolicy:
+    name: demo-retention
+    namespace: demo
+  fullBackup:
+    driver: Restic
+    scheduler:
+      schedule: "0 2 * * *"
+      jobTemplate: {}
+  cbtBackup:
+    interval: 3m
+    scratchStorageClass: local-path
+    scratchSize: 2Gi
+    skipQuiesce: true
