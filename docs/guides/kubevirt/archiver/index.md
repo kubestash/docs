@@ -22,13 +22,35 @@ This guide will show you how to use a KubeStash `KubeVirtArchiver` to back up Ku
 
 - Install KubeStash in your cluster following the steps [here](/docs/setup/README.md).
 
-- Install [KubeVirt](https://kubevirt.io/user-guide/cluster_admin/installation/) and [CDI](https://github.com/kubevirt/containerized-data-importer). KubeVirt needs the `IncrementalBackup` feature gate, and a label selector that tells it which VMs get changed block tracking. Here, VMs with the label `cbt: enabled` are selected:
+- Install [KubeVirt](https://kubevirt.io/user-guide/cluster_admin/installation/) and [CDI](https://github.com/kubevirt/containerized-data-importer). KubeVirt needs:
+  - the `IncrementalBackup` feature gate, for changed block tracking and `VirtualMachineBackup`,
+  - the `UtilityVolumes` feature gate, because the scratch volume of a backup is attached to the VM as a utility volume,
+  - a label selector that tells it which VMs get changed block tracking. Here, VMs with the label `cbt: enabled` are selected.
+
+  Add them to the `KubeVirt` resource with `kubectl -n kubevirt edit kubevirt kubevirt`:
+
+  ```yaml
+  spec:
+    configuration:
+      developerConfiguration:
+        featureGates:
+        - IncrementalBackup
+        - UtilityVolumes
+      changedBlockTrackingLabelSelectors:
+        virtualMachineLabelSelector:
+          matchLabels:
+            cbt: enabled
+  ```
+
+  Then check it:
 
   ```bash
   $ kubectl -n kubevirt get kubevirt kubevirt -o jsonpath='{.spec.configuration.developerConfiguration.featureGates}{"\n"}{.spec.configuration.changedBlockTrackingLabelSelectors}{"\n"}'
-  ["Snapshot","VMExport","UtilityVolumes","IncrementalBackup"]
+  ["IncrementalBackup","UtilityVolumes"]
   {"virtualMachineLabelSelector":{"matchLabels":{"cbt":"enabled"}}}
   ```
+
+  Your list may contain other feature gates too; only these two are needed for this guide.
 
   If your cluster has no hardware virtualization (for example, a test cluster in a VM), set `spec.configuration.developerConfiguration.useEmulation: true` in the `KubeVirt` resource.
 
@@ -339,6 +361,15 @@ vmtest-d1fa4628-605e-4543-921c-5c59921ed036-full      true        1             
 
 The restore takes the recovery point from `spec.recoveryPoint`, which is either an exact `checkpoint` or a `targetTime`. If you leave `recoveryPoint` out, it takes the newest recovery point.
 
+**Pause the archiver first.** A restored VM keeps the labels of the source VM. If the archiver is running, it selects the restored VM as soon as it is created and starts backing it up too, with its own `BackupConfiguration`, `Repository` and full backup. Pause the archiver before you restore:
+
+```bash
+$ kubectl -n demo patch kubevirtarchiver vmtest-archiver --type=merge -p '{"spec":{"pause":true}}'
+kubevirtarchiver.core.kubestash.com/vmtest-archiver patched
+```
+
+While the archiver is paused, no full backups or checkpoints are taken for any VM. Resume it after the restore, as shown [below](#resume-the-archiver).
+
 ### Restore a Checkpoint
 
 Below is the YAML of the restore for the checkpoint that has `version 1`. Use the repository name and the checkpoint name from your own cluster:
@@ -434,7 +465,22 @@ version 2
 second file
 ```
 
-> **Note:** A restored VM keeps the labels of the source VM, so the running archiver selects it and starts backing it up too. This creates a Repository and a full backup for it. If you do not want that, remove the labels from the restored VM: `kubectl -n demo label vm vmtest-restored archive- cbt-`.
+### Resume the Archiver
+
+Before you resume the archiver, remove the labels from the restored VMs, so that it does not select them:
+
+```bash
+$ kubectl -n demo label vm vmtest-restored vmtest-restored-time archive- cbt-
+virtualmachine.kubevirt.io/vmtest-restored unlabeled
+virtualmachine.kubevirt.io/vmtest-restored-time unlabeled
+
+$ kubectl -n demo patch kubevirtarchiver vmtest-archiver --type=merge -p '{"spec":{"pause":false}}'
+kubevirtarchiver.core.kubestash.com/vmtest-archiver patched
+```
+
+If you want a restored VM to be backed up as well, keep its labels. The archiver then creates a separate `Repository` for it and starts a new chain with a full backup.
+
+> **Note:** If a restored VM was already selected, for example because the archiver was not paused, removing its labels stops further backups, but the `Repository` the archiver created for it and its data in the backend are kept. Find it with `kubectl -n demo get repository` (its name starts with the VM name) and delete it if you do not need it.
 
 ## Cleaning Up
 

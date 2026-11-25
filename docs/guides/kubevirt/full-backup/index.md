@@ -22,12 +22,24 @@ This guide will show you how to use KubeStash to take full backups of a [KubeVir
 
 - Install KubeStash in your cluster following the steps [here](/docs/setup/README.md).
 
-- Install [KubeVirt](https://kubevirt.io/user-guide/cluster_admin/installation/) and [CDI](https://github.com/kubevirt/containerized-data-importer). KubeVirt needs the `Snapshot` feature gate to back up a running VM:
+- Install [KubeVirt](https://kubevirt.io/user-guide/cluster_admin/installation/) and [CDI](https://github.com/kubevirt/containerized-data-importer). KubeVirt needs the `Snapshot` feature gate to back up a running VM. Add it to the `KubeVirt` resource with `kubectl -n kubevirt edit kubevirt kubevirt`:
+
+  ```yaml
+  spec:
+    configuration:
+      developerConfiguration:
+        featureGates:
+        - Snapshot
+  ```
+
+  Then check it:
 
   ```bash
-  $ kubectl -n kubevirt get kubevirt kubevirt -o jsonpath='{.spec.configuration.developerConfiguration.featureGates}'
-  ["Snapshot","VMExport","UtilityVolumes","IncrementalBackup"]
+  $ kubectl -n kubevirt get kubevirt kubevirt -o jsonpath='{.spec.configuration.developerConfiguration.featureGates}{"\n"}'
+  ["Snapshot"]
   ```
+
+  Your list may contain other feature gates too; only `Snapshot` is needed for this guide.
 
   If your cluster has no hardware virtualization (for example, a test cluster in a VM), set `spec.configuration.developerConfiguration.useEmulation: true` in the `KubeVirt` resource.
 
@@ -466,17 +478,27 @@ NAME                     REPOSITORY    PHASE       DURATION   AGE
 vmtest-restore-inplace   vmtest-repo   Succeeded   1m12s      106s
 
 $ kubectl -n demo get vm,pvc,dv
-NAME                                AGE   STATUS    READY
-virtualmachine.kubevirt.io/vmtest   41s   Stopped   False
-...
-persistentvolumeclaim/vmtest-root   Bound    pvc-ce29ed29-6712-4029-977f-ce7586b249c4   5Gi   longhorn
+NAME                                         AGE     STATUS     READY
+virtualmachine.kubevirt.io/vmtest            2s      Starting   False
+virtualmachine.kubevirt.io/vmtest-restored   6m28s   Running    True
+
+NAME                                         STATUS   VOLUME                                     CAPACITY   STORAGECLASS
+persistentvolumeclaim/vmtest-restored-root   Bound    pvc-aa02b27a-09f8-4e7c-b024-2b54fed052d1   5Gi        longhorn
+persistentvolumeclaim/vmtest-root            Bound    pvc-22d6d1b9-974c-4556-b079-f7986568e424   5Gi        longhorn
+
+NAME                                              PHASE       PROGRESS   RESTARTS   AGE
+datavolume.cdi.kubevirt.io/vmtest-restored-root   Succeeded   N/A                   6m28s
+datavolume.cdi.kubevirt.io/vmtest-root            Succeeded   N/A                   2s
 ```
 
-The VM is back under its original name with a new disk. The `BackupConfiguration` stays `Ready` (`targetFound: true`), so scheduled backups continue for the restored VM without any change. After starting it, both files are present:
+The VM is back under its original name with a new disk. It was running when it was backed up, so it starts on its own. The `BackupConfiguration` stays `Ready` (`targetFound: true`), so scheduled backups continue for the restored VM without any change.
+
+Log in and check the file:
 
 ```bash
-$ virtctl -n demo start vmtest
 $ virtctl -n demo console vmtest
+cirros login: cirros
+Password: gocubsgo
 $ cat /home/cirros/note.txt
 hello from the full-backup test
 ```
