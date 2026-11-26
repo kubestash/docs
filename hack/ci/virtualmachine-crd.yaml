@@ -1,0 +1,28 @@
+# Placeholder CRD, used only by the docs CI (.github/workflows/ci.yml).
+#
+# The KubeVirt guides contain VirtualMachine examples (kubevirt.io/v1). The CI cluster has no
+# KubeVirt, and KubeVirt publishes no standalone CRD file (its operator creates the CRDs at
+# runtime), so the codespan schema checker would fail with:
+#   no matches for kind "VirtualMachine" in version "kubevirt.io/v1"
+# This CRD only makes the kind resolvable. It accepts any content, so the VirtualMachine
+# examples are not validated against the real KubeVirt schema.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: virtualmachines.kubevirt.io
+spec:
+  group: kubevirt.io
+  scope: Namespaced
+  names:
+    kind: VirtualMachine
+    listKind: VirtualMachineList
+    plural: virtualmachines
+    singular: virtualmachine
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true

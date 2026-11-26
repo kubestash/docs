@@ -1,0 +1,45 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vmtest
+  namespace: demo
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+  - metadata:
+      name: vmtest-root
+    spec:
+      pvc:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: longhorn
+      source:
+        registry:
+          url: "docker://quay.io/kubevirt/cirros-container-disk-demo:latest"
+  template:
+    spec:
+      domain:
+        cpu:
+          cores: 1
+        memory:
+          guest: 512Mi
+        machine:
+          type: q35
+        devices:
+          disks:
+          - name: rootdisk
+            disk:
+              bus: virtio
+          interfaces:
+          - name: default
+            masquerade: {}
+      networks:
+      - name: default
+        pod: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: rootdisk
+        dataVolume:
+          name: vmtest-root
